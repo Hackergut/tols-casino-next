@@ -1,0 +1,1266 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* shadcn slots ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â kept so existing components resolve */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* One family platform-wide. The "mono" slot resolves to the same face ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+     it exists only so `font-mono` can switch on tabular figures. */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* GoldenX casino tokens ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see DESIGN.md */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-overlay: var(--overlay);
+  --color-lime: var(--lime-300);
+  --color-lime-50: var(--lime-50);
+  --color-lime-100: var(--lime-100);
+  --color-lime-200: var(--lime-200);
+  --color-lime-300: var(--lime-300);
+  --color-lime-400: var(--lime-400);
+  --color-lime-500: var(--lime-500);
+  --color-lime-600: var(--lime-600);
+  --color-win: var(--win);
+  --color-loss: var(--loss);
+  --color-pending: var(--pending);
+  --color-vip: var(--vip);
+  --color-border-strong: var(--border-strong);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Elevation ramp ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â taken from the TOLS UI mockup, not approximated. */
+  --bg: #0f1015;
+  --surface: #171921;
+  --surface-raised: #1c1e28;
+  --overlay: #23252e;
+
+  /* Brand lime ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â #cdf32b is the mockup's accent, used 55 times across it. */
+  --lime-50: #f4fdd4;
+  --lime-100: #ecfbb0;
+  --lime-200: #e3fb86;
+  --lime-300: #cdf32b;
+  --lime-400: #b2d81f;
+  --lime-500: #8fae18;
+  --lime-600: #667c11;
+
+  /* Semantic ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â warmed to sit on matte black without a cold cast */
+  --win: var(--lime-300);
+  --loss: oklch(0.65 0.22 22);    /* #ff4a33 */
+  --pending: oklch(0.85 0.16 80); /* #ffb52e */
+  --vip: oklch(0.82 0.14 88);     /* #f0c04a ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â gold, not violet */
+
+  /* Motion durations (JS reads these too) */
+  --dur-fast: 120ms;
+  --dur-base: 240ms;
+  --dur-slow: 480ms;
+
+  /* shadcn slot values */
+  --background: var(--bg);
+  --foreground: #e9e9ed;
+  --card: var(--surface);
+  --card-foreground: #e9e9ed;
+  --popover: var(--overlay);
+  --popover-foreground: oklch(0.95 0.004 95);
+  --primary: var(--lime-300);
+  --primary-foreground: var(--bg);
+  --secondary: var(--surface-raised);
+  --secondary-foreground: oklch(0.95 0.004 95);
+  --muted: var(--surface-raised);
+  --muted-foreground: oklch(0.66 0.005 95);
+  --accent: var(--surface-raised);
+  --accent-foreground: oklch(0.95 0.004 95);
+  --destructive: var(--loss);
+  --border: oklch(0.38 0.005 95 / 48%);
+  --border-strong: oklch(0.48 0.006 95);
+  --input: oklch(0.38 0.005 95 / 60%);
+  --ring: var(--lime-300);
+  --chart-1: var(--lime-300);
+  --chart-2: var(--vip);
+  --chart-3: var(--pending);
+  --chart-4: var(--loss);
+  --chart-5: oklch(0.66 0.005 95);
+  --sidebar: var(--surface);
+  --sidebar-foreground: oklch(0.95 0.004 95);
+  --sidebar-primary: var(--lime-300);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--surface-raised);
+  --sidebar-accent-foreground: oklch(0.95 0.004 95);
+  --sidebar-border: oklch(0.38 0.005 95 / 48%);
+  --sidebar-ring: var(--lime-300);
+}
+
+/* Dark-only product ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â .dark kept for class compatibility; values match :root */
+.dark {
+  --background: var(--bg);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Minimal, linear typography: a single grotesque, slightly tightened tracking
+   at display sizes, and numerals that line up in tables and balances. */
+/* Reference the loader's own variable, not the theme alias: `@theme inline`
+   inlines its values at build time, so --font-sans has no runtime value. */
+body {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.011em;
+}
+/* Display face. Michroma is naturally very wide and only ships one weight, so
+   tracking is pulled in and the browser is told not to synthesise a bold. */
+.font-display {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 400;
+  font-synthesis-weight: none;
+  letter-spacing: -0.02em;
+}
+
+/* Logotype ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â condensed, tight, matching the supplied brand assets. */
+.font-wordmark {
+  font-family: var(--font-wordmark), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.font-mono,
+[class*="tabular-nums"] {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+h1, h2, h3, .font-black, .font-extrabold {
+  letter-spacing: -0.028em;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Enhanced Custom Scrollbar ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(from var(--border) l c h / 0.35);
+  border-radius: 999px;
+  transition: background 0.25s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--primary) l c h / 0.45);
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Selection Highlight ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+::selection {
+  background: oklch(from var(--primary) l c h / 0.22);
+  color: inherit;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Focus Ring Animation ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+*:focus-visible {
+  outline: 2px solid oklch(from var(--ring) l c h / 0.6);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  transition: outline-color 0.2s ease, outline-offset 0.2s ease;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Subtle Noise Texture ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.noise-texture {
+  position: relative;
+}
+.noise-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  z-index: 0;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Glassmorphism Utility Classes ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.glass {
+  background: oklch(from var(--card) l c h / 0.55);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid oklch(from var(--border) l c h / 0.35);
+}
+
+.glass-hover {
+  background: oklch(from var(--card) l c h / 0.55);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid oklch(from var(--border) l c h / 0.35);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.glass-hover:hover {
+  background: oklch(from var(--card) l c h / 0.7);
+  border-color: oklch(from var(--primary) l c h / 0.3);
+  box-shadow: 0 0 20px oklch(from var(--primary) l c h / 0.08);
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Skeleton Shimmer Animation ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(from var(--muted) l c h / 0.4) 25%,
+    oklch(from var(--muted) l c h / 0.15) 50%,
+    oklch(from var(--muted) l c h / 0.4) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Gradient Accent Line (Reusable) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.gradient-line {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(from var(--primary) l c h / 0.35) 50%,
+    transparent 100%
+  );
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Pulse Glow for Status Indicators ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--primary) l c h / 0.3); }
+  50% { box-shadow: 0 0 8px 4px oklch(from var(--primary) l c h / 0.1); }
+}
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Inline Cell Edit Flash ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes cell-flash-green {
+  0% { background-color: oklch(from var(--card) l c h / 1); }
+  30% { background-color: oklch(0.7 0.15 145 / 0.15); }
+  100% { background-color: oklch(from var(--card) l c h / 1); }
+}
+.cell-flash-green {
+  animation: cell-flash-green 0.8s ease-out;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Card Hover Lift Effect ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.card-hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -8px oklch(from var(--foreground) l c h / 0.08);
+  border-color: oklch(from var(--primary) l c h / 0.2);
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Text Truncation with Ellipsis ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Smooth Button Press Effect ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Responsive Safe Areas ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Reduced Motion Preference ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Floating Action Button Pulse ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--primary) l c h / 0.2); }
+  50% { box-shadow: 0 0 0 8px oklch(from var(--primary) l c h / 0); }
+}
+.fab-pulse {
+  animation: fab-pulse 3s ease-in-out infinite;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Heartbeat Dot for Footer ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  14% { transform: scale(1.3); opacity: 0.8; }
+  28% { transform: scale(1); opacity: 1; }
+}
+.heartbeat-dot {
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Gradient Wipe Transition ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes gradient-wipe {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.gradient-wipe {
+  position: relative;
+  overflow: hidden;
+}
+.gradient-wipe::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, oklch(from var(--primary) l c h / 0.6), transparent);
+  animation: gradient-wipe 0.6s ease-in-out;
+  pointer-events: none;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Subtle Breathing Animation ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+@keyframes breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Decorative Background Blob ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.deco-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Kanban Column Scrollbar ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+.kanban-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.kanban-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(from var(--border) l c h / 0.3);
+  border-radius: 999px;
+}
+.kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--primary) l c h / 0.4);
+}
+
+/* Admin login gate shake on wrong password */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Compact game density ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+ * Mini-games were authored at page density and ran taller than the viewport.
+ * Rather than override each utility, this re-declares the Tailwind v4 theme
+ * tokens inside the game scope: every spacing utility resolves through
+ * `--spacing` and every size utility through `--text-*`, so one set of tokens
+ * rescales padding, gaps, margins and type together ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no !important, no
+ * selector fights, and the games' markup stays untouched.
+ */
+.compact-game {
+  /* 0.25rem ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ 0.1875rem: every p-*, gap-*, space-y-*, m-* shrinks by 25% */
+  --spacing: 0.1875rem;
+
+  /* Type ramp, one step tighter across the board */
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.25rem;
+  --text-3xl: 1.5rem;
+  --text-4xl: 1.75rem;
+  --text-5xl: 2rem;
+  --text-6xl: 2.25rem;
+  --text-7xl: 2.5rem;
+
+  /* Tighter leading suits the denser type without hurting legibility */
+  --leading-tight: 1.15;
+  --leading-normal: 1.35;
+}
+
+/* Controls stay comfortably tappable even at the tighter scale.
+   HIG floor is 44pt; 40px keeps dense game UIs usable without bloating them. */
+.compact-game button { min-height: 2.5rem; }
+.compact-game input { min-height: 2.25rem; }
+
+/* Boards are capped below their panel's ceiling so the payout row at the foot
+   stays visible; object-fit keeps the aspect ratio when the cap applies. */
+.compact-game canvas {
+  max-height: 42vh;
+  object-fit: contain;
+}
+.compact-game svg.w-full { max-height: 42vh; }
+
+/* Sheet chrome ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â hidden on desktop, where the controls sit beside the board. */
+.game-sheet-toggle { display: none; }
+.game-sheet-scrim { display: none; }
+
+@media (max-width: 1023px) {
+  /* The game is a fixed-height column: board on top, controls docked below as
+     a sheet. Reserve = app header (106) + bottom nav (65) + main padding (32)
+     + collapsed sheet (86). The footer is not rendered in-game. */
+  .compact-game {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 272px);
+  }
+  .compact-game > *,
+  .compact-game > * > *:has(> .grid) {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .compact-game > * > .grid,
+  .compact-game > * > * > .grid {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Board: fills the leftover space, scrolls internally if its content is
+     taller. min-height floor keeps it meaningful on very short screens. */
+  .compact-game > * > .grid > *:not(:last-child),
+  .compact-game > * > * > .grid > *:not(:last-child) {
+    flex: 1 1 auto;
+    min-height: 22vh;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Controls become a sheet docked above the bottom nav. Collapsed it shows
+     only the primary action; expanded it reveals everything and scrolls. */
+  .compact-game > * > .grid > *:last-child,
+  .compact-game > * > * > .grid > *:last-child {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(65px + env(safe-area-inset-bottom));
+    z-index: 45;
+    margin: 0;
+    padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom));
+    background: var(--color-surface);
+    border-top: 1px solid color-mix(in oklab, var(--color-lime) 14%, transparent);
+    box-shadow: 0 -10px 30px rgb(0 0 0 / 0.5);
+    max-height: 52vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .compact-game > * > .grid > *:last-child > *,
+  .compact-game > * > * > .grid > *:last-child > * { margin-top: 0; }
+
+  /* Collapsed: everything except the primary action is hidden, so the sheet
+     is just a bet bar and the board keeps the whole screen. */
+  .compact-game:not(.sheet-open) > * > .grid > *:last-child > *:not(button),
+  .compact-game:not(.sheet-open) > * > * > .grid > *:last-child > *:not(button) {
+    display: none;
+  }
+
+  /* Expanded: two packed columns (CSS columns rather than a grid, because a
+     grid row is as tall as its tallest cell and wastes the difference). */
+  .compact-game.sheet-open > * > .grid > *:last-child,
+  .compact-game.sheet-open > * > * > .grid > *:last-child {
+    column-count: 2;
+    column-gap: 0.5rem;
+  }
+  .compact-game.sheet-open > * > .grid > *:last-child > *,
+  .compact-game.sheet-open > * > * > .grid > *:last-child > * {
+    break-inside: avoid;
+    margin-bottom: 0.5rem;
+  }
+  .compact-game > * > .grid > *:last-child > button,
+  .compact-game > * > * > .grid > *:last-child > button {
+    column-span: all;
+    width: 100%;
+  }
+
+  /* Settings handle: icon only, small, centred just under the board and above
+     the bet bar. It should read as a quiet affordance, not a second button
+     competing with the primary action. */
+  .game-sheet-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(65px + env(safe-area-inset-bottom) + 4.2rem);
+    z-index: 46;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    min-height: 0;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.10);
+    background: color-mix(in oklab, var(--color-surface) 92%, transparent);
+    color: rgb(255 255 255 / 0.5);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .game-sheet-toggle:hover {
+    color: var(--color-lime);
+    border-color: color-mix(in oklab, var(--color-lime) 35%, transparent);
+  }
+  /* Open: the handle rides the sheet's top edge, where it now closes it. */
+  .compact-game.sheet-open .game-sheet-toggle {
+    bottom: calc(65px + env(safe-area-inset-bottom) + 52vh + 0.4rem);
+  }
+
+  /* Flatten the controls into the game screen: each control group ships its
+     own card frame (border + surface fill + shadow), which stacks up as
+     clutter and wasted height once they sit inside the docked sheet. The
+     games set these as inline styles, so !important is the only way to
+     override them from here. */
+  .compact-game > * > .grid > *:last-child > *:not(button),
+  .compact-game > * > * > .grid > *:last-child > *:not(button) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0.125rem 0 !important;
+  }
+
+  /* The board keeps its fill for contrast but drops the outline and glow. */
+  .compact-game > * > .grid > *:not(:last-child),
+  .compact-game > * > * > .grid > *:not(:last-child) {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .game-sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    bottom: calc(65px + env(safe-area-inset-bottom));
+    z-index: 44;
+    background: rgb(0 0 0 / 0.45);
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Side by side on desktop ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the board can breathe. */
+  .compact-game canvas { max-height: 52vh; object-fit: contain; }
+  .compact-game svg.w-full { max-height: 52vh; }
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Mobile optimisation ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+ * Measured fixes, not guesses: the audit at 390ÃƒÆ’Ã¢â‚¬â€844 found 19 controls below
+ * the 44pt hit target, 35 strings under 12px, and two inputs at 14px ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Safari
+ * zooms the whole page when a focused field is under 16px, which throws the
+ * layout off and is one of the most common mobile bugs on a betting UI.
+ */
+@media (max-width: 1023px) {
+  /* iOS refuses to zoom a field at 16px or larger. */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+
+  /* Comfortable hit targets for the app chrome. Game controls are excluded ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+     they sit in a dense panel with their own sizing. */
+  header button,
+  nav button,
+  nav a,
+  aside button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Legibility floor. Sub-11px labels are decorative at best on a phone. */
+  .text-\[8px\],
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\] {
+    font-size: 0.75rem;
+  }
+
+  /* Never bounce the whole page when a drawer or sheet is scrolled to its end.
+     overflow-x is clipped because the horizontal shelves deliberately extend
+     past the viewport (they scroll inside their own container) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â without this
+     their overhang drags the page sideways a few pixels. */
+  html,
+  body {
+    overscroll-behavior-y: none;
+    /* `clip` rather than `hidden`: it contains the shelves' overhang without
+       turning the element into a scroll container, so position:sticky inside
+       still works. */
+    overflow-x: clip;
+  }
+
+  /* Momentum scrolling inside the horizontal shelves. */
+  .scrollbar-hide {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Respect the notch and the home indicator. */
+  header {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Taps should feel instant and never flash a grey box. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin Panel Responsive Optimizations Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+
+/* Admin container: max-width for ultra-wide screens, centered content */
+.admin-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Responsive admin header height */
+.admin-header {
+  height: 56px;
+}
+@media (min-width: 768px) {
+  .admin-header {
+    height: 56px;
+  }
+}
+
+/* Admin table: horizontal scroll on mobile, sticky header */
+.admin-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.admin-table-wrap table {
+  min-width: 640px;
+}
+.admin-table-wrap thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Admin stat cards: responsive grid */
+.admin-stat-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* Admin card: responsive padding */
+.admin-card {
+  padding: 0.875rem;
+}
+@media (min-width: 768px) {
+  .admin-card {
+    padding: 1.25rem;
+  }
+}
+
+/* Admin page title: responsive font */
+.admin-page-title {
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+@media (min-width: 640px) {
+  .admin-page-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* Sidebar search input */
+.admin-nav-search {
+  position: relative;
+}
+.admin-nav-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 0.75rem 0 2.25rem;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--color-surface-raised) 60%, transparent);
+  border: 1px solid oklch(from var(--border) l c h / 0.4);
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.admin-nav-search input:focus {
+  border-color: oklch(from var(--primary) l c h / 0.5);
+  background: color-mix(in oklab, var(--color-surface-raised) 80%, transparent);
+}
+.admin-nav-search input::placeholder {
+  color: oklch(from var(--muted-foreground) l c h / 0.6);
+}
+
+/* Mobile admin sheet: wider for better nav visibility */
+@media (max-width: 767px) {
+  .admin-mobile-sheet {
+    width: 85vw !important;
+    max-width: 340px;
+  }
+}
+
+/* Admin nav: smooth scroll for long lists */
+.admin-nav-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Admin nav item: improved active state */
+.admin-nav-item-active {
+  position: relative;
+}
+.admin-nav-item-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary);
+  box-shadow: 0 0 8px 1px oklch(from var(--primary) l c h / 0.4);
+}
+
+/* Admin content: prevent layout shift on sidebar toggle */
+.admin-main {
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Admin: hide horizontal overflow from animations */
+.admin-main > * {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Admin scrollbar: thinner for admin panels */
+.admin-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.admin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: oklch(from var(--border) l c h / 0.3);
+  border-radius: 999px;
+}
+.admin-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--primary) l c h / 0.4);
+}
+
+/* Admin: responsive grid for chart cards */
+.admin-chart-grid {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1024px) {
+  .admin-chart-grid {
+    gap: 1.5rem;
+  }
+}
+
+/* Admin: badge pulse for notifications */
+@keyframes admin-badge-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+.admin-badge-pulse {
+  animation: admin-badge-pulse 2s ease-in-out infinite;
+}
+
+/* Admin: mobile header brand */
+.admin-mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Admin: prevent text selection on nav buttons */
+.admin-nav-button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Admin: smooth content fade-in on page change */
+@keyframes admin-page-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.admin-page-enter {
+  animation: admin-page-enter 0.3s ease-out;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin Sheet styles (moved from inline <style> tags) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+[data-slot="sheet-overlay"] {
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  backdrop-filter: blur(8px) saturate(1.2);
+  background: rgba(0,0,0,0.4) !important;
+}
+[data-side="left"][data-slot="sheet-content"] {
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1) !important;
+}
+
+/* Admin sidebar noise texture */
+.sidebar-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin responsive: CSS-only sidebar visibility Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* No JS flash Ã¢â‚¬â€ the browser applies these before any JS runs */
+.admin-sidebar-desktop {
+  display: none;
+}
+.admin-sidebar-mobile {
+  display: flex;
+}
+.admin-desktop-only {
+  display: none;
+}
+.admin-mobile-only {
+  display: flex;
+}
+.admin-main-content {
+  margin-left: 0;
+}
+
+@media (min-width: 768px) {
+  .admin-sidebar-desktop {
+    display: flex;
+  }
+  .admin-sidebar-mobile {
+    display: none;
+  }
+  .admin-desktop-only {
+    display: flex;
+  }
+  .admin-mobile-only {
+    display: none;
+  }
+  .admin-main-content {
+    margin-left: 4rem; /* w-16 = collapsed sidebar */
+  }
+  .admin-main-content.admin-sidebar-expanded {
+    margin-left: 16rem; /* w-64 = expanded sidebar */
+  }
+}
+
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+/* Shuffle.com Design Clone - TOLS Original Games */
+:root {
+  --g-bg: #0a0a0b;
+  --g-panel: #141416;
+  --g-panel-2: #1a1a1e;
+  --g-panel-3: #232328;
+  --g-panel-hover: #2a2a30;
+  --g-border: rgba(255,255,255,0.05);
+  --g-border-2: rgba(255,255,255,0.08);
+  --g-border-active: rgba(0,231,1,0.3);
+  --g-text: #e4e4e7;
+  --g-text-2: #8b8b94;
+  --g-text-3: #5c5c66;
+  --g-green: #00e701;
+  --g-green-dim: #00c801;
+  --g-green-glow: rgba(0,231,1,0.12);
+  --g-green-glow-2: rgba(0,231,1,0.2);
+  --g-red: #ff3b3b;
+  --g-red-glow: rgba(255,59,59,0.12);
+  --g-red-glow-2: rgba(255,59,59,0.2);
+  --g-amber: #fbbf24;
+  --g-blue: #3b82f6;
+  --g-radius: 0.5rem;
+  --g-radius-sm: 0.375rem;
+  --g-transition: 0.15s ease;
+  --g-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --g-mono: 'SF Mono', 'Cascadia Code', 'Roboto Mono', ui-monospace, monospace;
+}
+.game-wrapper { display: flex; flex-direction: column; gap: 0.5rem; }
+.game-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+@media (min-width:1024px){ .game-grid { grid-template-columns: 1.5fr 1fr; gap: 0.5rem; } }
+/* Mobile: game area first, controls below (like Shuffle) */
+.g-header { display:flex; align-items:center; gap:0.5rem; padding:0.25rem 0; }
+.g-header h1 { font-size:1.125rem; font-weight:700; color:var(--g-text); }
+.g-header p { font-size:0.6875rem; color:var(--g-text-3); }
+.g-back { display:flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; border-radius:var(--g-radius-sm); color:var(--g-text-2); transition:var(--g-transition); cursor:pointer; }
+.g-back:hover { background:var(--g-panel-3); color:var(--g-text); }
+.g-panel { background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); overflow:hidden; position:relative; }
+.g-panel-2 { background:var(--g-panel-2); border:1px solid var(--g-border); border-radius:var(--g-radius); }
+.g-balance { padding:0.625rem 0.75rem; background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); }
+.g-balance-label { font-size:0.625rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--g-text-3); }
+.g-balance-value { font-size:1.125rem; font-weight:600; font-variant-numeric:tabular-nums; color:var(--g-green); font-family:var(--g-mono); letter-spacing:-0.02em; }
+.g-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:0.375rem; }
+.g-stat { padding:0.5rem 0.375rem; text-align:center; background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius-sm); }
+.g-stat-label { font-size:0.5625rem; font-weight:500; text-transform:uppercase; letter-spacing:0.03em; color:var(--g-text-3); margin-bottom:0.125rem; }
+.g-stat-value { font-size:0.8125rem; font-weight:700; font-variant-numeric:tabular-nums; color:var(--g-text); font-family:var(--g-mono); letter-spacing:-0.02em; }
+.g-stat-value.lime { color:var(--g-green); }
+.g-btn { display:flex; align-items:center; justify-content:center; gap:0.25rem; border-radius:var(--g-radius-sm); font-weight:600; transition:var(--g-transition); cursor:pointer; user-select:none; border:none; outline:none; font-family:var(--g-font); }
+.g-btn:active:not(:disabled){ transform:scale(0.97); }
+.g-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.g-btn-play { width:100%; padding:0.75rem; font-size:0.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; background:var(--g-green); color:#0f0f0f; border-radius:var(--g-radius); }
+.g-btn-play:hover:not(:disabled){ background:var(--g-green-dim); }
+.g-btn-play.cashout { background:var(--g-amber); color:#0f0f0f; }
+.g-btn-secondary { width:100%; padding:0.75rem; font-size:0.75rem; font-weight:600; text-transform:uppercase; background:var(--g-panel-3); color:var(--g-text-2); border:1px solid var(--g-border-2); border-radius:var(--g-radius); }
+.g-btn-secondary:hover:not(:disabled){ background:var(--g-panel-hover); color:var(--g-text); }
+.g-btn-toggle { flex:1; padding:0.5rem; font-size:0.75rem; font-weight:600; text-transform:uppercase; border-radius:var(--g-radius-sm); }
+.g-btn-toggle.active { background:var(--g-green); color:#0a0a0b; border:none; font-weight:700; }
+.g-btn-toggle.inactive { background:var(--g-panel); color:var(--g-text-2); border:1px solid var(--g-border); }
+
+.g-bet { padding:0.625rem; background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); }
+.g-bet-label { font-size:0.625rem; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; color:var(--g-text-3); margin-bottom:0.375rem; }
+.g-bet-chips { display:flex; flex-wrap:wrap; gap:0.25rem; margin-bottom:0.375rem; }
+.g-bet-chip { padding:0.1875rem 0.5rem; border-radius:var(--g-radius-sm); font-size:0.6875rem; font-weight:600; font-variant-numeric:tabular-nums; font-family:var(--g-mono); background:var(--g-panel-2); color:var(--g-text-2); border:1px solid transparent; transition:var(--g-transition); cursor:pointer; }
+.g-bet-chip:hover { color:var(--g-text); background:var(--g-panel-3); }
+.g-bet-chip.active { background:var(--g-green-glow); border-color:var(--g-border-active); color:var(--g-green); }
+.g-bet-input-wrap { display:flex; align-items:center; gap:0.25rem; margin-bottom:0.375rem; }
+.g-bet-display { flex:1; height:2.25rem; border-radius:var(--g-radius-sm); background:#1a1a1e; border:1px solid var(--g-border-2); color:var(--g-text); font-family:var(--g-mono); font-size:0.875rem; font-weight:600; font-variant-numeric:tabular-nums; text-align:center; outline:none; transition:var(--g-transition); padding:0 0.5rem; }
+.g-bet-display:focus { border-color:var(--g-border-active); }
+.g-bet-display:disabled { opacity:0.5; }
+.g-bet-step { width:2rem; height:2.25rem; border-radius:var(--g-radius-sm); background:var(--g-panel-2); color:var(--g-text-2); font-size:0.6875rem; font-weight:700; transition:var(--g-transition); cursor:pointer; display:flex; align-items:center; justify-content:center; border:1px solid var(--g-border); }
+.g-bet-step:hover { color:var(--g-text); background:var(--g-panel-3); }
+.g-bet-scale { display:grid; grid-template-columns:repeat(5,1fr); gap:0.25rem; margin-bottom:0.375rem; }
+.g-bet-scale-btn { height:1.75rem; border-radius:var(--g-radius-sm); font-size:0.6875rem; font-weight:700; background:var(--g-panel-2); color:var(--g-text-2); transition:var(--g-transition); cursor:pointer; display:flex; align-items:center; justify-content:center; border:1px solid var(--g-border); }
+.g-bet-scale-btn:hover { color:var(--g-text); background:var(--g-panel-3); }
+.g-bet-scale-btn.max { color:var(--g-green); background:var(--g-green-glow); border-color:var(--g-border-active); }
+.g-bet-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:0.25rem; margin-bottom:0.375rem; }
+.g-bet-slider { -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:2px; background:var(--g-panel-3); outline:none; cursor:pointer; }
+.g-bet-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--g-green); border:2px solid #0f0f0f; cursor:grab; }
+.g-bet-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--g-green); border:2px solid #0f0f0f; cursor:grab; border:none; }
+.g-pf { background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); overflow:hidden; }
+.g-pf-toggle { display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.625rem; cursor:pointer; transition:var(--g-transition); }
+.g-pf-toggle:hover { background:var(--g-panel-2); }
+.g-pf-body { padding:0 0.625rem 0.625rem; border-top:1px solid var(--g-border); }
+.g-pf-row { display:flex; align-items:center; justify-content:space-between; padding:0.25rem 0; }
+.g-pf-label { font-size:0.6875rem; color:var(--g-text-3); }
+.g-pf-val { font-size:0.6875rem; font-family:var(--g-mono); color:var(--g-text-2); }
+.g-pf-verify { width:100%; margin-top:0.25rem; padding:0.375rem; border-radius:var(--g-radius-sm); font-size:0.6875rem; font-weight:600; text-transform:uppercase; background:var(--g-green-glow); color:var(--g-green); border:1px solid var(--g-border-active); transition:var(--g-transition); cursor:pointer; }
+.g-history { padding:0.625rem; background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); }
+.g-history-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.375rem; }
+.g-history-title { font-size:0.6875rem; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; color:var(--g-text-2); }
+.g-history-list { display:flex; flex-direction:column; gap:0.25rem; max-height:8rem; overflow-y:auto; }
+.g-history-list::-webkit-scrollbar { width:3px; }
+.g-history-list::-webkit-scrollbar-thumb { background:var(--g-border-2); border-radius:2px; }
+.g-history-item { display:flex; align-items:center; justify-content:space-between; padding:0.3125rem 0.5rem; border-radius:var(--g-radius-sm); background:var(--g-panel-2); }
+.g-history-badge { font-size:0.5625rem; font-weight:700; padding:0.0625rem 0.3rem; border-radius:0.25rem; text-transform:uppercase; }
+.g-history-badge.win { color:var(--g-green); background:var(--g-green-glow); }
+.g-history-badge.loss { color:var(--g-red); background:var(--g-red-glow); }
+.g-history-pills { display:flex; flex-wrap:wrap; gap:0.25rem; padding:0.375rem 0.625rem; background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); overflow-x:auto; scrollbar-width:none; }
+.g-history-pills::-webkit-scrollbar { display:none; }
+.g-pill { padding:0.125rem 0.375rem; border-radius:0.25rem; font-size:0.6875rem; font-weight:700; font-variant-numeric:tabular-nums; font-family:var(--g-mono); white-space:nowrap; }
+.g-pill.low { color:var(--g-red); background:var(--g-red-glow); }
+.g-pill.mid { color:var(--g-amber); background:rgba(251,191,36,0.08); }
+.g-pill.high { color:var(--g-green); background:var(--g-green-glow); }
+
+/* CRASH */
+.crash-area { position:relative; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); overflow:hidden; min-height:260px; }
+@media(min-width:768px){ .crash-area { min-height:320px; } }
+.crash-mult { font-family:var(--g-mono); font-size:2.5rem; font-weight:800; font-variant-numeric:tabular-nums; transition:color 0.2s ease, transform 0.1s linear; letter-spacing:-0.02em; }
+@media(min-width:768px){ .crash-mult { font-size:3.5rem; } }
+.crash-mult.idle { color:var(--g-text-2); }
+.crash-mult.live { color:var(--g-green); }
+.crash-mult.win { color:var(--g-green); }
+.crash-mult.bust { color:var(--g-red); }
+.crash-status { font-size:0.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
+.crash-status.bust { color:var(--g-red); }
+.crash-status.win { color:var(--g-green); }
+.crash-status.idle { color:var(--g-text-3); }
+/* DICE */
+.dice-area { position:relative; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); overflow:hidden; padding:1.25rem 1rem; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:140px; transition:border-color 0.2s ease; }
+.dice-area.win { border-color:var(--g-border-active); }
+.dice-area.loss { border-color:rgba(255,59,59,0.2); }
+.dice-result { font-family:var(--g-mono); font-size:2.5rem; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-0.03em; line-height:1; }
+@media(min-width:768px){ .dice-result { font-size:2.75rem; } }
+.dice-result.win { color:var(--g-green); }
+.dice-result.loss { color:var(--g-red); }
+.dice-result.idle { color:var(--g-text-2); }
+.dice-bar { position:relative; width:100%; height:48px; border-radius:var(--g-radius-sm); background:#1a1a1e; border:1px solid var(--g-border); overflow:hidden; }
+.dice-bar-win { position:absolute; top:0; bottom:0; left:0; background:rgba(0,231,1,0.08); border-right:2px solid var(--g-green); transition:width 0.2s ease; }
+.dice-bar-lose { position:absolute; top:0; bottom:0; right:0; background:rgba(255,59,59,0.06); transition:width 0.2s ease; }
+.dice-slider { -webkit-appearance:none; appearance:none; width:100%; height:40px; background:transparent; cursor:pointer; outline:none; }
+.dice-slider::-webkit-slider-thumb { -webkit-appearance:none; width:6px; height:52px; border-radius:3px; background:#fff; box-shadow:0 0 6px rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.4); cursor:grab; margin-top:-6px; }
+.dice-slider::-moz-range-thumb { width:6px; height:52px; border-radius:3px; background:#fff; box-shadow:0 0 6px rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.4); cursor:grab; border:none; }
+/* MINES */
+.mines-board { display:flex; align-items:center; justify-content:center; padding:0.75rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); min-height:260px; }
+.mines-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:0.3125rem; width:100%; max-width:320px; }
+@media(min-width:768px){ .mines-grid { gap:0.375rem; max-width:360px; } }
+.mines-tile { aspect-ratio:1; border-radius:var(--g-radius-sm); display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; transition:var(--g-transition); position:relative; overflow:hidden; }
+.mines-tile:active:not(.revealed) { transform:scale(0.92); }
+.mines-tile.cover { background:var(--g-panel-3); border:1px solid var(--g-border-2); }
+.mines-tile.cover:hover { border-color:var(--g-border-active); background:var(--g-panel-hover); }
+.mines-tile.gem { background:var(--g-green-glow); border:1px solid var(--g-border-active); }
+.mines-tile.bomb { background:var(--g-red-glow); border:1px solid rgba(255,59,59,0.2); }
+.mines-tile.revealed { cursor:default; }
+.mines-tile-emoji { font-size:1.125rem; line-height:1; }
+@media(min-width:768px){ .mines-tile-emoji { font-size:1.375rem; } }
+.mines-progress { height:3px; border-radius:2px; background:var(--g-panel-3); overflow:hidden; margin-top:0.5rem; }
+.mines-progress-fill { height:100%; background:var(--g-green); border-radius:2px; transition:width 0.2s ease; }
+/* WHEEL */
+.wheel-area { display:flex; align-items:center; justify-content:center; padding:1rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); min-height:260px; position:relative; overflow:hidden; }
+.wheel-svg { max-width:260px; width:100%; height:auto; }
+@media(min-width:768px){ .wheel-svg { max-width:320px; } }
+.wheel-result { font-family:var(--g-mono); font-size:1.75rem; font-weight:800; font-variant-numeric:tabular-nums; text-align:center; }
+@media(min-width:768px){ .wheel-result { font-size:2.25rem; } }
+.wheel-legend { display:flex; flex-wrap:wrap; gap:0.25rem; justify-content:center; padding:0.375rem 0; }
+.wheel-legend-item { display:flex; align-items:center; gap:0.25rem; padding:0.125rem 0.375rem; border-radius:0.25rem; font-size:0.6875rem; font-weight:600; font-variant-numeric:tabular-nums; font-family:var(--g-mono); background:var(--g-panel-2); border:1px solid var(--g-border); }
+.wheel-legend-dot { width:0.5rem; height:0.5rem; border-radius:50%; }
+/* KENO */
+.keno-area { padding:0.75rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); }
+.keno-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:0.25rem; max-width:360px; margin:0 auto; }
+@media(min-width:480px){ .keno-grid { grid-template-columns:repeat(10,1fr); max-width:400px; } }
+.keno-num { aspect-ratio:1; border-radius:var(--g-radius-sm); display:flex; align-items:center; justify-content:center; font-size:0.6875rem; font-weight:700; font-variant-numeric:tabular-nums; font-family:var(--g-mono); cursor:pointer; user-select:none; transition:var(--g-transition); background:var(--g-panel-3); border:1px solid var(--g-border-2); color:var(--g-text-2); }
+.keno-num:hover:not(.disabled) { border-color:var(--g-border-active); color:var(--g-text); background:var(--g-panel-hover); }
+.keno-num:active:not(.disabled) { transform:scale(0.88); }
+.keno-num.selected { background:var(--g-green-glow); border-color:var(--g-border-active); color:var(--g-green); }
+.keno-num.hit { background:var(--g-green-glow-2); border-color:var(--g-green); color:var(--g-green); animation:keno-pop 0.3s ease; }
+.keno-num.miss { opacity:0.2; }
+.keno-num.disabled { cursor:not-allowed; opacity:0.4; }
+@keyframes keno-pop { 0%{transform:scale(1);} 40%{transform:scale(1.12);} 100%{transform:scale(1);} }
+/* PLINKO */
+.plinko-area { padding:0.625rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); display:flex; flex-direction:column; align-items:center; }
+.plinko-board { width:100%; max-width:360px; position:relative; }
+.plinko-mults { display:flex; justify-content:space-between; width:100%; max-width:360px; gap:0.25rem; margin-top:0.375rem; }
+.plinko-mult { flex:1; text-align:center; padding:0.3125rem 0; border-radius:var(--g-radius-sm); font-size:0.6875rem; font-weight:700; font-variant-numeric:tabular-nums; font-family:var(--g-mono); }
+@media(min-width:768px){ .plinko-mult { font-size:0.75rem; padding:0.375rem 0; } }
+.plinko-mult.red { color:var(--g-red); background:var(--g-red-glow); }
+.plinko-mult.amber { color:var(--g-amber); background:rgba(251,191,36,0.08); }
+.plinko-mult.green { color:var(--g-green); background:var(--g-green-glow); }
+/* LIMBO */
+.limbo-area { padding:1.25rem 1rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:180px; transition:border-color 0.2s ease; }
+.limbo-area.win { border-color:var(--g-border-active); }
+.limbo-area.loss { border-color:rgba(255,59,59,0.2); }
+.limbo-result { font-family:var(--g-mono); font-size:2.5rem; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+@media(min-width:768px){ .limbo-result { font-size:3rem; } }
+.limbo-result.win { color:var(--g-green); }
+.limbo-result.loss { color:var(--g-red); }
+.limbo-result.idle { color:var(--g-text-2); }
+/* COINFLIP */
+.coinflip-area { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.25rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); min-height:200px; position:relative; overflow:hidden; }
+@media(min-width:768px){ .coinflip-area { min-height:240px; } }
+.coinflip-coin { width:88px; height:88px; position:relative; transform-style:preserve-3d; }
+@media(min-width:768px){ .coinflip-coin { width:112px; height:112px; } }
+.coinflip-face { position:absolute; inset:0; border-radius:50%; display:flex; align-items:center; justify-content:center; backface-visibility:hidden; }
+.coinflip-face-heads { background:linear-gradient(145deg,#fbbf24,#b45309); border:2px solid #f59e0b; }
+.coinflip-face-tails { background:linear-gradient(145deg,#475569,#1e293b); border:2px solid #64748b; }
+.coinflip-choices { display:flex; gap:0.375rem; margin-top:0.75rem; }
+.coinflip-choice { flex:1; padding:0.5rem 0.75rem; border-radius:var(--g-radius-sm); font-size:0.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; text-align:center; transition:var(--g-transition); cursor:pointer; }
+.coinflip-choice.active { background:var(--g-green-glow); border:1px solid var(--g-green); color:var(--g-green); }
+.coinflip-choice.inactive { background:var(--g-panel-3); border:1px solid var(--g-border); color:var(--g-text-3); }
+/* SHOOT */
+.shoot-area { display:flex; align-items:center; justify-content:center; padding:1.25rem; border-radius:var(--g-radius); background:var(--g-panel); border:1px solid var(--g-border); min-height:240px; position:relative; overflow:hidden; }
+@media(min-width:768px){ .shoot-area { min-height:280px; } }
+.shoot-target { width:128px; height:128px; border-radius:50%; position:relative; display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; transition:var(--g-transition); }
+@media(min-width:768px){ .shoot-target { width:152px; height:152px; } }
+.shoot-target:active { transform:scale(0.95); }
+.shoot-ring { position:absolute; border-radius:50%; border:2px solid; }
+.shoot-ring-1 { inset:0; border-color:var(--g-red); }
+.shoot-ring-2 { inset:18%; border-color:#f59e0b; }
+.shoot-ring-3 { inset:36%; border-color:#3b82f6; }
+.shoot-ring-4 { inset:54%; border-color:var(--g-green); }
+.shoot-bullseye { position:absolute; inset:68%; border-radius:50%; background:var(--g-green); box-shadow:0 0 8px var(--g-green-glow-2); }
+.shoot-mult-display { font-family:var(--g-mono); font-size:1.375rem; font-weight:800; font-variant-numeric:tabular-nums; color:var(--g-green); z-index:5; }
+@media(min-width:768px){ .shoot-mult-display { font-size:1.625rem; } }
+
+/* Animations */
+@keyframes g-pulse { 0%,100%{opacity:1;} 50%{opacity:0.8;} }
+.g-pulse { animation:g-pulse 0.8s ease-in-out infinite; }
+@keyframes g-shake { 0%,100%{transform:translateX(0);} 10%{transform:translateX(-8px);} 20%{transform:translateX(6px);} 30%{transform:translateX(-4px);} 40%{transform:translateX(3px);} 50%{transform:translateX(-2px);} }
+.g-shake { animation:g-shake 0.4s ease-out; }
+@keyframes g-float-win { 0%{opacity:1;transform:translateY(0);} 100%{opacity:0;transform:translateY(-40px);} }
+.g-float-win { animation:g-float-win 1s ease-out forwards; }
+@keyframes g-slam { 0%{transform:scale(1.6);opacity:0.4;} 60%{transform:scale(0.95);opacity:1;} 100%{transform:scale(1);} }
+.g-slam { animation:g-slam 0.35s cubic-bezier(0.16,1,0.3,1); }
+.glow-lime { text-shadow:0 0 12px var(--g-green-glow-2); }
+.glow-red { text-shadow:0 0 12px var(--g-red-glow-2); }
+/* Mobile */
+@media(max-width:1023px){ .g-bet-display{font-size:max(16px,0.875rem);} .crash-mult{font-size:2.25rem;} .dice-result{font-size:2rem;} .limbo-result{font-size:2.25rem;} .keno-num,.mines-tile{-webkit-tap-highlight-color:transparent;touch-action:manipulation;} }
+/* Game-specific keyframes */
+@keyframes diceSpin { 0%{transform:rotateX(0deg) rotateY(0deg) rotateZ(0deg);} 25%{transform:rotateX(90deg) rotateY(90deg) rotateZ(45deg);} 50%{transform:rotateX(180deg) rotateY(180deg) rotateZ(90deg);} 75%{transform:rotateX(270deg) rotateY(270deg) rotateZ(135deg);} 100%{transform:rotateX(360deg) rotateY(360deg) rotateZ(180deg);} }
+.dice-rolling .dice-face { animation:diceSpin 0.15s linear infinite; }
+.dice-3d { perspective:600px; }
+.dice-face { transform-style:preserve-3d; transition:transform 0.1s; }
+.dice-result-win { animation:g-slam 0.4s ease-out; }
+.dice-result-lose { animation:g-shake 0.4s ease-out; }
+.dice-slam { animation:g-slam 0.4s cubic-bezier(0.16,1,0.3,1); }
+.dice-float-win { animation:g-float-win 1s ease-out forwards; }
+@keyframes coinFlip3D { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(1800deg);} }
+@keyframes targetBob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+@keyframes mines-tile-enter { 0%{opacity:0;transform:scale(0.8);} 100%{opacity:1;transform:scale(1);} }
+@keyframes segment-pulse { 0%,100%{opacity:1;} 50%{opacity:0.7;} }
+@keyframes spin-slow { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
+@keyframes orb-pulse { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.05);opacity:0.9;} }
+@keyframes number-glow { 0%,100%{text-shadow:0 0 12px var(--g-green-glow-2);} 50%{text-shadow:0 0 24px var(--g-green-glow-2),0 0 36px var(--g-green-glow);} }
+@keyframes result-pop { 0%{transform:scale(0.8);opacity:0;} 50%{transform:scale(1.1);} 100%{transform:scale(1);opacity:1;} }
+@keyframes win-pulse { 0%,100%{box-shadow:0 0 0 0 var(--g-green-glow);} 50%{box-shadow:0 0 20px 4px var(--g-green-glow);} }
+@keyframes lose-pulse { 0%,100%{box-shadow:0 0 0 0 var(--g-red-glow);} 50%{box-shadow:0 0 20px 4px var(--g-red-glow);} }
+@keyframes particle-burst { 0%{transform:translateY(0) translateX(0);opacity:0;} 10%{opacity:0.7;} 90%{opacity:0.7;} 100%{transform:translateY(-280px) translateX(var(--dx,0));opacity:0;} }
+@keyframes confetti-fall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1;} 100%{transform:translateY(300px) rotate(360deg);opacity:0;} }
+@keyframes targetShatter { 0%{transform:scale(1);opacity:1;} 100%{transform:scale(1.5);opacity:0;} }
+@keyframes targetReveal { 0%{transform:scale(0.6);opacity:0;} 60%{transform:scale(1.1);} 100%{transform:scale(1);opacity:1;} }
+@keyframes winBurst { 0%{transform:scale(0);opacity:1;} 100%{transform:scale(3);opacity:0;} }
+@keyframes shootRecoil { 0%{transform:scale(1);} 50%{transform:scale(0.9);} 100%{transform:scale(1);} }
+@keyframes muzzleFlash { 0%{opacity:1;transform:scale(0.5);} 100%{opacity:0;transform:scale(2);} }
+@keyframes lossFall { 0%{transform:translateY(0);opacity:1;} 100%{transform:translateY(60px);opacity:0;} }
+@keyframes lose-ring { 0%{transform:scale(0.8);opacity:0.8;} 100%{transform:scale(1.5);opacity:0;} }
+@keyframes countUp { 0%{transform:translateY(10px);opacity:0;} 100%{transform:translateY(0);opacity:1;} }
+@keyframes mines-red-flash { 0%{opacity:0.3;} 100%{opacity:0;} }
+@keyframes mines-confetti { 0%{transform:translateY(0) scale(1);opacity:1;} 100%{transform:translateY(var(--dy,80px)) translateX(var(--dx,0)) scale(0.3);opacity:0;} }
+@keyframes mines-confetti-side { 0%{transform:translateX(0) scale(1);opacity:1;} 100%{transform:translateX(var(--dx,40px)) translateY(40px) scale(0.3);opacity:0;} }
+@keyframes mines-pulse-glow { 0%,100%{box-shadow:0 0 8px var(--g-green-glow);} 50%{box-shadow:0 0 16px var(--g-green-glow-2);} }
+@keyframes mines-multiplier-pop { 0%{transform:scale(1);} 50%{transform:scale(1.3);} 100%{transform:scale(1);} }
+@keyframes mines-gem-sparkle { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.3);} }
+@keyframes mines-progress-shimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
+@keyframes limbo-slam { 0%{transform:scale(1.5);opacity:0.3;} 60%{transform:scale(0.95);opacity:1;} 100%{transform:scale(1);} }
+.mines-safe-reveal { animation:g-slam 0.4s cubic-bezier(0.16,1,0.3,1); }
+.mines-explode { animation:g-shake 0.5s ease-out; }
+.mines-screen-shake { animation:g-shake 0.5s ease-out; }
+.mines-tile-enter { animation:mines-tile-enter 0.3s ease-out; }
+.mines-red-flash-overlay { animation:mines-red-flash 0.6s ease-out forwards; }
+.mines-confetti-particle { animation:mines-confetti 0.8s ease-out forwards; }
+.mines-multiplier-pop { animation:mines-multiplier-pop 0.3s ease-out; }
+.mines-gem-sparkle { animation:mines-gem-sparkle 1.5s ease-in-out infinite; }
+.mines-progress-shimmer { background:linear-gradient(90deg,var(--g-green) 25%,#fff 50%,var(--g-green) 75%); background-size:200% 100%; animation:mines-progress-shimmer 2s linear infinite; }
+.coin-container-idle { animation:g-pulse 3s ease-in-out infinite; }
+.animate-result-win { animation:win-pulse 0.4s ease-out; }
+.animate-result-lose { animation:lose-pulse 0.3s ease-out; }
+.crash-pulse { animation:g-pulse 0.8s ease-in-out infinite; }
+.crash-shake { animation:g-shake 0.5s ease-out; }
+.crash-flash-red { position:relative; }
+.crash-flash-red::after { content:''; position:absolute; inset:0; background:var(--g-red-glow); border-radius:inherit; animation:g-flash-fade 0.6s ease-out forwards; pointer-events:none; }
+.crash-flash-lime { position:relative; }
+.crash-flash-lime::after { content:''; position:absolute; inset:0; background:var(--g-green-glow); border-radius:inherit; animation:g-flash-fade 0.6s ease-out forwards; pointer-events:none; }
+@keyframes g-flash-fade { 0%{opacity:1;} 100%{opacity:0;} }
+.crash-float-win { animation:g-float-win 1.2s ease-out forwards; }
+.game-particle { position:absolute; border-radius:50%; pointer-events:none; animation:particle-burst linear infinite; }
+.chart-grid line { stroke:rgba(255,255,255,0.04); stroke-width:1; }
+.chart-axis text { fill:rgba(255,255,255,0.2); font-size:10px; }
+.game-slider { -webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:4px; outline:none; cursor:pointer; }
+.game-slider::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#fff,var(--g-green)); border:3px solid #0f0f0f; box-shadow:0 0 8px var(--g-green-glow-2); cursor:grab; }
+.game-slider::-moz-range-thumb { width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#fff,var(--g-green)); border:3px solid #0f0f0f; box-shadow:0 0 8px var(--g-green-glow-2); cursor:grab; }
+.game-toggle-group { display:flex; gap:0.375rem; }
+.game-toggle-btn { flex:1; padding:0.5rem; border-radius:var(--g-radius-sm); font-size:0.75rem; font-weight:600; text-transform:uppercase; transition:var(--g-transition); cursor:pointer; border:none; outline:none; }
+.game-toggle-btn.active { background:var(--g-green); color:#0f0f0f; }
+.game-toggle-btn.inactive { background:var(--g-panel-2); color:var(--g-text-2); border:1px solid var(--g-border); }
+.meter-bar-inner { transition:width 0.2s ease, background 0.2s ease; }
+.target-line { transition:left 0.2s ease, bottom 0.2s ease; }
+.compact-game { --spacing:0.1875rem; --text-xs:0.6875rem; --text-sm:0.8125rem; --text-base:0.875rem; --text-lg:1rem; --text-xl:1.125rem; --text-2xl:1.25rem; --text-3xl:1.5rem; --leading-tight:1.15; --leading-normal:1.35; }
+.compact-game button { min-height:2.5rem; }
+.compact-game input { min-height:2.25rem; }
+.compact-game canvas { max-height:42vh; object-fit:contain; }
+.compact-game svg.w-full { max-height:42vh; }
+@media(min-width:1024px){ .compact-game canvas { max-height:52vh; object-fit:contain; } .compact-game svg.w-full { max-height:52vh; } }
+.game-sheet-toggle { display:none; }
+.game-sheet-scrim { display:none; }
+.sidebar-noise { background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-repeat:repeat; background-size:128px 128px; }
+

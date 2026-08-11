@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+# Keep the operator console and API surface out of search indexes.
+Disallow: /control
+Disallow: /api

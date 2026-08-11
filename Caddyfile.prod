@@ -1,0 +1,46 @@
+﻿# Production Caddyfile template for TOLS Casino.
+# Caddy obtains and renews Let's Encrypt certs automatically when a real
+# domain is used. Replace casino.example.com and point the reverse_proxy
+# at the standalone Next.js server (default :3000).
+
+casino.example.com {
+	encode zstd gzip
+
+	# Security headers (these mirror next.config.ts; Caddy sets them too so
+	# static assets and the proxy both carry them).
+	header {
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# CSP is managed by Next.js; keep it there to allow nonces.
+	}
+
+	# Real client IP for rate limiting + session logging.
+	reverse_proxy localhost:3000 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+
+	# Optional: a dedicated health route with no logging.
+	@health path /api/health
+	handle @health {
+		reverse_proxy localhost:3000
+	}
+}
+
+# Operator control panel on a separate host (recommended): restrict by IP
+# and add basic auth in front of the signed admin session as defence in depth.
+admin.example.com {
+	@allowed {
+		client_ip 198.51.100.0/24 203.0.113.10
+	}
+	handle @allowed {
+		reverse_proxy localhost:3000
+	}
+	handle {
+		respond 403
+	}
+}

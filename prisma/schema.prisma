@@ -1,0 +1,730 @@
+// TOLS Gaming Casino + Admin Platform — Unified Prisma Schema
+// PostgreSQL datasource. Arrays are stored as JSON strings (kept from the
+// SQLite era so application code is unchanged; can move to native Json later).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Runtime uses Supabase's connection pooler (PgBouncer, port 6543) so that
+  // serverless functions don't exhaust Postgres connections. Migrations and
+  // introspection need a direct, unpooled connection (port 5432) because
+  // PgBouncer in transaction mode can't run them — that's `directUrl`.
+  // Locally, point both at the same local Postgres.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==================== ORIGINAL MODELS ====================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== CRM SYSTEM ====================
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  role       String   @default("agent")
+  department String   @default("general")
+  avatar     String?
+  phone      String?
+  status     String   @default("active")
+  bio        String?
+  joinDate   DateTime @default(now())
+  lastSeen   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model CrmTask {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("todo")
+  priority    String    @default("medium")
+  assigneeId  String?
+  reporterId  String?
+  dueDate     DateTime?
+  tags        String?
+  mentions    String?
+  attachments String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ChatChannel {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   @default("channel")
+  members     String
+  avatar      String?
+  description String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  channelId  String
+  senderId   String?
+  senderName String?
+  content    String
+  mentions   String?
+  readBy     String?
+  pinned     Boolean  @default(false)
+  edited     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model CrmEmail {
+  id           String   @id @default(cuid())
+  fromAddress  String
+  toAddresses  String
+  ccAddresses  String?
+  bccAddresses String?
+  subject      String
+  body         String?
+  plainBody    String?
+  status       String   @default("inbox")
+  starred      Boolean  @default(false)
+  important    Boolean  @default(false)
+  folder       String   @default("inbox")
+  taskId       String?
+  memberId     String?
+  replyToId    String?
+  attachments  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CrmActivity {
+  id         String   @id @default(cuid())
+  memberId   String?
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+}
+
+// ==================== PLAYER OPERATIONS & CONTROL ====================
+
+model PlayerProfile {
+  id               String    @id @default(cuid())
+  externalId       String    @unique
+  username         String
+  email            String?
+  avatar           String?
+  registeredAt     DateTime  @default(now())
+  lastLoginAt      DateTime?
+  totalDeposits    Float     @default(0)
+  totalWithdrawals Float     @default(0)
+  totalBets        Int       @default(0)
+  totalWins        Int       @default(0)
+  totalLosses      Int       @default(0)
+  netProfit        Float     @default(0)
+  currentStreak    Int       @default(0)
+  maxWinStreak     Int       @default(0)
+  maxLoseStreak    Int       @default(0)
+  riskLevel        String    @default("normal")
+  segment          String    @default("standard")
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model PlayerSession {
+  id          String   @id @default(cuid())
+  playerId    String
+  sessionId   String?
+  gameType    String
+  gameId      String?
+  gameName    String?
+  betAmount   Float    @default(0)
+  winAmount   Float    @default(0)
+  outcome     String   @default("loss")
+  resultRtp   Float?
+  duration    Int?
+  spins       Int      @default(0)
+  ipAddress   String?
+  userAgent   String?
+  controlled  Boolean  @default(false)
+  controlType String?
+  createdAt   DateTime @default(now())
+}
+
+model OperationControl {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  targetScope     String    @default("all")
+  targetValue     String?
+  controlMode     String    @default("normal")
+  rtpTarget       Float?
+  maxWinAmount    Float?
+  maxLossAmount   Float?
+  streakThreshold Int?
+  enabled         Boolean   @default(false)
+  priority        Int       @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model DepositEvent {
+  id             String   @id @default(cuid())
+  playerId       String
+  amount         Float
+  currency       String   @default("USD")
+  method         String?
+  txHash         String?
+  status         String   @default("completed")
+  isFirstDeposit Boolean  @default(false)
+  isRecurring    Boolean  @default(false)
+  depositNumber  Int      @default(1)
+  daysSinceReg   Int?
+  triggeredBy    String?
+  notes          String?
+  createdAt      DateTime @default(now())
+}
+
+model TelegramAlertRule {
+  id               String    @id @default(cuid())
+  name             String
+  enabled          Boolean   @default(true)
+  eventType        String
+  condition        String?
+  telegramChatId   String
+  telegramThreadId String?
+  messageTemplate  String?
+  cooldownMinutes  Int       @default(5)
+  lastTriggeredAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ==================== CASINO GAME CATALOG (Admin) ====================
+
+model CasinoGame {
+  id           String   @id @default(cuid())
+  externalId   String   @unique
+  name         String
+  alias        String
+  provider     String   @default("Unknown")
+  category     String   @default("slots")
+  gameType     String   @default("external_slot")
+  imageUrl     String   @default("")
+  thumbnailUrl String   @default("")
+  rtp          Float?
+  minBet       Float    @default(0.01)
+  maxBet       Float    @default(100)
+  volatility   String?
+  isLive       Boolean  @default(false)
+  enabled      Boolean  @default(true)
+  featured     Boolean  @default(false)
+  isNew        Boolean  @default(false)
+  popularity   Int      @default(0)
+  priority     Int      @default(0)
+  tags         String?
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TelegramNotification {
+  id           String    @id @default(cuid())
+  ruleId       String?
+  eventType    String
+  title        String
+  message      String
+  chatId       String
+  threadId     String?
+  status       String    @default("pending")
+  errorMessage String?
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+// ==================== CASINO FRONTEND — GAMES & BETTING ====================
+
+model CasinoUser {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  email       String   @unique
+  password    String   @default("demo")
+  role        String   @default("user")
+  status      String   @default("active")
+  avatarColor String   @default("#ccff00")
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  dateOfBirth DateTime?
+  kycStatus   String   @default("unverified")
+  twoFactorSecret String?
+  twoFactorEnabled Boolean @default(false)
+  telegramId  String?  @unique
+  emailVerified   DateTime?
+  emailVerifyToken String? @unique
+  resetToken      String? @unique
+  resetExpires    DateTime?
+  googleId        String? @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  wallet      CasinoWallet?
+  bets        CasinoBet[]
+  deposits    CasinoDeposit[]
+  withdrawals CasinoWithdrawal[]
+  fairSeeds        FairSeed[]
+  starsDeposits    StarsDeposit[]
+}
+
+model CasinoWallet {
+  id               String     @id @default(cuid())
+  userId           String     @unique
+  user             CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance          Float      @default(1000)
+  currency         String     @default("USDT")
+  vipLevel         Int        @default(1)
+  xp               Int        @default(0)
+  totalWagered     Float      @default(0)
+  totalWon         Float      @default(0)
+  depositAddresses String     @default("{}")
+  depositIndex     Int        @default(0)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model SlotGame {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  provider    String
+  category    String   @default("slots")
+  image       String   @default("")
+  rtp         Float    @default(97)
+  volatility  String   @default("medium")
+  hasDemo     Boolean  @default(true)
+  hasReal     Boolean  @default(true)
+  enabled     Boolean  @default(true)
+  featured    Boolean  @default(false)
+  description String   @default("")
+  externalId  String   @default("")
+  minBet      Float    @default(0.1)
+  maxBet      Float    @default(1000)
+  popularity  Int      @default(0)
+  launchUrl   String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CasinoBet {
+  id             String     @id @default(cuid())
+  userId         String
+  user           CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId         String
+  gameName       String
+  gameCategory   String     @default("originals")
+  amount         Float
+  currency       String     @default("USDT")
+  multiplier     Float      @default(0)
+  payout         Float      @default(0)
+  result         String     @default("lose")
+  clientSeed     String     @default("")
+  serverSeedHash String     @default("")
+  nonce          Int        @default(0)
+  payload        String     @default("{}")
+  createdAt      DateTime   @default(now())
+}
+
+model HouseEarning {
+  id          String   @id @default(cuid())
+  gameId      String
+  gameName    String   @default("")
+  betId       String   @default("")
+  wager       Float    @default(0)
+  payout      Float    @default(0)
+  houseProfit Float    @default(0)
+  currency    String   @default("USDT")
+  createdAt   DateTime @default(now())
+}
+
+model GlobalJackpot {
+  id                 String    @id @default("global")
+  amount             Float     @default(50000)
+  currency           String    @default("USDT")
+  contributionsCount Int       @default(0)
+  lastWinner         String    @default("")
+  lastWinAmount      Float     @default(0)
+  lastWinDate        DateTime?
+  description        String    @default("TOLS Mega Drop — progressive jackpot")
+  updatedAt          DateTime  @updatedAt
+}
+
+// ==================== CASINO TRANSACTIONS ====================
+
+model CasinoDeposit {
+  id           String     @id @default(cuid())
+  userId       String
+  user         CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chain        String
+  txHash       String
+  amount       Float      @default(0)
+  currency     String     @default("USDT")
+  fromAddress  String     @default("")
+  toAddress    String     @default("")
+  status       String     @default("pending")
+  credited     Boolean    @default(false)
+  referralCode String     @default("")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([chain, txHash])
+}
+
+model CasinoWithdrawal {
+  id            String     @id @default(cuid())
+  userId        String
+  user          CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Float
+  currency      String     @default("USDT")
+  walletAddress String
+  chain         String     @default("solana")
+  status        String     @default("pending")
+  txHash        String     @default("")
+  balanceBefore Float      @default(0)
+  balanceAfter  Float      @default(0)
+  processedDate DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// ==================== CASINO CHAT ====================
+
+model CasinoChatMessage {
+  id          String   @id @default(cuid())
+  username    String
+  avatarColor String   @default("#ccff00")
+  message     String
+  channel     String   @default("general")
+  createdAt   DateTime @default(now())
+}
+
+// ==================== CASINO SETTINGS ====================
+
+model PlatformSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @default("")
+  category    String   @default("general")
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== AFFILIATE PROGRAM ====================
+
+model Affiliate {
+  id                String          @id @default(cuid())
+  userId            String          @unique
+  referralCode      String          @unique
+  commissionPlan    String          @default("revshare") // revshare | cpa | hybrid
+  commissionRate    Float           @default(25)
+  cpaAmount         Float           @default(0)
+  totalClicks       Int             @default(0)
+  totalReferrals    Int             @default(0)
+  totalWagered      Float           @default(0)
+  totalCommission   Float           @default(0)
+  pendingCommission Float           @default(0)
+  paidCommission    Float           @default(0)
+  referrals         Referral[]
+  commissionLogs    CommissionLog[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model Referral {
+  id               String    @id @default(cuid())
+  affiliateId      String
+  affiliate        Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  playerAlias      String
+  status           String    @default("active") // active | inactive | churned
+  totalWagered     Float     @default(0)
+  commissionEarned Float     @default(0)
+  signupDate       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+
+  @@index([affiliateId])
+}
+
+model CommissionLog {
+  id            String    @id @default(cuid())
+  affiliateId   String
+  affiliate     Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  depositAmount Float     @default(0)
+  commission    Float     @default(0)
+  plan          String    @default("revshare")
+  rate          Float     @default(0)
+  currency      String    @default("USDT")
+  createdAt     DateTime  @default(now())
+
+  @@index([affiliateId])
+}
+
+// ==================== TOURNAMENTS ====================
+
+model Tournament {
+  id                String            @id @default(cuid())
+  name              String
+  game              String            @default("all")
+  prizePool         Float             @default(0)
+  entryFee          Float             @default(0)
+  startDate         DateTime
+  endDate           DateTime
+  status            String            @default("upcoming") // upcoming | active | completed | cancelled
+  participantsCount Int               @default(0)
+  maxParticipants   Int               @default(0)
+  description       String            @default("")
+  currency          String            @default("USDT")
+  bannerColor       String            @default("")
+  entries           TournamentEntry[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([status])
+}
+
+model TournamentEntry {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  username     String
+  wagered      Float      @default(0)
+  wins         Int        @default(0)
+  biggestWin   Float      @default(0)
+  rank         Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+}
+
+// ==================== COLLECTIBLES ====================
+
+model CardPack {
+  id           String   @id @default(cuid())
+  name         String
+  collection   String
+  price        Float    @default(0)
+  currency     String   @default("USDT")
+  cardsPerPack Int      @default(3)
+  image        String   @default("")
+  description  String   @default("")
+  dropRates    String   @default("") // JSON: { common, rare, epic, legendary, mythic }
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model CollectibleCard {
+  id             String   @id @default(cuid())
+  userId         String
+  collection     String
+  cardName       String
+  rarity         String   @default("common")
+  insuredValue   Float    @default(0)
+  currency       String   @default("USDT")
+  gradingCompany String   @default("PSA")
+  gradingId      String   @default("")
+  image          String   @default("")
+  packName       String   @default("")
+  isNew          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+}
+
+model CardPull {
+  id         String   @id @default(cuid())
+  userId     String
+  collection String
+  cardName   String
+  rarity     String   @default("common")
+  packName   String   @default("")
+  puller     String   @default("")
+  image      String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model MarketListing {
+  id           String   @id @default(cuid())
+  cardName     String
+  collection   String
+  rarity       String   @default("common")
+  insuredValue Float    @default(0)
+  image        String   @default("")
+  listingType  String   @default("sale") // sale | swap | auction
+  price        Float    @default(0)
+  swapFor      String   @default("")
+  sellerAlias  String   @default("")
+  status       String   @default("active") // active | sold | cancelled
+  createdAt    DateTime @default(now())
+
+  @@index([status])
+}
+
+// ==================== RESPONSIBLE GAMING ====================
+
+model ResponsibleLimit {
+  id           String    @id @default(cuid())
+  userId       String
+  type         String // self_exclusion | deposit | loss | wager | session
+  limitValue   Float     @default(0)
+  period       String    @default("daily") // daily | weekly | monthly | permanent | custom
+  active       Boolean   @default(true)
+  excludeUntil DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, type])
+}
+
+// ==================== AUTH SESSIONS ====================
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  userAgent String   @default("")
+  ip        String   @default("")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ==================== DEPOSIT ADDRESSES (static, watch-only) ====================
+// Public receive addresses pasted from Trust Wallet. The seed NEVER touches the
+// server — these are display + watch-only. No private keys are stored anywhere.
+
+model DepositAddress {
+  id               String   @id @default(cuid())
+  chain            String   @unique // btc | eth | usdt_erc20 | solana | polygon
+  label            String   @default("")
+  address          String
+  memo             String   @default("") // for chains that need a memo/tag
+  minConfirmations Int      @default(2)
+  enabled          Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+}
+
+// ==================== RTP / OUTCOME CONTROL (prototype admin rigging) ====================
+// Internal testing tool: lets the team force outcomes for specific users/games
+// to analyse scenarios. Precedence: user+game > user > game > global.
+// This is for a controlled internal prototype, NOT a public money product.
+
+model GameControl {
+  id     String  @id @default(cuid())
+  label  String  @default("")
+  // Scope: which bets this rule applies to.
+  scope  String  @default("global") // global | user | game | user_game
+  userId String? // set when scope includes a user
+  gameId String? // set when scope includes a game (crash, dice, ...)
+
+  // Mode of control.
+  mode String @default("normal")
+  // normal      — no override (uses fair RNG)
+  // force_win   — next bets always win
+  // force_lose  — next bets always lose
+  // rtp         — bias outcomes toward rtpTarget (0..2, e.g. 0.5 = cold, 1.5 = hot)
+  // streak      — force a run of wins then losses (or vice versa) per streakPattern
+
+  rtpTarget        Float  @default(0.99) // target return-to-player when mode = rtp
+  winStreak        Int    @default(0) // for mode=streak: number of forced wins…
+  loseStreak       Int    @default(0) // …followed by this many forced losses, then repeat
+  forcedMultiplier Float? // optional exact multiplier to pay on forced wins
+
+  // Runtime counters (advanced by the bet engine).
+  streakPos    Int @default(0) // position within the current streak cycle
+  betsAffected Int @default(0)
+
+  enabled   Boolean  @default(true)
+  priority  Int      @default(0) // higher wins when multiple rules match
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scope, userId, gameId, enabled])
+}
+
+// Provably-fair seed pairs. The server seed stays secret while the pair is in
+// play; `revealedAt` marks it retired, at which point the seed is published so
+// every bet made under it can be recomputed and checked against its hash.
+model FairSeed {
+  id             String     @id @default(cuid())
+  userId         String
+  user           CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serverSeed     String
+  serverSeedHash String
+  clientSeed     String
+  nonce          Int        @default(0)
+  revealedAt     DateTime?
+  createdAt      DateTime   @default(now())
+
+  @@index([userId, revealedAt])
+}
+
+// ==================== TELEGRAM STARS DEPOSITS ====================
+// Telegram's in-app wallet (Stars / XTR) top-ups. A pending row is created when
+// the player requests a Stars deposit; the invoice payload is the row id, so
+// when Telegram POSTs successful_payment to /api/telegram/webhook we can credit
+// exactly this deposit, atomically and idempotently.
+model StarsDeposit {
+  id          String    @id @default(cuid())
+  userId      String
+  user        CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usdtAmount  Float
+  starsAmount Int
+  payload     String    @unique // invoice payload (= id) used to match the webhook
+  invoiceLink String?
+  status      String    @default("pending") // pending | paid | failed
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model RedeemCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  amount    Float
+  currency  String   @default("USDT")
+  maxUses   Int      @default(1)
+  uses      Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}

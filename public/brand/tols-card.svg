@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 210">
+<defs><filter id="g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter></defs>
+<rect x="2" y="2" width="146" height="206" rx="14" fill="#131419" stroke="#24262f" stroke-width="2"></rect>
+<rect x="9" y="9" width="132" height="192" rx="9" fill="none" stroke="#CDF32B" stroke-width="1" opacity=".28"></rect>
+<text x="19" y="40" font-family="Oswald,&#39;Arial Narrow&#39;,Impact,sans-serif" font-weight="700" font-size="27" fill="#CDF32B">A</text>
+<g transform="translate(27 62) scale(.36)"><path d="M0,-42 C14,-24 30,-13 30,5 C30,19 18,27 6,21 C8,31 12,37 18,41 L-18,41 C-12,37 -8,31 -6,21 C-18,27 -30,19 -30,5 C-30,-13 -14,-24 0,-42 Z" fill="#CDF32B"></path></g>
+<text x="75" y="112" text-anchor="middle" font-family="Oswald,&#39;Arial Narrow&#39;,Impact,sans-serif" font-weight="700" font-size="24" letter-spacing="2.5" fill="#CDF32B">TOLS</text>
+<g transform="translate(114 162) scale(.62) rotate(180)"><path d="M0,-42 C14,-24 30,-13 30,5 C30,19 18,27 6,21 C8,31 12,37 18,41 L-18,41 C-12,37 -8,31 -6,21 C-18,27 -30,19 -30,5 C-30,-13 -14,-24 0,-42 Z" fill="#CDF32B" opacity=".92"></path></g>
+</svg>

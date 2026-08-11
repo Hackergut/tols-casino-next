@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+<defs><filter id="g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter><linearGradient id="pn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1b1d25"></stop><stop offset="100%" stop-color="#0f1016"></stop></linearGradient></defs>
+<rect x="8" y="8" width="204" height="204" rx="26" fill="url(#pn)" stroke="#2b2d37" stroke-width="2"></rect>
+<rect x="22" y="22" width="176" height="176" rx="16" fill="#0c0d12" stroke="#22242d" stroke-width="1.5"></rect>
+<rect x="76" y="34" width="68" height="26" rx="5" fill="none" stroke="#CDF32B" stroke-width="2"></rect>
+<text x="110" y="53" text-anchor="middle" font-family="Oswald,&#39;Arial Narrow&#39;,Impact,sans-serif" font-weight="700" font-size="17" letter-spacing="2" fill="#CDF32B">BAR</text>
+<g transform="skewX(-4)"><text x="124" y="176" text-anchor="middle" font-family="Oswald,&#39;Arial Narrow&#39;,Impact,sans-serif" font-weight="700" font-size="126" fill="#CDF32B" filter="url(#g)">7</text></g>
+</svg>
