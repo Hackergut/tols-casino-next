@@ -60,3 +60,7 @@ server.log
 db/
 prisma/db/
 .gitignore-*
+
+# Binaries / executables (dev tooling, not app code)
+*.exe
+cloudflared.exe
