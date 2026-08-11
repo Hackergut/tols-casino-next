@@ -1,68 +1,90 @@
-﻿# TOLS Casino — Production deployment checklist
+# TOLS — Deployment (Vercel + Supabase + tols.fun)
 
-A single source of truth for going live. Work top to bottom.
+Stack: **Vercel** (Next.js app) · **Supabase** (Postgres) · **tols.fun** (domain, DNS at Hostinger).
 
-## 1. Domain + TLS
-- Point your domain's A/AAAA records at the host.
-- Caddy (`Caddyfile.prod`) obtains Let's Encrypt certs automatically when you
-  use a real domain. Edit `casino.example.com` → your domain and run:
-  `caddy run --config Caddyfile.prod`
-- The reverse proxy forwards to the Next.js standalone server on :3000.
+Values marked _(from .env)_ already exist in your local `.env` — copy them across.
+Never paste secrets into this file; it is committed to the repo.
 
-## 2. Database (Postgres)
-- Easiest: `docker compose up -d` (uses `docker-compose.yml`, persists data in
-  the `tols-pgdata` volume, restart: always, healthcheck).
-- Or use a managed Postgres. Set `DATABASE_URL` in `.env` accordingly.
-- Apply schema: `npx prisma db push` (additive) or `prisma migrate deploy`.
-- Seed an operator: `npm run seed:admin -- --email=ops@yourdomain.com --password=...`
+---
 
-## 3. Next.js build
-- `npm install`
-- `npm run build` (type errors fail the build on Vercel; locally
-  `ignoreBuildErrors` is lenient — fix them, don't rely on the leniency).
-- `npm start` (uses standalone output) behind Caddy.
+## 1. Supabase
 
-## 4. Environment (.env) — copy .env.example and fill:
-- `DATABASE_URL` — Postgres URL.
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — alerts.
-- `TELEGRAM_WEBHOOK_SECRET` — run `node scripts/set-telegram-webhook.mjs --url=https://yourdomain --secret=$(openssl rand -hex 16)` and put the same secret here.
-- `ADMIN_SESSION_SECRET` — 64+ random chars (operator sessions).
-- `CRON_SECRET` — protects /api/cron/watch-deposits.
-- `ALLOW_OUTCOME_CONTROL=false` (keep rigging disabled in prod).
-- `LEGAL_AGE=18`, `REQUIRE_KYC=false` (set true to enforce KYC on withdrawals).
-- Payments RPCs: `BTC_API_URL`, `ETH_RPC_URL`, `POLYGON_RPC_URL`, `SOL_RPC_URL`,
-  `USDT_CONTRACT` (defaults are public free nodes; use Alchemy/Helius keys for volume).
-- `STARS_TO_USDT=0.012` — Telegram Stars conversion.
-- Email + OAuth: `APP_URL=https://yourdomain.com`, `RESEND_API_KEY`,
-  `MAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-- Buy on-ramp (public widget keys, client bundle): `NEXT_PUBLIC_BUY_PROVIDER`
-  (moonpay|transak), `NEXT_PUBLIC_BUY_API_KEY`.
+1. Create a project at supabase.com.
+2. **Project Settings → Database → Connection string**, copy two forms:
+   - **Transaction pooler** (host `…pooler.supabase.com`, port **6543**) → `DATABASE_URL`, append `?pgbouncer=true&connection_limit=1`.
+   - **Session / direct** (port **5432**) → `DIRECT_URL`.
+3. From your machine, create the schema on Supabase:
+   ```bash
+   npx prisma db push
+   ```
+   (Reads `DIRECT_URL`. Creates all 41 tables. Fresh production DB — no test data carried over.)
 
-## 5. Telegram Mini App
-- BotFather: `/newapp` → set the Web App domain to your HTTPS domain.
-- Set the menu button: `node scripts/set-telegram-webapp.mjs --url=https://yourdomain.com`
-- Webhook (for Stars payments): `node scripts/set-telegram-webhook.mjs --url=https://yourdomain --secret=$TELEGRAM_WEBHOOK_SECRET`
-- Admin sets public receive addresses: `PUT /api/admin/deposit-addresses`.
+## 2. Vercel
 
-## 6. Google OAuth
-- Google Cloud Console → Credentials → Create OAuth client (Web).
-- Authorized redirect URI: `https://yourdomain.com/api/auth/google/callback`.
-- Put the client id/secret in `.env` (`GOOGLE_CLIENT_ID/SECRET`).
+1. **Add New → Project → Import** `distefanmarco370-coder/tols-casino`.
+2. Framework preset: **Next.js** (auto-detected). Build command and output are default.
+3. Add the environment variables below (**Project → Settings → Environment Variables**), for Production.
+4. Deploy.
 
-## 7. Deposit addresses (admin, before deposits work)
-- Operator panel → set one public receive address per chain (BTC/ETH/USDT/SOL/MATIC).
-- No private keys are stored server-side (watch-only). Deposits are credited by the
-  on-chain watcher (`/api/cron/watch-deposits`, runs every minute via `vercel.json`
-  on Vercel, or your own cron hitting it with `Authorization: Bearer $CRON_SECRET`).
+## 3. Domain (tols.fun)
 
-## 8. Operational hygiene before real money
-- Rotate all secrets (the .env on the dev machine has live Telegram/admin secrets).
-- Backups for Postgres (the volume is not a backup).
-- KYC provider (Onfido/Sumsub) if you enforce `REQUIRE_KYC=true`.
-- License / AML / legal pages / geoblocking — jurisdiction-dependent, not code.
-- Tests: there is no automated suite yet; verify the flows manually on staging.
+1. Vercel → Project → **Settings → Domains → Add** `tols.fun` (and `www.tols.fun`).
+2. Vercel shows the exact DNS records. In **Hostinger → DNS**, replace the parking record:
 
-## Processes on this dev box (stop before shipping)
-- Next dev (`node .devpid`), cloudflared (`node .cfpid`), Postgres container
-  `tols-postgres`. The cloudflared quick-tunnel URL is ephemeral — do NOT use it
-  in prod; use the real domain.
+   | Type  | Name | Value                     |
+   |-------|------|---------------------------|
+   | A     | `@`  | `76.76.21.21`             |
+   | CNAME | `www`| `cname.vercel-dns.com`    |
+
+   (Use whatever Vercel's dashboard shows — it is authoritative.)
+3. Wait for DNS + TLS to go green in Vercel.
+
+## 4. Telegram Mini App (only AFTER tols.fun is live on Vercel)
+
+Point the bot at the new domain (run once, with your bot token):
+```bash
+TOKEN="<TELEGRAM_BOT_TOKEN from .env>"
+# Menu button → Mini App
+curl -s "https://api.telegram.org/bot$TOKEN/setChatMenuButton" \
+  -H "Content-Type: application/json" \
+  -d '{"menu_button":{"type":"web_app","text":"Play Casino","web_app":{"url":"https://tols.fun/"}}}'
+# Webhook → new domain
+curl -s "https://api.telegram.org/bot$TOKEN/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://tols.fun/api/telegram/webhook","secret_token":"<TELEGRAM_WEBHOOK_SECRET from .env>","allowed_updates":["message","pre_checkout_query"]}'
+```
+
+---
+
+## Environment variables (Vercel)
+
+### Required
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Supabase pooler (6543, `?pgbouncer=true&connection_limit=1`) |
+| `DIRECT_URL` | Supabase direct (5432) |
+| `ADMIN_SESSION_SECRET` | _(from .env)_ — 32-byte hex, admin auth fails closed without it |
+| `APP_URL` | `https://tols.fun` |
+| `CRON_SECRET` | _(from .env)_ |
+| `ALLOW_OUTCOME_CONTROL` | `false` — never `true` in production |
+
+### Telegram
+| Variable | Value |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | _(from .env)_ |
+| `TELEGRAM_CHAT_ID` | _(from .env)_ |
+| `TELEGRAM_WEBHOOK_SECRET` | _(from .env)_ |
+| `TELEGRAM_WELCOME_BONUS` | `0` for production (or a promo amount) |
+| `TELEGRAM_THREAD_ID` | _(from .env, may be empty)_ |
+
+### Optional (set only if the feature is used)
+| Variable | Purpose |
+|---|---|
+| `RESEND_API_KEY`, `MAIL_FROM` | Transactional email (else mail is dev-logged only) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
+| `NEXT_PUBLIC_BUY_PROVIDER`, `NEXT_PUBLIC_BUY_API_KEY` | Buy-crypto widget (publishable key) |
+| `TOLS_BASE_URL`, `TOLS_API_KEY`, `TOLS_APP_KEY` | TOLS Platform API |
+| `STARS_TO_USDT`, `USDT_CONTRACT` | Payment conversion / chain config |
+| `LEGAL_AGE`, `REQUIRE_KYC`, `ENABLE_DEMO_USER` | Compliance / demo flags |
+
+> `NEXT_PUBLIC_*` are shipped to the browser by design — only publishable values belong there.
