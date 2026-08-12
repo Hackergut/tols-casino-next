@@ -3,3 +3,5 @@ Allow: /
 # Keep the operator console and API surface out of search indexes.
 Disallow: /control
 Disallow: /api
+
+Sitemap: https://tols.fun/sitemap.xml
