@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Michroma, Oswald } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
@@ -35,36 +35,46 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
+const SITE_URL = process.env.APP_URL || "https://tols.fun";
+const TITLE = "TOLS Casino — Play & Win";
+const DESCRIPTION =
+  "Provably-fair crypto casino: Originals, slots, live dealers and instant withdrawals. Play Dice, Mines, Crash, Plinko and more on TOLS.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL || "https://tols.fun"),
-  title: "TOLS Casino — Play & Win",
-  description:
-    "Premium online casino with provably fair games, slots, live dealers, and instant withdrawals.",
-  keywords: [
-    "TOLS",
-    "casino",
-    "slots",
-    "live casino",
-    "provably fair",
-    "crypto casino",
-  ],
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s · TOLS Casino" },
+  description: DESCRIPTION,
+  applicationName: "TOLS Casino",
+  keywords: ["TOLS", "casino", "slots", "live casino", "provably fair", "crypto casino", "dice", "crash", "plinko", "mines"],
   authors: [{ name: "TOLS Casino" }],
-  // Favicon is served from src/app/icon.svg (a local TOLS mark). The previous
-  // value pointed at a third-party CDN left over from the starter template —
-  // wrong branding and an external dependency on every page load.
+  alternates: { canonical: "/" },
+  // Favicon (src/app/icon.svg) and apple-touch-icon (src/app/apple-icon.png)
+  // are auto-registered by Next from the app directory — local TOLS marks, no
+  // third-party CDN.
   openGraph: {
-    title: "TOLS Casino — Play & Win",
-    description:
-      "Premium online casino with provably fair games, slots, live dealers, and instant withdrawals.",
-    siteName: "TOLS Casino",
     type: "website",
+    url: SITE_URL,
+    siteName: "TOLS Casino",
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "en_US",
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "TOLS Casino" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TOLS Casino — Play & Win",
-    description:
-      "Premium online casino with provably fair games, slots, live dealers, and instant withdrawals.",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/og.jpg"],
   },
+  robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f1015",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
