@@ -1264,3 +1264,124 @@ a,
 .game-sheet-scrim { display:none; }
 .sidebar-noise { background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-repeat:repeat; background-size:128px 128px; }
 
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOLS Original games — shared control design system.
+   Used by game-shared.tsx (GameHeader, GameBetControls, GameStats,
+   GameHistory, GameProvablyFair) across all 9 shared-control games. These
+   classes were referenced but never defined, so the controls rendered as raw
+   unstyled HTML — the single source of the games' inconsistent look.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.game-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
+.game-back-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 0.75rem; color: rgb(255 255 255 / 0.7);
+  background: rgb(255 255 255 / 0.04); border: 1px solid rgb(255 255 255 / 0.08);
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
+}
+.game-back-btn:hover { color: var(--color-lime); border-color: color-mix(in oklab, var(--color-lime) 35%, transparent); }
+.game-header h1 { font-size: 1.125rem; font-weight: 800; line-height: 1.1; color: #fff; letter-spacing: -0.01em; }
+.game-header p { font-size: 0.75rem; color: rgb(255 255 255 / 0.4); margin-top: 1px; }
+
+.game-balance {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1rem; border-radius: 0.875rem;
+  background: color-mix(in oklab, var(--color-lime) 6%, var(--color-surface));
+  border: 1px solid color-mix(in oklab, var(--color-lime) 15%, transparent);
+}
+.game-balance-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgb(255 255 255 / 0.4); font-weight: 600; }
+.game-balance-value { font-size: 1.125rem; font-weight: 800; color: var(--color-lime); font-variant-numeric: tabular-nums; }
+
+.game-bet-panel-v2 {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 0.875rem; border-radius: 1rem;
+  background: var(--color-surface); border: 1px solid rgb(255 255 255 / 0.06);
+}
+.game-bet-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.375rem; }
+.game-bet-chip {
+  padding: 0.5rem 0; border-radius: 0.6rem; font-size: 0.8125rem; font-weight: 700;
+  color: rgb(255 255 255 / 0.6); background: rgb(255 255 255 / 0.04);
+  border: 1px solid rgb(255 255 255 / 0.06); transition: all .12s ease;
+  font-variant-numeric: tabular-nums;
+}
+.game-bet-chip:hover:not(:disabled) { color: #fff; background: rgb(255 255 255 / 0.08); }
+.game-bet-chip.active {
+  color: var(--color-bg); background: var(--color-lime);
+  border-color: var(--color-lime); box-shadow: 0 0 14px color-mix(in oklab, var(--color-lime) 35%, transparent);
+}
+.game-bet-chip:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.game-bet-display { position: relative; }
+.game-bet-display::before {
+  content: "$"; position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+  color: var(--color-lime); font-weight: 800; font-size: 1.1rem; pointer-events: none;
+}
+.game-bet-amount {
+  width: 100%; padding: 0.75rem 0.9rem 0.75rem 1.6rem; border-radius: 0.75rem;
+  background: var(--color-bg); border: 1px solid rgb(255 255 255 / 0.08);
+  color: #fff; font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  outline: none; transition: border-color .15s ease; -moz-appearance: textfield;
+}
+.game-bet-amount::-webkit-outer-spin-button, .game-bet-amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.game-bet-amount:focus { border-color: color-mix(in oklab, var(--color-lime) 45%, transparent); }
+
+.game-bet-scale-row, .game-bet-step-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0.375rem; }
+.game-bet-scale-btn, .game-bet-step-btn {
+  padding: 0.5rem 0; border-radius: 0.6rem; font-size: 0.8125rem; font-weight: 700;
+  color: rgb(255 255 255 / 0.65); background: rgb(255 255 255 / 0.04);
+  border: 1px solid rgb(255 255 255 / 0.06); transition: all .12s ease;
+}
+.game-bet-scale-btn:hover:not(:disabled), .game-bet-step-btn:hover:not(:disabled) {
+  color: var(--color-lime); border-color: color-mix(in oklab, var(--color-lime) 30%, transparent);
+}
+.game-bet-scale-btn.max { color: var(--color-lime); background: color-mix(in oklab, var(--color-lime) 10%, transparent); }
+.game-bet-scale-btn:disabled, .game-bet-step-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.game-bet-slider-row { display: flex; align-items: center; gap: 0.5rem; }
+.game-bet-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: rgb(255 255 255 / 0.1); outline: none; cursor: pointer; }
+.game-bet-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--color-lime); border: 3px solid var(--color-bg); box-shadow: 0 0 8px color-mix(in oklab, var(--color-lime) 50%, transparent); cursor: pointer; }
+.game-bet-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--color-lime); border: 3px solid var(--color-bg); cursor: pointer; }
+
+.game-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 0.5rem; }
+.game-stat { padding: 0.625rem 0.75rem; border-radius: 0.75rem; background: var(--color-surface); border: 1px solid rgb(255 255 255 / 0.05); }
+.game-stat-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(255 255 255 / 0.4); font-weight: 600; }
+.game-stat-value { font-size: 0.9375rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.game-stat-value-lime { color: var(--color-lime); }
+
+.game-action-btn {
+  width: 100%; padding: 0.9rem; border-radius: 0.875rem;
+  font-size: 0.9375rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--color-bg); background: var(--color-lime); border: none;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  box-shadow: 0 4px 20px color-mix(in oklab, var(--color-lime) 25%, transparent);
+}
+.game-action-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 26px color-mix(in oklab, var(--color-lime) 35%, transparent); }
+.game-action-btn:active:not(:disabled) { transform: translateY(0); }
+.game-action-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.game-action-btn-secondary {
+  width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 700;
+  color: rgb(255 255 255 / 0.75); background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.08); transition: all .12s ease;
+}
+.game-action-btn-secondary:hover:not(:disabled) { color: #fff; background: rgb(255 255 255 / 0.09); }
+
+.game-history { padding: 0.875rem; border-radius: 1rem; background: var(--color-surface); border: 1px solid rgb(255 255 255 / 0.06); }
+.game-history-title { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(255 255 255 / 0.45); font-weight: 700; margin-bottom: 0.5rem; }
+.game-history-list { display: flex; flex-direction: column; gap: 0.25rem; }
+.game-history-item { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; border-radius: 0.5rem; background: rgb(255 255 255 / 0.03); font-size: 0.8125rem; }
+.game-history-payout { font-weight: 700; font-variant-numeric: tabular-nums; }
+.game-history-badge { display: inline-flex; align-items: center; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.game-history-badge-win, .game-history-badge-high { background: color-mix(in oklab, var(--color-lime) 15%, transparent); color: var(--color-lime); }
+.game-history-badge-mid { background: rgb(255 255 255 / 0.08); color: rgb(255 255 255 / 0.8); }
+.game-history-badge-low { background: rgb(255 255 255 / 0.05); color: rgb(255 255 255 / 0.55); }
+.game-history-badge-loss { background: color-mix(in oklab, var(--color-loss, #ef4444) 15%, transparent); color: var(--color-loss, #ef4444); }
+
+.game-pf-panel { border-radius: 1rem; background: var(--color-surface); border: 1px solid rgb(255 255 255 / 0.06); overflow: hidden; }
+.game-pf-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 0.875rem; font-size: 0.75rem; font-weight: 700; color: rgb(255 255 255 / 0.7); }
+.game-pf-body { padding: 0 0.875rem 0.875rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.game-pf-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; }
+.game-pf-label { color: rgb(255 255 255 / 0.4); }
+.game-pf-value { color: rgb(255 255 255 / 0.75); font-family: var(--font-geist-mono, monospace); font-size: 0.6875rem; word-break: break-all; text-align: right; }
+.game-pf-verify-btn { padding: 0.4rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; color: var(--color-lime); background: color-mix(in oklab, var(--color-lime) 10%, transparent); border: 1px solid color-mix(in oklab, var(--color-lime) 25%, transparent); }
