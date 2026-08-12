@@ -37,7 +37,17 @@ function filterProfanity(text: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getSession();
+  // getSession() throws in production when there is no logged-in user; without
+  // this guard an anonymous send crashed the route with a 500. Chatting
+  // requires an account — return a clean 401 the client can act on.
+  let user;
+  try {
+    user = await getSession();
+  } catch {
+    return err("Sign in to chat", 401);
+  }
+  if (!user?.username) return err("Sign in to chat", 401);
+
   const body = await req.json().catch(() => null);
   if (!body?.message) return err("Message required", 400);
   const channel = body.channel || "general";

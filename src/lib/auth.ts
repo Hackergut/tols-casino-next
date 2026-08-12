@@ -35,10 +35,14 @@ export async function createSession(userId: string): Promise<string> {
   });
 
   const store = await cookies();
+  const isProd = process.env.NODE_ENV === "production";
   store.set(COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    // SameSite=None so the session cookie is sent inside Telegram's cross-site
+    // iframe (the Web/Desktop Mini App runs framed by web.telegram.org). None
+    // requires Secure, so it is production-only; local dev over http stays Lax.
+    sameSite: isProd ? "none" : "lax",
     path: "/",
     expires: expiresAt,
   });
