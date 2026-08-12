@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { vipLevelForWager } from "@/lib/vip";
 
 /*
  * Player profile reconciliation.
@@ -90,6 +91,14 @@ export async function syncPlayerProfile(userId: string): Promise<void> {
     update: data,
     create: { externalId: userId, registeredAt: user.createdAt, ...data },
   });
+
+  // Keep the wallet's VIP level in lockstep with total wagered — the single
+  // wager ladder drives it, so the VIP page, header and admin all agree.
+  const totalWagered = user.wallet?.totalWagered ?? wagered;
+  const earned = vipLevelForWager(totalWagered);
+  if (user.wallet && user.wallet.vipLevel !== earned) {
+    await db.casinoWallet.update({ where: { userId }, data: { vipLevel: earned } });
+  }
 }
 
 /** Rebuild every profile. Returns how many were reconciled. */

@@ -12,6 +12,7 @@ import {
   ArrowLeft, Wallet, Crown, Vault, Coins, Share2, Bell, Receipt, Ticket,
   Settings, ShieldCheck, LifeBuoy, Copy, Check, RefreshCw, Gift, Flame, Trophy,
 } from "lucide-react";
+import { VIP_TIERS, VIP_BENEFITS, vipLevelForWager } from "@/lib/vip";
 
 const PROFILE_SECTIONS = new Set([
   "wallet", "vip", "cassaforte", "token", "affiliate", "notifications",
@@ -139,35 +140,15 @@ function WalletSection({ onBack }: { onBack: () => void }) {
 }
 
 /* ── VIP ── */
-// TOLS VIP ladder. Eight gem tiers with an escalating wager requirement and a
-// benefit matrix — a benefit unlocks at its tier and stays for every tier above.
-const VIP_TIERS = [
-  { name: "Bronzo",   color: "#cd7f32", wager: 10_000 },
-  { name: "Argento",  color: "#c0c0c0", wager: 50_000 },
-  { name: "Oro",      color: "#ffd700", wager: 100_000 },
-  { name: "Platino",  color: "#dfe4ea", wager: 250_000 },
-  { name: "Giada",    color: "#3ddc97", wager: 1_000_000 },
-  { name: "Zaffiro",  color: "#3b82f6", wager: 5_000_000 },
-  { name: "Rubino",   color: "#e0115f", wager: 25_000_000 },
-  { name: "Diamante", color: "#7ee8ff", wager: 100_000_000 },
-];
-// `from` = first tier index (0-based) at which the benefit is available.
-const VIP_BENEFITS = [
-  { label: "Rakeback istantaneo", from: 0 },
-  { label: "Bonus Settimanale", from: 1 },
-  { label: "Bonus di Avanzamento di Livello", from: 0 },
-  { label: "Bonus Mensile", from: 2 },
-  { label: "Aumento del bonus", from: 3 },
-  { label: "Host VIP", from: 5 },
-  { label: "Invito agli eventi", from: 7 },
-];
 const fmtWager = (n: number) => n >= 1_000_000 ? `$${n / 1_000_000}M` : `$${n / 1000}K`;
 
 function VipSection({ onBack }: { onBack: () => void }) {
   const wallet = useJson<{ vipLevel: number; xp: number; totalWagered: number }>("/api/wallet");
   const w = wallet.data;
-  const level = Math.max(0, Math.min(VIP_TIERS.length, w?.vipLevel ?? 0));
   const wagered = w?.totalWagered ?? 0;
+  // The level shown is derived from wager (source of truth), matching the
+  // server's auto-promotion — never a stale stored value.
+  const level = Math.max(vipLevelForWager(wagered), Math.min(VIP_TIERS.length, w?.vipLevel ?? 0));
   const current = level > 0 ? VIP_TIERS[level - 1] : null;
   const next = VIP_TIERS[level] ?? null;
   const prevReq = level > 0 ? VIP_TIERS[level - 1].wager : 0;
@@ -222,7 +203,7 @@ function VipSection({ onBack }: { onBack: () => void }) {
                   <td className="sticky left-0 z-10 bg-surface py-2.5 pr-3 text-left text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>{b.label}</td>
                   {VIP_TIERS.map((t, i) => (
                     <td key={t.name} className="px-1 py-2.5 text-center">
-                      {i >= b.from
+                      {i + 1 >= b.from
                         ? <Check className="mx-auto h-4 w-4" style={{ color: i + 1 === level ? t.color : "var(--color-lime)" }} />
                         : <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
                     </td>
