@@ -74,7 +74,11 @@ export default function VideoLoader({ ready }: { ready: boolean }) {
     // Reduced motion: freeze every reel on its payline (needs !important to beat
     // the inline animation shorthand).
     const rm = `@media (prefers-reduced-motion: reduce){.${animId}-strip{animation:none !important;transform:translateY(calc(-1em*7))}}`;
-    return frames + rm;
+    // Pure-CSS fail-safe: hide the overlay after the cap even if React never
+    // hydrates (slow network, hydration hiccup) — the app must never stay
+    // trapped behind the loader. An animation overrides the inline opacity.
+    const autohide = `@keyframes ${animId}-hide{to{opacity:0;visibility:hidden;pointer-events:none}}.${animId}-overlay{animation:${animId}-hide 0.45s ease-out ${CAP_MS}ms forwards}`;
+    return frames + rm + autohide;
   }, [animId, reels]);
 
   if (gone) return null;
@@ -110,6 +114,7 @@ export default function VideoLoader({ ready }: { ready: boolean }) {
       }}
       role="img"
       aria-label="Loading TOLS"
+      className={`${animId}-overlay`}
     >
       <style>{css}</style>
       <div style={{ display: "flex", alignItems: "center", gap: "0.015em", paddingLeft: "0.04em" }}>
