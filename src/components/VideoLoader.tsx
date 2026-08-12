@@ -1,47 +1,52 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
 
 /*
- * TOLS slot-machine wordmark loader — optimized, pure React/CSS, no assets.
- * Uses the project's brand wordmark font (var(--font-wordmark) = Oswald).
- * Four letter reels roll through ghosted characters with staggered stop timing,
- * resolve crisply to "TOLS", hold, then loop. Fades out when `ready`.
- * Static-rendered as the completed word (SSR / reduced-motion).
+ * TOLS slot-machine wordmark loader — pure React/CSS, no assets.
+ *
+ * The reels animate through CSS keyframes, NOT a JS `mounted` flag: the animated
+ * markup is identical on server and client (keyframe names come from useId, so
+ * they match on hydration), so the animation runs immediately and can't get
+ * stuck in a static state if an effect is flaky. Reduced motion is honoured with
+ * a media query that freezes the reels on the payline.
+ *
+ * Dismissal is fail-safe: the overlay fades out when the app is `ready` (after a
+ * short minimum), OR after a hard cap — a loading screen must never trap the app
+ * if the readiness signal never arrives.
  */
 
 const FINAL = ["T", "O", "L", "S"];
-const START = ["S", "L", "O", "T"]; // reversed → rolling starts as SLOT, resolves TOLS
+const START = ["S", "L", "O", "T"]; // reels start on SLOT, resolve to TOLS
 const DURATION = 2.2;
+const MIN_MS = 1100;   // minimum on-screen time (avoids a flash)
+const CAP_MS = 3500;   // hard cap — always gone by now
 
 export default function VideoLoader({ ready }: { ready: boolean }) {
-  const [mounted, setMounted] = useState(false);
-  const [reduced, setReduced] = useState(false);
   const [minDone, setMinDone] = useState(false);
+  const [capReached, setCapReached] = useState(false);
   const [fading, setFading] = useState(false);
   const [gone, setGone] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMinDone(true), 1400);
+    const t = setTimeout(() => setMinDone(true), MIN_MS);
     return () => clearTimeout(t);
   }, []);
 
+  // Fail-safe: dismiss even if `ready` never becomes true.
   useEffect(() => {
-    if (ready && minDone) {
-      setFading(true);
-      const t = setTimeout(() => setGone(true), 500);
-      return () => clearTimeout(t);
-    }
-  }, [ready, minDone]);
+    const t = setTimeout(() => setCapReached(true), CAP_MS);
+    return () => clearTimeout(t);
+  }, []);
 
-  // useId() is stable across server and client — Math.random() here produced a
-  // different value in each, so the injected <style> keyframe names mismatched
-  // on hydration. Colons from the generated id aren't valid in CSS identifiers.
+  const done = (ready && minDone) || capReached;
+  useEffect(() => {
+    if (!done) return;
+    setFading(true);
+    const t = setTimeout(() => setGone(true), 500);
+    return () => clearTimeout(t);
+  }, [done]);
+
   const animId = "loader_" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   const reels = useMemo(() => {
@@ -53,28 +58,28 @@ export default function VideoLoader({ ready }: { ready: boolean }) {
       for (let n = 0; n < baseLen; n++) symbols.push(alpha[(n * 5 + i * 3 + 2) % alpha.length]);
       symbols[0] = START[i];
       symbols[targetIdx] = target;
-      symbols.push(...symbols.slice(0, 4)); // seam for seamless loop
+      symbols.push(...symbols.slice(0, 4)); // seam for a seamless loop
       return { symbols, targetIdx, loopSteps: baseLen };
     });
   }, []);
 
-  const keyframes = useMemo(
-    () =>
-      reels
-        .map((_, i) => {
-          const stop = 42 + i * 6; // staggered stop: 42%, 48%, 54%, 60%
-          const hold = stop + 10;
-          return `@keyframes ${animId}_${i}{0%,8%{transform:translateY(0)}${stop}%{transform:translateY(calc(-1em*${reels[i].targetIdx}))}${hold}%{transform:translateY(calc(-1em*${reels[i].targetIdx}))}100%{transform:translateY(calc(-1em*${reels[i].loopSteps}))}}`;
-        })
-        .join(""),
-    [animId, reels]
-  );
+  const css = useMemo(() => {
+    const frames = reels
+      .map((r, i) => {
+        const stop = 42 + i * 6; // staggered stop 42/48/54/60%
+        const hold = stop + 10;
+        return `@keyframes ${animId}_${i}{0%,8%{transform:translateY(0)}${stop}%{transform:translateY(calc(-1em*${r.targetIdx}))}${hold}%{transform:translateY(calc(-1em*${r.targetIdx}))}100%{transform:translateY(calc(-1em*${r.loopSteps}))}}`;
+      })
+      .join("");
+    // Reduced motion: freeze every reel on its payline (needs !important to beat
+    // the inline animation shorthand).
+    const rm = `@media (prefers-reduced-motion: reduce){.${animId}-strip{animation:none !important;transform:translateY(calc(-1em*7))}}`;
+    return frames + rm;
+  }, [animId, reels]);
 
   if (gone) return null;
 
-  const animate = mounted && !reduced;
-  const stroke = "var(--color-lime, #ccff00)";
-
+  const stroke = "var(--color-lime, #cdf32b)";
   const letter: React.CSSProperties = {
     fontFamily: "var(--font-wordmark), Oswald, 'Arial Narrow', sans-serif",
     fontSize: "clamp(44px, 16vw, 120px)",
@@ -98,7 +103,7 @@ export default function VideoLoader({ ready }: { ready: boolean }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--color-bg, #0c0e17)",
+        background: "var(--color-bg, #0f1015)",
         opacity: fading ? 0 : 1,
         transition: "opacity 0.5s ease-out",
         pointerEvents: fading ? "none" : "auto",
@@ -106,38 +111,27 @@ export default function VideoLoader({ ready }: { ready: boolean }) {
       role="img"
       aria-label="Loading TOLS"
     >
-      <style>{keyframes}</style>
+      <style>{css}</style>
       <div style={{ display: "flex", alignItems: "center", gap: "0.015em", paddingLeft: "0.04em" }}>
         {reels.map((reel, i) => (
           <span key={i} style={{ position: "relative", width: "0.6em", height: "1em", overflow: "hidden", ...letter }}>
-            {animate ? (
-              <>
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    opacity: 0.35,
-                    animation: `${animId}_${i} ${DURATION}s cubic-bezier(0.22,0.61,0.36,1) infinite`,
-                    willChange: "transform",
-                  }}
-                >
-                  {reel.symbols.map((ch, idx) => (
-                    <span key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "1em", ...letter }}>
-                      {ch}
-                    </span>
-                  ))}
+            <span
+              className={`${animId}-strip`}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                animation: `${animId}_${i} ${DURATION}s cubic-bezier(0.22,0.61,0.36,1) infinite`,
+                willChange: "transform",
+              }}
+            >
+              {reel.symbols.map((ch, idx) => (
+                <span key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "1em", ...letter }}>
+                  {ch}
                 </span>
-                <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", ...letter, opacity: 0 }}>
-                  {FINAL[i]}
-                </span>
-              </>
-            ) : (
-              <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", ...letter }}>
-                {FINAL[i]}
-              </span>
-            )}
+              ))}
+            </span>
           </span>
         ))}
       </div>
