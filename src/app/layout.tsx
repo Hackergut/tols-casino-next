@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Inter, Michroma, Oswald } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
@@ -77,13 +78,16 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Language chosen by the middleware from the visitor's region (or their saved
+  // preference), so the document advertises the right language to the browser.
+  const locale = (await cookies()).get("locale")?.value || "en";
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${inter.variable} ${michroma.variable} ${oswald.variable} antialiased bg-background text-foreground`}
       >

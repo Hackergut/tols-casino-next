@@ -13,6 +13,8 @@ import {
   Settings, ShieldCheck, LifeBuoy, Copy, Check, RefreshCw, Gift, Flame, Trophy,
 } from "lucide-react";
 import { VIP_TIERS, vipLevelForWager, vipProgress } from "@/lib/vip";
+import { useLocale } from "@/lib/use-locale";
+import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 
 const PROFILE_SECTIONS = new Set([
   "wallet", "vip", "cassaforte", "token", "affiliate", "notifications",
@@ -375,8 +377,30 @@ function RiscattaCodiceSection({ onBack }: { onBack: () => void }) {
 function SettingsSection({ onBack }: { onBack: () => void }) {
   const me = useJson<{ balance: number; currency: string }>("/api/wallet");
   const [toggles, setToggles] = useState({ emailPromos: true, sounds: true, hideBalance: false });
+  const { locale, setLocale } = useLocale();
   return (
     <Shell title="Settings" subtitle="Account and preferences" icon={Settings} onBack={onBack}>
+      {/* Language — auto-detected from region, overridable here */}
+      <div className={CARD} style={CARD_STYLE}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Lingua / Language</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {LOCALES.map((l) => (
+            <button
+              key={l}
+              onClick={() => setLocale(l)}
+              className="rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+              style={locale === l
+                ? { background: "color-mix(in oklab, var(--color-lime) 15%, transparent)", color: "var(--color-lime)", border: "1px solid color-mix(in oklab, var(--color-lime) 35%, transparent)" }
+                : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              {LOCALE_LABELS[l]}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+          Rilevata automaticamente dalla tua zona. Puoi cambiarla qui.
+        </p>
+      </div>
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Account</p>
         <div className="space-y-2 text-sm">
