@@ -12,7 +12,7 @@ import {
   ArrowLeft, Wallet, Crown, Vault, Coins, Share2, Bell, Receipt, Ticket,
   Settings, ShieldCheck, LifeBuoy, Copy, Check, RefreshCw, Gift, Flame, Trophy,
 } from "lucide-react";
-import { VIP_TIERS, VIP_BENEFITS, vipLevelForWager } from "@/lib/vip";
+import { VIP_TIERS, vipLevelForWager, vipProgress } from "@/lib/vip";
 
 const PROFILE_SECTIONS = new Set([
   "wallet", "vip", "cassaforte", "token", "affiliate", "notifications",
@@ -140,81 +140,85 @@ function WalletSection({ onBack }: { onBack: () => void }) {
 }
 
 /* ── VIP ── */
-const fmtWager = (n: number) => n >= 1_000_000 ? `$${n / 1_000_000}M` : `$${n / 1000}K`;
+const fmtPts = (n: number) => Math.floor(n).toLocaleString("it-IT");
 
 function VipSection({ onBack }: { onBack: () => void }) {
   const wallet = useJson<{ vipLevel: number; xp: number; totalWagered: number }>("/api/wallet");
   const w = wallet.data;
   const wagered = w?.totalWagered ?? 0;
-  // The level shown is derived from wager (source of truth), matching the
-  // server's auto-promotion — never a stale stored value.
-  const level = Math.max(vipLevelForWager(wagered), Math.min(VIP_TIERS.length, w?.vipLevel ?? 0));
-  const current = level > 0 ? VIP_TIERS[level - 1] : null;
+  const points = Math.floor(wagered);
+  // Level derives from wager (source of truth), matching server auto-promotion.
+  const level = vipLevelForWager(wagered);
+  const current = VIP_TIERS[level - 1];
   const next = VIP_TIERS[level] ?? null;
-  const prevReq = level > 0 ? VIP_TIERS[level - 1].wager : 0;
-  const pct = next ? Math.min(100, Math.max(0, ((wagered - prevReq) / (next.wager - prevReq)) * 100)) : 100;
+  const pct = vipProgress(wagered);
 
   return (
     <Shell title="Livello VIP" subtitle="Il tuo livello, i progressi e i vantaggi" icon={Crown} onBack={onBack}>
-      {/* Current tier + progress to next */}
+      {/* Current tier + progress */}
       <div className={CARD} style={CARD_STYLE}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Livello attuale</p>
-            <p className="mt-1 text-3xl font-black" style={{ color: current?.color ?? "rgba(255,255,255,0.5)" }}>
-              {current?.name ?? "Nessun livello"}
+            <p className="mt-1 text-3xl font-black" style={{ color: current.color }}>
+              {current.level} · {current.name}
             </p>
           </div>
-          <Crown className="h-10 w-10" style={{ color: current?.color ?? "var(--color-vip, #eab308)" }} />
+          <Crown className="h-10 w-10" style={{ color: current.color }} />
         </div>
         <div className="mt-4">
           <div className="mb-1 flex justify-between text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            <span>{fmtWager(wagered)} puntati</span>
-            <span>{next ? `Prossimo: ${next.name} · ${fmtWager(next.wager)}` : "Livello massimo"}</span>
+            <span>{fmtPts(points)} punti</span>
+            <span>{next ? `Prossimo: ${next.name} · ${fmtPts(next.points)} pt` : "Livello massimo"}</span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${current?.color ?? "#888"}, ${next?.color ?? "var(--color-lime)"})` }} />
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${current.color}, ${next?.color ?? "var(--color-lime)"})` }} />
           </div>
         </div>
       </div>
 
-      {/* Benefit matrix — benefits × tiers, scrollable on mobile */}
+      {/* Tier ladder with per-level benefits */}
       <div className={CARD} style={CARD_STYLE}>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Vantaggi per livello
+          Livelli e vantaggi
         </p>
-        <div className="-mx-1 overflow-x-auto px-1">
-          <table className="w-full border-collapse text-sm" style={{ minWidth: 640 }}>
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-10 bg-surface py-2 pr-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ color: "rgba(255,255,255,0.4)" }}>Vantaggio</th>
-                {VIP_TIERS.map((t, i) => (
-                  <th key={t.name} className="px-1 py-2 text-center">
-                    <div className="mx-auto mb-1 h-3 w-3 rounded-full" style={{ background: t.color, boxShadow: `0 0 8px ${t.color}66` }} />
-                    <span className="text-[10px] font-bold" style={{ color: i + 1 === level ? t.color : "rgba(255,255,255,0.55)" }}>{t.name}</span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {VIP_BENEFITS.map((b) => (
-                <tr key={b.label} style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                  <td className="sticky left-0 z-10 bg-surface py-2.5 pr-3 text-left text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>{b.label}</td>
-                  {VIP_TIERS.map((t, i) => (
-                    <td key={t.name} className="px-1 py-2.5 text-center">
-                      {i + 1 >= b.from
-                        ? <Check className="mx-auto h-4 w-4" style={{ color: i + 1 === level ? t.color : "var(--color-lime)" }} />
-                        : <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
-                    </td>
+        <div className="flex flex-col gap-2">
+          {VIP_TIERS.map((t) => {
+            const isCurrent = t.level === level;
+            const unlocked = t.level <= level;
+            return (
+              <div
+                key={t.name}
+                className="rounded-xl p-3"
+                style={{
+                  background: isCurrent ? `color-mix(in oklab, ${t.color} 12%, transparent)` : "rgba(255,255,255,0.03)",
+                  border: isCurrent ? `1px solid ${t.color}` : "1px solid rgba(255,255,255,0.06)",
+                  opacity: unlocked ? 1 : 0.55,
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ background: t.color, color: "#0f1015" }}>{t.level}</span>
+                    <div className="min-w-0">
+                      <p className="font-bold" style={{ color: t.color }}>{t.name}</p>
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{fmtPts(t.points)} punti richiesti</p>
+                    </div>
+                  </div>
+                  {isCurrent
+                    ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: t.color, color: "#0f1015" }}>ATTUALE</span>
+                    : unlocked ? <Check className="h-4 w-4 shrink-0" style={{ color: t.color }} /> : null}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {t.benefits.map((b) => (
+                    <span key={b} className="rounded-md px-2 py-0.5 text-[11px]" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.72)" }}>{b}</span>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                </div>
+              </div>
+            );
+          })}
         </div>
         <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-          Ogni vantaggio si sblocca al suo livello e resta per tutti i livelli superiori. I requisiti sono basati sul totale puntato.
+          I punti si guadagnano puntando (1 punto per ogni $1 giocato). Il livello si aggiorna automaticamente.
         </p>
       </div>
     </Shell>

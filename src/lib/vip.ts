@@ -1,44 +1,38 @@
 /*
- * VIP / wager ladder — single source of truth for both the client (the VIP
- * page) and the server (auto-promotion on every bet). Total amount wagered is
- * the driver: cross a tier's threshold and the level updates everywhere.
+ * VIP / wager ladder — single source of truth for the client (VIP page) and
+ * the server (auto-promotion on every bet). Points are earned 1:1 from amount
+ * wagered; crossing a tier's point threshold updates the level everywhere.
  */
 
 export interface VipTier {
-  level: number;   // 1-based
+  level: number;      // 1-based
   name: string;
   color: string;
-  wager: number;   // cumulative total-wagered required to reach this tier
-  rakeback: number; // instant rakeback rate for this tier, in %
+  points: number;     // cumulative points (= $ wagered) required to reach it
+  cashback: number;   // weekly cashback %, 0 at entry tier
+  benefits: string[]; // headline perks for this tier
 }
 
 export const VIP_TIERS: VipTier[] = [
-  { level: 1, name: "Bronzo",   color: "#cd7f32", wager: 10_000,      rakeback: 5 },
-  { level: 2, name: "Argento",  color: "#c0c0c0", wager: 50_000,      rakeback: 6 },
-  { level: 3, name: "Oro",      color: "#ffd700", wager: 100_000,     rakeback: 7 },
-  { level: 4, name: "Platino",  color: "#dfe4ea", wager: 250_000,     rakeback: 8 },
-  { level: 5, name: "Giada",    color: "#3ddc97", wager: 1_000_000,   rakeback: 9 },
-  { level: 6, name: "Zaffiro",  color: "#3b82f6", wager: 5_000_000,   rakeback: 10 },
-  { level: 7, name: "Rubino",   color: "#e0115f", wager: 25_000_000,  rakeback: 11 },
-  { level: 8, name: "Diamante", color: "#7ee8ff", wager: 100_000_000, rakeback: 12 },
+  { level: 1, name: "Spark", color: "#facc15", points: 0,         cashback: 0,  benefits: ["Bonus di benvenuto", "Accesso a tutte le slot"] },
+  { level: 2, name: "Blaze", color: "#fb7185", points: 500,       cashback: 5,  benefits: ["5% cashback settimanale", "20 free spin"] },
+  { level: 3, name: "Storm", color: "#38bdf8", points: 2_000,     cashback: 7,  benefits: ["7% cashback", "50 free spin", "Bonus mensile"] },
+  { level: 4, name: "Titan", color: "#cbd5e1", points: 10_000,    cashback: 10, benefits: ["10% cashback", "Prelievi prioritari", "Regalo di compleanno"] },
+  { level: 5, name: "Nova",  color: "#c084fc", points: 50_000,    cashback: 12, benefits: ["12% cashback", "Account manager dedicato", "Tornei esclusivi"] },
+  { level: 6, name: "Apex",  color: "#f59e0b", points: 200_000,   cashback: 15, benefits: ["15% cashback", "Inviti eventi VIP", "Limiti di puntata più alti"] },
+  { level: 7, name: "Myth",  color: "#cdf32b", points: 1_000_000, cashback: 20, benefits: ["20% cashback", "Esperienze luxury", "Supporto 24/7 VIP", "Bonus personalizzati"] },
 ];
 
-// Benefit matrix. `from` = first tier level (1-based) the benefit unlocks at;
-// it stays available for every tier above.
-export const VIP_BENEFITS: { label: string; from: number }[] = [
-  { label: "Rakeback istantaneo", from: 1 },
-  { label: "Bonus di Avanzamento di Livello", from: 1 },
-  { label: "Bonus Settimanale", from: 2 },
-  { label: "Bonus Mensile", from: 3 },
-  { label: "Aumento del bonus", from: 4 },
-  { label: "Host VIP", from: 6 },
-  { label: "Invito agli eventi", from: 8 },
-];
+/** Points a player has earned (currently 1 point per $1 wagered). */
+export function pointsFromWager(wagered: number): number {
+  return Math.floor(wagered);
+}
 
-/** The tier level earned for a given cumulative wager (0 = no tier yet). */
+/** Tier level for a given point total. Everyone is at least level 1 (Spark). */
 export function vipLevelForWager(wagered: number): number {
-  let level = 0;
-  for (const t of VIP_TIERS) if (wagered >= t.wager) level = t.level;
+  const points = pointsFromWager(wagered);
+  let level = 1;
+  for (const t of VIP_TIERS) if (points >= t.points) level = t.level;
   return level;
 }
 
@@ -46,15 +40,16 @@ export function vipTier(level: number): VipTier | null {
   return VIP_TIERS[level - 1] ?? null;
 }
 
-export function rakebackRate(level: number): number {
-  return vipTier(level)?.rakeback ?? 0;
+export function cashbackRate(level: number): number {
+  return vipTier(level)?.cashback ?? 0;
 }
 
 /** Progress (0–100) from the current tier toward the next. 100 at max tier. */
 export function vipProgress(wagered: number): number {
+  const points = pointsFromWager(wagered);
   const level = vipLevelForWager(wagered);
   const next = VIP_TIERS[level];
   if (!next) return 100;
-  const prev = level > 0 ? VIP_TIERS[level - 1].wager : 0;
-  return Math.min(100, Math.max(0, ((wagered - prev) / (next.wager - prev)) * 100));
+  const prev = VIP_TIERS[level - 1].points;
+  return Math.min(100, Math.max(0, ((points - prev) / (next.points - prev)) * 100));
 }

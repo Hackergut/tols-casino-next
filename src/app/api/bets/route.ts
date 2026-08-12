@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { getSession, ok, err } from "@/lib/session";
 import { fairFloat, getActiveSeed, nextNonce } from "@/lib/provably-fair";
 import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
-import { refreshPlayerProfile } from "@/lib/player-sync";
+import { syncPlayerProfile } from "@/lib/player-sync";
+import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { checkBetAllowed } from "@/lib/responsible-limits";
 
@@ -487,9 +488,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Keep the operator-facing player projection in step with the wallet.
-  // Fire-and-forget: reporting must never add latency to placing a bet.
-  refreshPlayerProfile(user.id);
+  // Keep the wallet's VIP level + the operator projection in step with the
+  // wager. `after()` runs this once the response is sent AND keeps the
+  // serverless function alive to finish it — a plain fire-and-forget promise is
+  // frozen/killed on Vercel, so the VIP level never updated.
+  after(() => syncPlayerProfile(user.id).catch(() => {}));
 
   return ok({
     betId: betId,
