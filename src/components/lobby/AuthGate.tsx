@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { Mail, Lock, User, Gift, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Gift, Eye, EyeOff, Loader2, Calendar } from "lucide-react";
 
 type Mode = "login" | "register";
 
@@ -25,6 +25,7 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +42,7 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
         body: JSON.stringify(
           mode === "login"
             ? { identifier, password }
-            : { username, email, password, referralCode },
+            : { username, email, password, referralCode, dateOfBirth },
         ),
       });
       const json = await res.json();
@@ -54,7 +55,7 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
       setError("Could not reach the server.");
     }
     setBusy(false);
-  }, [mode, identifier, username, email, password, referralCode, busy, onAuthenticated]);
+  }, [mode, identifier, username, email, password, referralCode, dateOfBirth, busy, onAuthenticated]);
 
   const field = "w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 pl-10 pr-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-lime/40";
 
@@ -121,6 +122,18 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
                 />
+              </div>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+                <input
+                  className={`${field} text-white/80`}
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  aria-label="Date of birth"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/30">18+</span>
               </div>
             </>
           )}
