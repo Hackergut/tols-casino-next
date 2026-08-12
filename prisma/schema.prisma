@@ -728,3 +728,26 @@ model RedeemCode {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+// ==================== VENDOR (external game providers) ====================
+// Seamless-wallet ledger. Every debit/credit/rollback a vendor requests is
+// recorded here; the @@unique([vendor, externalTxId]) makes replays idempotent
+// (a retried callback returns the stored result instead of paying twice).
+model VendorTxn {
+  id           String   @id @default(cuid())
+  vendor       String
+  externalTxId String
+  roundId      String?
+  userId       String
+  type         String   // "bet" | "win" | "rollback"
+  amount       Float
+  currency     String   @default("USDT")
+  status       String   @default("applied") // applied | rolled_back
+  balanceAfter Float
+  rawPayload   String?
+  createdAt    DateTime @default(now())
+
+  @@unique([vendor, externalTxId])
+  @@index([userId])
+  @@index([roundId])
+}
