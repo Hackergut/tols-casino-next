@@ -1,0 +1,102 @@
+import { createHash } from "crypto";
+import { issueLaunchToken, verifyLaunchToken } from "@/lib/vendor-wallet";
+
+/*
+ * EuroVirtuals adapter. TOLS is the OPERATOR: we call their /v1/launch to get a
+ * game URL, and they call our seamless-wallet callbacks (player_info, bet, win,
+ * rollback, adjustment). Requests are signed with EuroVirtuals' custom scheme:
+ *
+ *   sort the top-level keys; for a primitive append "key=value", for a nested
+ *   object append "nestedKey=md5(json(value))" per sorted nested key, for an
+ *   array append "index=md5(json(element))"; join with "&"; append the shared
+ *   key (App Key for calls we make, Token Key for callbacks we verify); MD5.
+ */
+
+const md5 = (s: string) => createHash("md5").update(s).digest("hex");
+
+export function evSignature(body: Record<string, unknown>, key: string): string {
+  const parts: string[] = [];
+  for (const k of Object.keys(body).sort()) {
+    const v = body[k];
+    if (Array.isArray(v)) {
+      v.forEach((el, i) => parts.push(`${i}=${md5(JSON.stringify(el))}`));
+    } else if (v !== null && typeof v === "object") {
+      const nested = v as Record<string, unknown>;
+      for (const nk of Object.keys(nested).sort()) parts.push(`${nk}=${md5(JSON.stringify(nested[nk]))}`);
+    } else {
+      parts.push(`${k}=${String(v)}`);
+    }
+  }
+  return md5(parts.join("&") + key);
+}
+
+export function verifyEvSignature(body: Record<string, unknown>, provided: string | null): boolean {
+  const key = process.env.EV_TOKEN_KEY || "";
+  if (!key || !provided) return false;
+  const expected = evSignature(body, key);
+  // Both are 32-char lowercase hex; a length-safe compare is enough here.
+  return expected.length === provided.trim().length && expected === provided.trim().toLowerCase();
+}
+
+export function evConfigured(): boolean {
+  return Boolean(process.env.EV_TOKEN_KEY);
+}
+
+// Player token issued at launch — carries the TOLS user id, verified in callbacks.
+export function evPlayerToken(userId: string): string {
+  return issueLaunchToken(userId);
+}
+export function evUserFromToken(token: string | undefined | null): string | null {
+  return verifyLaunchToken(token);
+}
+
+/** `YYYY-MM-DD H:i:s` UTC, the timestamp format EuroVirtuals expects. */
+export function evDate(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
+}
+
+// ── Provider call: request a game launch URL (operator → provider) ──
+export interface EvLaunchInput {
+  playerId: string; playerName: string; playerToken: string;
+  gameUuid: string; currency: string; balance: number;
+  demo?: 0 | 1; country?: string; language?: string; device?: "mobile" | "web";
+}
+export async function evLaunch(input: EvLaunchInput): Promise<{ url: string } | { error: string }> {
+  const base = process.env.EV_API_BASE;
+  const apiKey = process.env.EV_API_KEY;
+  const appKey = process.env.EV_APP_KEY;
+  if (!base || !apiKey || !appKey) return { error: "EuroVirtuals not configured" };
+
+  const body: Record<string, unknown> = {
+    player_id: input.playerId,
+    player_name: input.playerName,
+    player_token: input.playerToken,
+    game_uuid: input.gameUuid,
+    currency: input.currency,
+    balance: input.balance,
+    demo: input.demo ?? 0,
+    ...(input.country ? { country: input.country } : {}),
+    ...(input.language ? { language: input.language } : {}),
+    ...(input.device ? { device: input.device } : {}),
+  };
+
+  try {
+    const r = await fetch(`${base.replace(/\/+$/, "")}/v1/launch`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-api-key": apiKey,
+        "x-signature-key": evSignature(body, appKey),
+        "x-timestamp": String(Math.floor(Date.now() / 1000)),
+      },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (j?.status_code === 200 && j?.data?.url) return { url: String(j.data.url) };
+    return { error: String(j?.status_description ?? "Launch failed") };
+  } catch {
+    return { error: "Could not reach EuroVirtuals" };
+  }
+}
