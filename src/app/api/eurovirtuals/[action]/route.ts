@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ action: st
   let p: Record<string, unknown>;
   try { p = JSON.parse(raw); } catch { return body(400, "Bad Request"); }
 
-  if (!verifyEvSignature(p, req.headers.get("x-signature-key"))) {
+  if (!verifyEvSignature(p, req.headers.get("x-signature-key"), req.headers.get("x-timestamp"))) {
     return body(401, "Unauthorised access");
   }
 

@@ -1,6 +1,8 @@
 import { createHash } from "crypto";
 import { issueLaunchToken, verifyLaunchToken } from "@/lib/vendor-wallet";
 
+const sha1hex = (s: string) => createHash("sha1").update(s).digest("hex");
+
 /*
  * EuroVirtuals adapter. TOLS is the OPERATOR: we call their /v1/launch to get a
  * game URL, and they call our seamless-wallet callbacks (player_info, bet, win,
@@ -30,16 +32,26 @@ export function evSignature(body: Record<string, unknown>, key: string): string 
   return md5(parts.join("&") + key);
 }
 
-export function verifyEvSignature(body: Record<string, unknown>, provided: string | null): boolean {
-  const key = process.env.EV_TOKEN_KEY || "";
-  if (!key || !provided) return false;
-  const expected = evSignature(body, key);
-  // Both are 32-char lowercase hex; a length-safe compare is enough here.
-  return expected.length === provided.trim().length && expected === provided.trim().toLowerCase();
+/*
+ * Token key is derived per-request, not stored: token = MD5(hex(SHA1(appKey +
+ * timestamp))). EuroVirtuals signs each callback with this token; we recompute
+ * it from our App Key and the request's x-timestamp, then verify the signature.
+ */
+export function evTokenKey(timestamp: string): string {
+  const appKey = process.env.EV_APP_KEY || "";
+  return md5(sha1hex(appKey + timestamp));
+}
+
+export function verifyEvSignature(body: Record<string, unknown>, provided: string | null, timestamp: string | null): boolean {
+  const appKey = process.env.EV_APP_KEY || "";
+  if (!appKey || !provided || !timestamp) return false;
+  const expected = evSignature(body, evTokenKey(timestamp));
+  const got = provided.trim().toLowerCase();
+  return expected.length === got.length && expected === got;
 }
 
 export function evConfigured(): boolean {
-  return Boolean(process.env.EV_TOKEN_KEY);
+  return Boolean(process.env.EV_APP_KEY);
 }
 
 // Player token issued at launch — carries the TOLS user id, verified in callbacks.
