@@ -71,13 +71,17 @@ export default function VideoLoader({ ready }: { ready: boolean }) {
         return `@keyframes ${animId}_${i}{0%,8%{transform:translateY(0)}${stop}%{transform:translateY(calc(-1em*${r.targetIdx}))}${hold}%{transform:translateY(calc(-1em*${r.targetIdx}))}100%{transform:translateY(calc(-1em*${r.loopSteps}))}}`;
       })
       .join("");
-    // Reduced motion: freeze every reel on its payline (needs !important to beat
-    // the inline animation shorthand).
-    const rm = `@media (prefers-reduced-motion: reduce){.${animId}-strip{animation:none !important;transform:translateY(calc(-1em*7))}}`;
+    // Reduced motion: globals.css crushes every animation to 0.01ms, which left
+    // the reels frozen mid-scroll and read as "broken loader". Snap them to the
+    // resolved word instead — a deliberate static wordmark, not a stuck one.
+    const rm = `@media (prefers-reduced-motion: reduce){.${animId}-strip{animation:none !important;transform:translateY(calc(-1em*7)) !important}}`;
     // Pure-CSS fail-safe: hide the overlay after the cap even if React never
     // hydrates (slow network, hydration hiccup) — the app must never stay
     // trapped behind the loader. An animation overrides the inline opacity.
-    const autohide = `@keyframes ${animId}-hide{to{opacity:0;visibility:hidden;pointer-events:none}}.${animId}-overlay{animation:${animId}-hide 0.45s ease-out ${CAP_MS}ms forwards}`;
+    // !important on the delay so a global reduced-motion override can shorten
+    // the fade but never stop the overlay from clearing itself.
+    const autohide = `@keyframes ${animId}-hide{to{opacity:0;visibility:hidden;pointer-events:none}}`
+      + `.${animId}-overlay{animation:${animId}-hide 0.45s ease-out ${CAP_MS}ms forwards;animation-delay:${CAP_MS}ms !important;animation-fill-mode:forwards !important}`;
     return frames + rm + autohide;
   }, [animId, reels]);
 
