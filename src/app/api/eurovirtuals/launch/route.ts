@@ -19,12 +19,18 @@ export async function POST(req: NextRequest) {
 
   const wallet = await db.casinoWallet.findUnique({ where: { userId: user.id }, select: { balance: true, currency: true } });
 
+  // Our wallet is denominated in USDT (crypto), but EuroVirtuals' catalogue
+  // only lists games priced in USD — sending "USDT" gets "Invalid player
+  // currency" from their launch endpoint. USDT is USD-pegged 1:1, so this is a
+  // label mapping, not a conversion: the balance number passes through as-is.
+  const evCurrency = wallet?.currency === "USDT" ? "USD" : (wallet?.currency ?? "USD");
+
   const res = await evLaunch({
     playerId: user.id,
     playerName: user.username,
     playerToken: evPlayerToken(user.id),
     gameUuid,
-    currency: wallet?.currency ?? "USD",
+    currency: evCurrency,
     balance: wallet?.balance ?? 0,
     demo: b?.demo === 1 ? 1 : 0,
     device: b?.device === "mobile" ? "mobile" : "web",
