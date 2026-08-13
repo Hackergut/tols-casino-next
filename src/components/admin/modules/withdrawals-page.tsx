@@ -1,261 +1,354 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import type { Withdrawal } from '@/types/tols';
-import { CurrencyBadge, StatusBadge, formatDate, formatAmount, truncateAddress } from '@/lib/tols-utils';
-import { ArrowUpFromLine, BarChart3 } from 'lucide-react';
-import { DataTable, type Column } from '@/components/admin/shared/data-table';
-import { EntityDialog, type FieldConfig } from '@/components/admin/shared/entity-dialog';
-import { DeleteDialog } from '@/components/admin/shared/delete-dialog';
-import { DetailDialog } from '@/components/admin/shared/detail-dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useTolsQuery } from '@/lib/tols-hooks';
-import { StatsBarChart } from '@/components/admin/shared/stats-bar-chart';
+import type { ColumnDef } from '@tanstack/react-table';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getSortedRowModel,
+  getFilteredRowModel,
+} from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
-const WITHDRAWAL_STATUS_COLORS: Record<string, string> = {
-  completed: '#22c55e',
-  pending: 'var(--color-pending)',
-  approved: '#3b82f6',
-  processing: 'var(--color-vip)',
-  rejected: 'var(--color-loss)',
-  failed: '#6b7280',
-};
-
-const createFields: FieldConfig[] = [
-  {
-    key: 'user_id',
-    label: 'User ID',
-    type: 'text',
-    placeholder: 'Enter user ID',
-    required: true,
-  },
-  {
-    key: 'wallet_id',
-    label: 'Wallet ID',
-    type: 'text',
-    placeholder: 'Enter wallet ID',
-    required: true,
-  },
-  {
-    key: 'to_address',
-    label: 'To Address',
-    type: 'text',
-    placeholder: 'Enter destination address',
-    required: true,
-  },
-  {
-    key: 'amount',
-    label: 'Amount',
-    type: 'number',
-    placeholder: '0.00',
-    required: true,
-  },
-];
-
-const editFields: FieldConfig[] = [
-  {
-    key: 'status',
-    label: 'Status',
-    type: 'select',
-    options: [
-      { label: 'Pending', value: 'pending' },
-      { label: 'Approved', value: 'approved' },
-      { label: 'Processing', value: 'processing' },
-      { label: 'Completed', value: 'completed' },
-      { label: 'Rejected', value: 'rejected' },
-      { label: 'Failed', value: 'failed' },
-    ],
-  },
-];
-
-function WithdrawalStatusChart() {
-  const { data, isLoading } = useTolsQuery<Withdrawal>('Withdrawal', { limit: 100 });
-  const withdrawals = data?.data || [];
-
-  const chartData = useMemo(() => {
-    const statusMap: Record<string, number> = {};
-    withdrawals.forEach((w) => {
-      const s = w.status || 'unknown';
-      statusMap[s] = (statusMap[s] || 0) + 1;
-    });
-    return ['completed', 'pending', 'approved', 'processing', 'rejected', 'failed']
-      .map((name) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value: statusMap[name] || 0,
-        color: WITHDRAWAL_STATUS_COLORS[name] || '#6b7280',
-      }))
-      .filter((d) => d.value > 0);
-  }, [withdrawals]);
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          Withdrawal Status Distribution
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <Skeleton className="h-44 w-full" />
-        ) : (
-          <StatsBarChart data={chartData} height={150} />
-        )}
-      </CardContent>
-    </Card>
-  );
+interface Withdrawal {
+  id: string;
+  userId: string;
+  username: string;
+  email: string;
+  amount: number;
+  currency: string;
+  chain: string;
+  walletAddress: string;
+  status: string;
+  txHash: string | null;
+  balanceBefore: number | null;
+  balanceAfter: number | null;
+  processedDate: string | null;
+  createdAt: string;
 }
 
-export function WithdrawalsPage() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Withdrawal | null>(null);
-  const [deleteItem, setDeleteItem] = useState<Withdrawal | null>(null);
-  const [viewItem, setViewItem] = useState<Record<string, unknown> | null>(null);
+type ActionType = 'approve' | 'reject';
 
-  const columns: Column<Withdrawal>[] = [
-    {
-      key: 'user_id',
-      label: 'User ID',
-      render: (w) => (
-        <span className="font-mono text-xs">{w.user_id.slice(0, 8)}...</span>
-      ),
+const STATUS_BADGE: Record<string, { variant: 'default' | 'destructive' | 'outline' | 'secondary'; label: string }> = {
+  pending: { variant: 'outline', label: 'Pending' },
+  approved: { variant: 'default', label: 'Approved' },
+  rejected: { variant: 'destructive', label: 'Rejected' },
+};
+
+export default function WithdrawalsPage() {
+  const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<string>('pending');
+  const [search, setSearch] = useState('');
+  const [actionItem, setActionItem] = useState<{ w: Withdrawal; action: ActionType } | null>(null);
+  const [txHashInput, setTxHashInput] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Fetch withdrawals
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['admin-withdrawals', statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      params.set('limit', '200');
+      const res = await fetch(`/api/ops/withdrawals?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      return json.data as {
+        pendingCount: number;
+        pendingAmount: number;
+        totalCount: number;
+        withdrawals: Withdrawal[];
+      };
     },
-    {
-      key: 'wallet_id',
-      label: 'Wallet ID',
-      render: (w) => (
-        <span className="font-mono text-xs">{w.wallet_id.slice(0, 8)}...</span>
-      ),
+    refetchInterval: 15000,
+  });
+
+  // Process withdrawal mutation
+  const processMutation = useMutation({
+    mutationFn: async (params: { id: string; action: ActionType; txHash?: string; reason?: string }) => {
+      const res = await fetch('/api/ops/withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Failed');
+      return json.data;
     },
-    {
-      key: 'currency',
-      label: 'Currency',
-      render: (w) => <CurrencyBadge currency={w.currency} />,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+      setActionItem(null);
+      setTxHashInput('');
+      setRejectReason('');
     },
-    {
-      key: 'chain',
-      label: 'Chain',
-      render: (w) => (
-        <span className="capitalize text-sm">{w.chain}</span>
-      ),
-    },
-    {
-      key: 'to_address',
-      label: 'To Address',
-      render: (w) => (
-        <span className="font-mono text-xs">{truncateAddress(w.to_address)}</span>
-      ),
-    },
-    {
-      key: 'amount',
-      label: 'Amount',
-      render: (w) => (
-        <span className="font-mono text-sm font-medium">{formatAmount(w.amount, w.currency)}</span>
-      ),
-    },
-    {
-      key: 'fee',
-      label: 'Fee',
-      render: (w) => (
-        <span className="font-mono text-sm text-muted-foreground">{formatAmount(w.fee, w.currency)}</span>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (w) => <StatusBadge status={w.status} />,
-    },
-    {
-      key: 'tx_hash',
-      label: 'Tx Hash',
-      render: (w) => (
-        <span className="font-mono text-xs">{w.tx_hash ? truncateAddress(w.tx_hash) : '—'}</span>
-      ),
-    },
-    {
-      key: 'created_date',
-      label: 'Created',
-      render: (w) => formatDate(w.created_date),
-    },
-  ];
+  });
+
+  // Filtered data
+  const filteredWithdrawals = useMemo(() => {
+    if (!data?.withdrawals) return [];
+    if (!search.trim()) return data.withdrawals;
+    const q = search.toLowerCase();
+    return data.withdrawals.filter(
+      (w) =>
+        w.username.toLowerCase().includes(q) ||
+        w.email.toLowerCase().includes(q) ||
+        w.walletAddress.toLowerCase().includes(q) ||
+        w.id.toLowerCase().includes(q)
+    );
+  }, [data?.withdrawals, search]);
+
+  // Table columns
+  const columns: ColumnDef<Withdrawal>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'username',
+        header: 'Player',
+        cell: ({ row }) => (
+          <div>
+            <span className="font-medium">{row.original.username || 'Unknown'}</span>
+            <br />
+            <span className="text-xs text-muted-foreground">{row.original.email}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'amount',
+        header: 'Amount',
+        cell: ({ row }) => (
+          <span className="font-mono font-semibold">
+            ${row.original.amount.toFixed(2)} <span className="text-xs text-muted-foreground">{row.original.currency}</span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'chain',
+        header: 'Chain',
+        cell: ({ row }) => <span className="uppercase text-xs font-medium">{row.original.chain}</span>,
+      },
+      {
+        accessorKey: 'walletAddress',
+        header: 'Address',
+        cell: ({ row }) => (
+          <span className="font-mono text-xs max-w-[160px] truncate block" title={row.original.walletAddress}>
+            {row.original.walletAddress}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const badge = STATUS_BADGE[row.original.status] ?? { variant: 'secondary' as const, label: row.original.status };
+          return <Badge variant={badge.variant}>{badge.label}</Badge>;
+        },
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Requested',
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {new Date(row.original.createdAt).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          if (row.original.status !== 'pending') {
+            return <span className="text-xs text-muted-foreground">\u2014</span>;
+          }
+          return (
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 text-xs"
+                onClick={() => setActionItem({ w: row.original, action: 'approve' })}
+              >
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 text-xs"
+                onClick={() => setActionItem({ w: row.original, action: 'reject' })}
+              >
+                Reject
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable({
+    data: filteredWithdrawals,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   return (
-    <div className="space-y-6">
-      <div className="mb-2">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shadow-lg shadow-amber-500/10">
-            <ArrowUpFromLine className="h-5 w-5 text-amber-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Withdrawal Management</h1>
-            <p className="text-sm text-muted-foreground">Review and process withdrawal requests from players</p>
-          </div>
+    <div className="p-6 space-y-6">
+      {/* Header stats */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Withdrawals</h1>
+          {data && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {data.pendingCount} pending (${data.pendingAmount.toFixed(2)} total) \u00b7 {data.totalCount} total
+            </p>
+          )}
         </div>
-        <div className="h-px bg-gradient-to-r from-amber-500/30 via-amber-500/10 to-transparent" />
+        <div className="flex items-center gap-3">
+          <Input
+            placeholder="Search player, address..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-64 h-9"
+          />
+        </div>
       </div>
 
-      <WithdrawalStatusChart />
+      {/* Status filter tabs */}
+      <div className="flex gap-2">
+        {['pending', 'approved', 'rejected', ''].map((s) => (
+          <Button
+            key={s || 'all'}
+            size="sm"
+            variant={statusFilter === s ? 'default' : 'outline'}
+            className="h-8 text-xs"
+            onClick={() => setStatusFilter(s)}
+          >
+            {s || 'All'}
+          </Button>
+        ))}
+      </div>
 
-      <DataTable<Withdrawal>
-        entity="Withdrawal"
-        columns={columns}
-        filterKey="to_address"
-        title="Withdrawal Management"
-        createLabel="Add Withdrawal"
-        onCreate={() => setCreateOpen(true)}
-        onView={(item) => setViewItem(item as unknown as Record<string, unknown>)}
-        onEdit={setEditItem}
-        onDelete={setDeleteItem}
-        statusFilters={[
-          { label: 'Pending', value: 'pending' },
-          { label: 'Approved', value: 'approved' },
-          { label: 'Processing', value: 'processing' },
-          { label: 'Completed', value: 'completed' },
-          { label: 'Rejected', value: 'rejected' },
-          { label: 'Failed', value: 'failed' },
-        ]}
-        selectable
-        bulkStatusChange
-        exportable
-        exportFilename="withdrawals"
-        dateRangeKey="created_date"
-      />
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>
+      ) : error ? (
+        <div className="flex items-center justify-center py-12 text-destructive">Failed to load withdrawals</div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                    No withdrawals found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
-      <EntityDialog
-        entity="Withdrawal"
-        title="Withdrawal"
-        description="Create a new withdrawal"
-        fields={createFields}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
+      {/* Approve Dialog */}
+      {actionItem?.action === 'approve' && (
+        <ConfirmDialog
+          open
+          title="Approve Withdrawal"
+          description={`Approve $${actionItem.w.amount} ${actionItem.w.currency} to ${actionItem.w.walletAddress}?`}
+          confirmLabel={processMutation.isPending ? 'Processing...' : 'Approve & Send'}
+          destructive={false}
+          onConfirm={() => {
+            processMutation.mutate({
+              id: actionItem.w.id,
+              action: 'approve',
+              txHash: txHashInput.trim() || undefined,
+            });
+          }}
+          onCancel={() => { setActionItem(null); setTxHashInput(''); }}
+        >
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-sm font-medium">Transaction Hash (required)</label>
+              <Input
+                placeholder="Paste the on-chain tx hash..."
+                value={txHashInput}
+                onChange={(e) => setTxHashInput(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            {processMutation.isError && (
+              <p className="text-sm text-destructive">{(processMutation.error as Error).message}</p>
+            )}
+          </div>
+        </ConfirmDialog>
+      )}
 
-      <EntityDialog
-        entity="Withdrawal"
-        title="Withdrawal"
-        description="Update withdrawal status"
-        fields={editFields}
-        open={!!editItem}
-        onOpenChange={(open) => !open && setEditItem(null)}
-        editId={editItem?.id}
-        defaultValues={editItem ? { status: editItem.status } : undefined}
-      />
-
-      <DetailDialog
-        title="Withdrawal"
-        open={!!viewItem}
-        onOpenChange={(open) => !open && setViewItem(null)}
-        data={viewItem}
-      />
-
-      <DeleteDialog
-        entity="Withdrawal"
-        entityName="Withdrawal"
-        itemId={deleteItem?.id || null}
-        open={!!deleteItem}
-        onOpenChange={(open) => !open && setDeleteItem(null)}
-      />
+      {/* Reject Dialog */}
+      {actionItem?.action === 'reject' && (
+        <ConfirmDialog
+          open
+          title="Reject Withdrawal"
+          description={`Reject and refund $${actionItem.w.amount} ${actionItem.w.currency} back to ${actionItem.w.username}'s balance?`}
+          confirmLabel={processMutation.isPending ? 'Processing...' : 'Reject & Refund'}
+          destructive
+          onConfirm={() => {
+            processMutation.mutate({
+              id: actionItem.w.id,
+              action: 'reject',
+              reason: rejectReason.trim() || undefined,
+            });
+          }}
+          onCancel={() => { setActionItem(null); setRejectReason(''); }}
+        >
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-sm font-medium">Reason (optional)</label>
+              <Input
+                placeholder="e.g. Suspicious activity, KYC required..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            {processMutation.isError && (
+              <p className="text-sm text-destructive">{(processMutation.error as Error).message}</p>
+            )}
+          </div>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
