@@ -15,6 +15,7 @@ import { CasinoFooter } from "@/components/lobby/CasinoFooter";
 import { GameLoading, LobbyGameCard } from "@/components/lobby/GameCards";
 import { GameDetailModal } from "@/components/lobby/GameDetailModal";
 import { VirtualGameModal } from "@/components/lobby/VirtualGameModal";
+import { SignupPromptModal } from "@/components/lobby/SignupPromptModal";
 import { LobbyView, GamesGridSkeleton, EmptyGames } from "@/components/lobby/LobbyView";
 import { HomeView } from "@/components/lobby/HomeView";
 import { AuthGate } from "@/components/lobby/AuthGate";
@@ -96,6 +97,7 @@ function CasinoPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [gateDismissed, setGateDismissed] = useState(true);
   const [gateMode, setGateMode] = useState<"login" | "register">("login");
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
@@ -219,6 +221,9 @@ function CasinoPage() {
   }, [handleSectionChange]);
 
   const handleGameClick = useCallback((game: LobbyGame) => {
+    // Guests never had a wallet to bet from — the game opened anyway and the
+    // first bet silently failed. Intercept here with the real next step.
+    if (authed !== true) { setShowSignupPrompt(true); return; }
     if (game.gameType === "original") {
       setActiveGame(game.slug);
       setActiveSection("originals");
@@ -227,11 +232,12 @@ function CasinoPage() {
     } else {
       setDetailGame(game);
     }
-  }, []);
+  }, [authed]);
 
   const handleOriginalSelect = useCallback((gameId: string) => {
+    if (authed !== true) { setShowSignupPrompt(true); return; }
     setActiveGame(gameId);
-  }, []);
+  }, [authed]);
 
   const handleBackFromGame = useCallback(() => {
     setActiveGame(null);
@@ -361,6 +367,14 @@ function CasinoPage() {
           initialMode={gateMode}
           onAuthenticated={() => { setAuthed(true); setGateDismissed(true); window.location.reload(); }}
           onDismiss={() => setGateDismissed(true)}
+        />
+      )}
+
+      {showSignupPrompt && (
+        <SignupPromptModal
+          onRegister={() => { setShowSignupPrompt(false); setGateMode("register"); setGateDismissed(false); }}
+          onLogin={() => { setShowSignupPrompt(false); setGateMode("login"); setGateDismissed(false); }}
+          onClose={() => setShowSignupPrompt(false)}
         />
       )}
 

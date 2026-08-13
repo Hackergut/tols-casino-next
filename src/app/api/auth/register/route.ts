@@ -6,6 +6,7 @@ import { ok, err } from "@/lib/session";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { randomBytes } from "crypto";
 import { sendMail, appUrl } from "@/lib/mailer";
+import { WEB_WELCOME_BONUS } from "@/lib/welcome-bonus";
 
 const RANDOM_COLORS = ["#ccff00", "#22d3ee", "#a855f7", "#f59e0b", "#ec4899", "#4ade80"];
 
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
       dateOfBirth: dob,
       kycStatus: "unverified",
       emailVerifyToken: verifyToken,
-      wallet: { create: { balance: 0, currency: "USDT", vipLevel: 1, totalWagered: 0, totalWon: 0 } },
+      wallet: { create: { balance: WEB_WELCOME_BONUS, currency: "USDT", vipLevel: 1, totalWagered: 0, totalWon: 0 } },
     },
     include: { wallet: true },
   });
