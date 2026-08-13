@@ -57,6 +57,10 @@ const VirtualGamesPage = dynamic(
   () => import('@/components/admin/modules/virtual-games-page').then((m) => ({ default: m.VirtualGamesPage })),
   { loading: () => <PageLoader /> },
 );
+const DepositAddressesPage = dynamic(
+  () => import('@/components/admin/modules/deposit-addresses-page').then((m) => ({ default: m.DepositAddressesPage })),
+  { loading: () => <PageLoader /> },
+);
 const BetsPage = dynamic(
   () => import('@/components/admin/modules/bets-page').then((m) => ({ default: m.BetsPage })),
   { loading: () => <PageLoader /> },
@@ -187,6 +191,8 @@ function PageRouter() {
       return <CasinoLobbyPage />;
     case 'virtual-games':
       return <VirtualGamesPage />;
+    case 'deposit-addresses':
+      return <DepositAddressesPage />;
     case 'bets':
       return <BetsPage />;
     case 'demo-sessions':

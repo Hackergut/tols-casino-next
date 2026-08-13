@@ -45,9 +45,14 @@ const rpcUrl = (key: string, fallback: string) => (process.env[key] || fallback)
 const BTC_API = () => rpcUrl("BTC_API_URL", "https://blockstream.info/api");
 const ETH_RPC = () => rpcUrl("ETH_RPC_URL", "https://ethereum-rpc.publicnode.com");
 const POLYGON_RPC = () => rpcUrl("POLYGON_RPC_URL", "https://polygon-bor-rpc.publicnode.com");
+const BSC_RPC = () => rpcUrl("BSC_RPC_URL", "https://bsc-rpc.publicnode.com");
 const SOL_RPC = () => rpcUrl("SOL_RPC_URL", "https://api.mainnet-beta.solana.com");
 const USDT_CONTRACT = () =>
   (process.env.USDT_CONTRACT || "0xdac17f958d2ee523a2206206994597c13d831ec7").toLowerCase();
+const USDC_CONTRACT = () =>
+  (process.env.USDC_CONTRACT || "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").toLowerCase();
+const USDT_BEP20_CONTRACT = () =>
+  (process.env.USDT_BEP20_CONTRACT || "0x55d398326f99059ff775485246999027b3197955").toLowerCase();
 
 // Tolerance for amount comparison: 0.01% and a tiny absolute floor.
 function amountsClose(a: number, b: number): boolean {
@@ -226,6 +231,9 @@ export async function verifyDeposit(args: VerifyArgs): Promise<VerifyResult> {
     case "eth": return verifyEvmNative(args, ETH_RPC(), 18);
     case "polygon": return verifyEvmNative(args, POLYGON_RPC(), 18);
     case "usdt_erc20": return verifyErc20(args, ETH_RPC(), USDT_CONTRACT(), 6);
+    case "usdc_erc20": return verifyErc20(args, ETH_RPC(), USDC_CONTRACT(), 6);
+    case "bnb": return verifyEvmNative(args, BSC_RPC(), 18);
+    case "usdt_bep20": return verifyErc20(args, BSC_RPC(), USDT_BEP20_CONTRACT(), 18);
     case "solana": return verifySolana(args);
     default: return fail("unsupported chain");
   }

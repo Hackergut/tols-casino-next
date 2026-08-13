@@ -86,6 +86,7 @@ const NAV_DESCRIPTIONS: Record<AdminPage, string> = {
   'telegram-alerts': 'Telegram notification alerts',
   'rtp-control': 'RTP control panel',
   'virtual-games': 'EuroVirtuals integration: config, transactions, test launch',
+  'deposit-addresses': 'Set the public receive address per chain for player deposit QR codes',
 };
 
 interface NavGroup {
@@ -109,6 +110,7 @@ const navGroups: NavGroup[] = [
     label: 'Financial',
     items: [
       { page: 'deposits', label: 'Deposits', icon: <ArrowDownToLine className="h-4 w-4" /> },
+      { page: 'deposit-addresses', label: 'Deposit Addresses', icon: <Wallet className="h-4 w-4" /> },
       { page: 'withdrawals', label: 'Withdrawals', icon: <ArrowUpFromLine className="h-4 w-4" />, badge: true },
       { page: 'house-earnings', label: 'House Earnings', icon: <HandCoins className="h-4 w-4" /> },
     ],
