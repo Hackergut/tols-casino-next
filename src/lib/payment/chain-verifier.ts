@@ -238,3 +238,147 @@ export async function verifyDeposit(args: VerifyArgs): Promise<VerifyResult> {
     default: return fail("unsupported chain");
   }
 }
+
+/*
+ * ── Hash-less matching: list recent INCOMING transactions to an address ──
+ *
+ * The deposit flow assigns each pending deposit a unique crypto amount (a tiny
+ * per-deposit "fingerprint" in the least-significant decimals). That lets the
+ * watcher credit a deposit WITHOUT the player pasting a tx hash: it lists what
+ * actually landed on the receive address and matches the exact unique amount.
+ *
+ * Every lister is FAIL-CLOSED: any error returns [] so a flaky provider can
+ * never manufacture a phantom incoming payment. Native ETH/BNB/MATIC can't be
+ * enumerated on public RPC without an indexer, so those return [] and still
+ * require a hash. The common rails — BTC, stablecoins, SOL — are covered.
+ */
+export interface IncomingTx {
+  txHash: string;
+  amount: number; // human units credited to the address in this tx
+  confirmations: number;
+}
+
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+function padAddressTopic(address: string): string {
+  return "0x" + address.replace(/^0x/, "").toLowerCase().padStart(64, "0");
+}
+
+async function listIncomingBtc(address: string): Promise<IncomingTx[]> {
+  try {
+    const tipRes = await fetch(`${BTC_API()}/blocks/tip/height`);
+    const tip = tipRes.ok ? Number(await tipRes.text()) : 0;
+    const res = await fetch(`${BTC_API()}/address/${address}/txs`);
+    if (!res.ok) return [];
+    const txs = await res.json();
+    if (!Array.isArray(txs)) return [];
+    const out: IncomingTx[] = [];
+    for (const tx of txs) {
+      let sats = 0;
+      for (const o of tx.vout || []) {
+        if (o.scriptpubkey_address && sameAddr(o.scriptpubkey_address, address)) sats += Number(o.value || 0);
+      }
+      if (sats <= 0) continue;
+      const confirmed = !!tx.status?.confirmed;
+      const bh = tx.status?.block_height ?? 0;
+      const confirmations = confirmed && tip ? Math.max(1, tip - bh + 1) : 0;
+      out.push({ txHash: tx.txid, amount: sats / 1e8, confirmations });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+async function listIncomingErc20(rpc: string, contract: string, decimals: number, address: string): Promise<IncomingTx[]> {
+  try {
+    const tipHex: string = await evmJsonRpc(rpc, "eth_blockNumber", []);
+    const tip = parseInt(tipHex, 16);
+    // Recent-only window: deposits are checked minutes after they're sent, and
+    // public nodes cap getLogs ranges. Configurable for a private/archive node.
+    const lookback = Number(process.env.DEPOSIT_LOG_LOOKBACK || 5000);
+    const fromBlock = "0x" + Math.max(0, tip - lookback).toString(16);
+    const logs: any[] = await evmJsonRpc(rpc, "eth_getLogs", [
+      {
+        address: contract,
+        topics: [TRANSFER_TOPIC, null, padAddressTopic(address)],
+        fromBlock,
+        toBlock: "latest",
+      },
+    ]);
+    if (!Array.isArray(logs)) return [];
+    const out: IncomingTx[] = [];
+    for (const log of logs) {
+      const raw = BigInt(log.data || "0x0");
+      const block = parseInt(log.blockNumber, 16);
+      const confirmations = Number.isFinite(block) ? Math.max(1, tip - block + 1) : 0;
+      out.push({ txHash: log.transactionHash, amount: Number(raw) / 10 ** decimals, confirmations });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+async function solRpc(method: string, params: unknown[]): Promise<any> {
+  const res = await fetch(SOL_RPC(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  if (!res.ok) throw new Error(`sol rpc ${res.status}`);
+  const j = await res.json();
+  if (j.error) throw new Error(`sol rpc ${JSON.stringify(j.error)}`);
+  return j.result;
+}
+
+async function listIncomingSolana(address: string): Promise<IncomingTx[]> {
+  try {
+    const sigs: any[] = await solRpc("getSignaturesForAddress", [address, { limit: 15 }]);
+    if (!Array.isArray(sigs)) return [];
+    const tip: number = await solRpc("getSlot", [{ commitment: "confirmed" }]).catch(() => 0);
+    const out: IncomingTx[] = [];
+    for (const s of sigs) {
+      if (s.err) continue;
+      const tx: any = await solRpc("getTransaction", [
+        s.signature,
+        { maxSupportedTransactionVersion: 0, commitment: "confirmed" },
+      ]).catch(() => null);
+      if (!tx?.meta || !tx.transaction) continue;
+      const acctKeys: string[] = (tx.transaction.message?.accountKeys || []).map((k: any) =>
+        typeof k === "string" ? k : k.pubkey
+      );
+      const idx = acctKeys.findIndex((k) => sameAddr(k, address));
+      if (idx < 0) continue;
+      // Native SOL received = post balance − pre balance for our account.
+      const pre = Number(tx.meta.preBalances?.[idx] ?? 0);
+      const post = Number(tx.meta.postBalances?.[idx] ?? 0);
+      const lamports = post - pre;
+      if (lamports <= 0) continue;
+      const confirmations = tip && tx.slot ? Math.max(1, tip - tx.slot + 1) : 1;
+      out.push({ txHash: s.signature, amount: lamports / 1e9, confirmations });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** List recent incoming transactions to `address` on `chain`. [] when unsupported or on any error (fail-closed). */
+export async function listIncoming(chain: string, address: string): Promise<IncomingTx[]> {
+  if (!isValidChain(chain) || !address) return [];
+  switch (chain) {
+    case "btc": return listIncomingBtc(address);
+    case "usdt_erc20": return listIncomingErc20(ETH_RPC(), USDT_CONTRACT(), 6, address);
+    case "usdc_erc20": return listIncomingErc20(ETH_RPC(), USDC_CONTRACT(), 6, address);
+    case "usdt_bep20": return listIncomingErc20(BSC_RPC(), USDT_BEP20_CONTRACT(), 18, address);
+    case "solana": return listIncomingSolana(address);
+    // Native ETH/BNB/MATIC need an indexer to enumerate — hash still required.
+    default: return [];
+  }
+}
+
+/** True when `chain` supports hash-less matching via listIncoming. */
+export function supportsHashlessMatch(chain: string): boolean {
+  return ["btc", "usdt_erc20", "usdc_erc20", "usdt_bep20", "solana"].includes(chain);
+}
