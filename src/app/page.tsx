@@ -27,7 +27,7 @@ import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
-import { useUIStore } from "@/lib/store";
+import { useUIStore, useSessionStore } from "@/lib/store";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
 
 const queryClient = new QueryClient({
@@ -102,20 +102,43 @@ function CasinoPage() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const { setDepositOpen } = useUIStore();
+  const setSessionUser = useSessionStore((s) => s.setUser);
+  const setSessionWallet = useSessionStore((s) => s.setWallet);
 
   // Resolve session + balance. Logged-in users get THEIR wallet balance (real,
   // per-user). Guests get a fun balance that is never shown as real money.
+  //
+  // Also mirrors into useSessionStore: DepositModal reads `user` from that
+  // store (not this component's `authed`) to decide whether to show deposit
+  // options or a "sign in" prompt. Nothing ever called its setUser() on the
+  // real login path (AuthGate) — only a legacy, unused AuthModal did — so a
+  // signed-in player always hit "sign in to deposit" when opening the wallet.
   const refreshBalance = useCallback(async () => {
     try {
       const me = await (await fetch("/api/auth/me")).json();
-      if (me?.data) { setAuthed(true); setBalance(Number(me.data.balance ?? 0)); return; }
+      if (me?.data) {
+        setAuthed(true);
+        setBalance(Number(me.data.balance ?? 0));
+        setSessionUser({
+          id: me.data.id, username: me.data.username, email: me.data.email,
+          avatarColor: me.data.avatarColor, level: me.data.level ?? 1,
+        });
+        setSessionWallet({
+          balance: Number(me.data.balance ?? 0),
+          currency: me.data.currency,
+          vipLevel: me.data.vipLevel,
+          totalWagered: me.data.totalWagered,
+        });
+        return;
+      }
     } catch { /* fall through */ }
     setAuthed(false);
+    setSessionUser(null);
     try {
       const w = await (await fetch("/api/wallet")).json();
       if (w?.success) setBalance(Number(w.data.balance ?? 0));
     } catch { /* ignore */ }
-  }, []);
+  }, [setSessionUser, setSessionWallet]);
 
   useEffect(() => {
     refreshBalance();
