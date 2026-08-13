@@ -1,21 +1,8 @@
 /**
- * TOLS Casino Design Tokens — Single source of truth for the neon-glassmorphism design system.
- * 
- * Color palette:
- *   Background:    #0f1015
- *   Surface:       #16161a
- *   Lime accent:   #ccff00 / #cdf32b
- *   Win green:     #00ff66
- *   Loss red:      #ff3366
- *   Pending:       #ffb52e
- *
- * Glassmorphism: backdrop-blur-xl + translucent surfaces + subtle border glow
- * Neon: box-shadow glow on interactive/highlighted elements
+ * TOLS Casino Design Tokens
  */
 
-import type React from 'react';
-
-// ── Colors ──
+// Colors
 export const colors = {
   bg: '#0f1015',
   surface: '#16161a',
@@ -34,7 +21,7 @@ export const colors = {
   borderActive: 'rgba(204, 255, 0, 0.5)',
 } as const;
 
-// ── Glassmorphism presets ──
+// Glassmorphism presets
 export const glass = {
   panel: 'bg-[rgba(22,22,26,0.65)] backdrop-blur-xl border border-white/[0.06]',
   panelHover: 'hover:bg-[rgba(22,22,26,0.85)] hover:border-[rgba(204,255,0,0.25)]',
@@ -43,7 +30,7 @@ export const glass = {
   overlay: 'bg-[rgba(15,16,21,0.8)] backdrop-blur-2xl',
 } as const;
 
-// ── Neon glow presets (for inline styles) ──
+// Neon glow presets
 export const neon = {
   lime: '0 0 12px rgba(204, 255, 0, 0.4), 0 0 40px rgba(204, 255, 0, 0.1)',
   limeSubtle: '0 0 8px rgba(204, 255, 0, 0.2)',
@@ -58,7 +45,7 @@ export const neon = {
   textLoss: '0 0 8px rgba(255, 51, 102, 0.5)',
 } as const;
 
-// ── Animation presets for framer-motion ──
+// Animation presets for framer-motion
 export const motion = {
   fadeInUp: {
     initial: { opacity: 0, y: 12 },
@@ -81,7 +68,7 @@ export const motion = {
   },
 } as const;
 
-// ── Utility class builders ──
+// Utility builders
 export function neonBorder(color: 'lime' | 'win' | 'loss' = 'lime'): string {
   const map = { lime: 'border-[rgba(204,255,0,0.35)]', win: 'border-[rgba(0,255,102,0.35)]', loss: 'border-[rgba(255,51,102,0.35)]' };
   return map[color];
@@ -91,7 +78,27 @@ export function glowShadow(color: 'lime' | 'win' | 'loss' = 'lime'): React.CSSPr
   return { boxShadow: neon[color] };
 }
 
-// ── Convenience type re-exports ──
-export type DesignColor = keyof typeof colors;
-export type NeonPreset = keyof typeof neon;
-export type GlassPreset = keyof typeof glass;
+// Legacy carousel tokens (Carousel.tsx compatibility)
+export const HIT_TARGET = 44;
+
+export type CardSize = 'small' | 'medium' | 'large' | 'xl';
+
+export const CARD_WIDTHS: Record<CardSize, number> = {
+  small:  140,
+  medium: 180,
+  large:  220,
+  xl:     280,
+};
+
+export function cardWidth(size: CardSize = 'medium'): number {
+  return CARD_WIDTHS[size];
+}
+
+export const SPACE = {
+  xs:   4,
+  sm:   8,
+  base: 12,
+  md:   16,
+  lg:   24,
+  xl:   32,
+} as const;
