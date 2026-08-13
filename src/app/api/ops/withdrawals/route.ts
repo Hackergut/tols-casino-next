@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { ok, err } from "@/lib/session";
-import { fireTelegramAlert } from "@/lib/telegram";
 import { requireAdmin } from "@/lib/admin-auth";
 
 /*
@@ -50,7 +49,7 @@ export async function GET(req: NextRequest) {
     totalCount,
     offset,
     limit,
-    withdrawals: rows.map((w) => ({
+    withdrawals: rows.map((w) > ({
       id: w.id,
       userId: w.userId,
       username: w.user?.username ?? "",
@@ -107,15 +106,6 @@ export async function POST(req: NextRequest) {
         processedDate: new Date(),
       },
     });
-    fireTelegramAlert({
-      event: "withdrawal",
-      title: "\u2705 Withdrawal approved",
-      message:
-        `Player: ${w.user?.username ?? w.userId}\n` +
-        `Amount: ${w.amount} ${w.currency} (${w.chain})\n` +
-        `To: ${w.walletAddress}` +
-        (updated.txHash ? `\nTx: ${updated.txHash}` : ""),
-    });
     return ok({ id, status: updated.status, txHash: updated.txHash });
   }
 
@@ -132,16 +122,6 @@ export async function POST(req: NextRequest) {
       data: { balance: { increment: w.amount } },
     }),
   ]);
-
-  fireTelegramAlert({
-    event: "withdrawal",
-    title: "\u274c Withdrawal rejected \u2014 funds returned",
-    message:
-      `Player: ${w.user?.username ?? w.userId}\n` +
-      `Amount: ${w.amount} ${w.currency} returned to balance\n` +
-      `New balance: ${wallet.balance}` +
-      (reason ? `\nReason: ${reason}` : ""),
-  });
 
   return ok({ id, status: updated.status, refunded: w.amount, newBalance: wallet.balance });
 }
