@@ -6,7 +6,6 @@ import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { checkBetAllowed } from "@/lib/responsible-limits";
 
 // Game engines — provably fair, 99% RTP-ish
 type GameResult = { multiplier: number; payout: number; won: boolean; payload: Record<string, unknown> };
@@ -182,10 +181,6 @@ export async function POST(req: NextRequest) {
   };
 
   if (!game || typeof amount !== "number" || amount <= 0) return err("Invalid bet", 400);
-
-  // Responsible-gaming limits: enforce self-exclusion, wager and loss caps.
-  const play = await checkBetAllowed(user.id, amount);
-  if (!play.allowed) return err(play.message, 403);
 
   // reload wallet fresh
   const wallet = await db.casinoWallet.findUnique({ where: { userId: user.id } });
