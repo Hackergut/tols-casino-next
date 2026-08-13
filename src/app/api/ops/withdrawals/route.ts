@@ -24,12 +24,14 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const limit = Math.min(200, Number(searchParams.get("limit") ?? 100));
+  const offset = Math.max(0, Number(searchParams.get("offset") ?? 0));
 
-  const [rows, pendingAgg] = await Promise.all([
+  const [rows, pendingAgg, totalCount] = await Promise.all([
     db.casinoWithdrawal.findMany({
       where: status ? { status } : undefined,
       orderBy: { createdAt: "desc" },
       take: limit,
+      skip: offset,
       include: { user: { select: { id: true, username: true, email: true } } },
     }),
     db.casinoWithdrawal.aggregate({
@@ -37,11 +39,17 @@ export async function GET(req: NextRequest) {
       _sum: { amount: true },
       _count: { _all: true },
     }),
+    db.casinoWithdrawal.count({
+      where: status ? { status } : undefined,
+    }),
   ]);
 
   return ok({
     pendingCount: pendingAgg._count._all,
     pendingAmount: pendingAgg._sum.amount ?? 0,
+    totalCount,
+    offset,
+    limit,
     withdrawals: rows.map((w) => ({
       id: w.id,
       userId: w.userId,
@@ -83,13 +91,14 @@ export async function POST(req: NextRequest) {
   });
   if (!w) return err("Withdrawal not found", 404);
 
-  // Only a pending request can be settled — this is what makes the endpoint
-  // safe to retry: a second call cannot double-refund or re-approve.
   if (w.status !== "pending") {
     return err(`Withdrawal already ${w.status}`, 409);
   }
 
   if (action === "approve") {
+    if (!txHash && !w.txHash) {
+      return err("txHash is required when approving a withdrawal", 400);
+    }
     const updated = await db.casinoWithdrawal.update({
       where: { id },
       data: {
@@ -100,7 +109,7 @@ export async function POST(req: NextRequest) {
     });
     fireTelegramAlert({
       event: "withdrawal",
-      title: "Withdrawal approved",
+      title: "\u2705 Withdrawal approved",
       message:
         `Player: ${w.user?.username ?? w.userId}\n` +
         `Amount: ${w.amount} ${w.currency} (${w.chain})\n` +
@@ -110,8 +119,6 @@ export async function POST(req: NextRequest) {
     return ok({ id, status: updated.status, txHash: updated.txHash });
   }
 
-  // Reject — the hold placed at request time has to go back to the wallet,
-  // in the same transaction that marks the row rejected.
   const [updated, wallet] = await db.$transaction([
     db.casinoWithdrawal.update({
       where: { id },
@@ -128,7 +135,7 @@ export async function POST(req: NextRequest) {
 
   fireTelegramAlert({
     event: "withdrawal",
-    title: "Withdrawal rejected — funds returned",
+    title: "\u274c Withdrawal rejected \u2014 funds returned",
     message:
       `Player: ${w.user?.username ?? w.userId}\n` +
       `Amount: ${w.amount} ${w.currency} returned to balance\n` +
