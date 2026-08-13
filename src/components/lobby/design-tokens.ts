@@ -13,6 +13,8 @@
  * Neon: box-shadow glow on interactive/highlighted elements
  */
 
+import type React from 'react';
+
 // ── Colors ──
 export const colors = {
   bg: '#0f1015',
@@ -35,7 +37,7 @@ export const colors = {
 // ── Glassmorphism presets ──
 export const glass = {
   panel: 'bg-[rgba(22,22,26,0.65)] backdrop-blur-xl border border-white/[0.06]',
-  panelHover: 'hover:bg-[rgba(22,22,26,0.85)] hover:border-[rgba(204,255,0,0.25Y]',
+  panelHover: 'hover:bg-[rgba(22,22,26,0.85)] hover:border-[rgba(204,255,0,0.25)]',
   card: 'bg-[rgba(22,22,26,0.55)] backdrop-blur-lg border border-white/[0.08] rounded-2xl',
   cardHover: 'hover:border-[rgba(204,255,0,0.3)] hover:shadow-[0_0_20px_rgba(204,255,0,0.08)]',
   overlay: 'bg-[rgba(15,16,21,0.8)] backdrop-blur-2xl',
@@ -89,27 +91,7 @@ export function glowShadow(color: 'lime' | 'win' | 'loss' = 'lime'): React.CSSPr
   return { boxShadow: neon[color] };
 }
 
-// -- Legacy carousel tokens (Carousel.tsx compatibility) ------------------
-export const HIT_TARGET = 44;
-
-export type CardSize = 'small' | 'medium' | 'large' | 'xl';
-
-export const CARD_WIDTHS: Record<CardSize, number> = {
-  small:  140,
-  medium: 180,
-  large:  220,
-  xl:     280,
-};
-
-export function cardWidth(size: CardSize = 'medium'): number {
-  return CARD_WIDTHS[size];
-}
-
-export const SPACE = {
-  xs:   4,
-  sm:   8,
-  base: 12,
-  md:   16,
-  lg:   24,
-  xl:   32,
-} as const;
+// ── Convenience type re-exports ──
+export type DesignColor = keyof typeof colors;
+export type NeonPreset = keyof typeof neon;
+export type GlassPreset = keyof typeof glass;
