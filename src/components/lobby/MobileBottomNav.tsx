@@ -1,29 +1,30 @@
 "use client";
 
 // Mobile bottom navigation — Shuffle-style, TOLS-themed.
-// Icons: Menu · Search · Chat · Rewards · Casino (Casino replaces "Sport"
-// since this platform has no sportsbook). Shown below the lg breakpoint.
+// Home · Casino · Rewards · Chat · Menu. "Home" returns to the lobby landing
+// (there was no way back to it from the thumb bar before); Search lives in the
+// always-visible top bar so it isn't duplicated here. Shown below lg.
 
-import { Menu, Search, MessageCircle, Gift, Dices } from "lucide-react";
+import { Home, Dices, Gift, MessageCircle, Menu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface Props {
   activeSection: string;
   chatOpen: boolean;
-  onMenu: () => void;
-  onSearch: () => void;
-  onChat: () => void;
-  onRewards: () => void;
+  onHome: () => void;
   onCasino: () => void;
+  onRewards: () => void;
+  onChat: () => void;
+  onMenu: () => void;
 }
 
-export function MobileBottomNav({ activeSection, chatOpen, onMenu, onSearch, onChat, onRewards, onCasino }: Props) {
+export function MobileBottomNav({ activeSection, chatOpen, onHome, onCasino, onRewards, onChat, onMenu }: Props) {
   const items: { id: string; label: string; icon: LucideIcon; action: () => void; active: boolean }[] = [
-    { id: "menu", label: "Menu", icon: Menu, action: onMenu, active: false },
-    { id: "search", label: "Search", icon: Search, action: onSearch, active: false },
-    { id: "chat", label: "Chat", icon: MessageCircle, action: onChat, active: chatOpen },
+    { id: "home", label: "Home", icon: Home, action: onHome, active: activeSection === "lobby" },
+    { id: "casino", label: "Casino", icon: Dices, action: onCasino, active: activeSection === "originals" },
     { id: "rewards", label: "Rewards", icon: Gift, action: onRewards, active: activeSection === "rewards" },
-    { id: "casino", label: "Casino", icon: Dices, action: onCasino, active: activeSection === "originals" || activeSection === "lobby" },
+    { id: "chat", label: "Chat", icon: MessageCircle, action: onChat, active: chatOpen },
+    { id: "menu", label: "Menu", icon: Menu, action: onMenu, active: false },
   ];
 
   return (

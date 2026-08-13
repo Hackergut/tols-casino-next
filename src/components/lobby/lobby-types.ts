@@ -68,7 +68,7 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
 ];
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: "lobby", label: "Lobby", icon: HomeIcon },
+  { id: "lobby", label: "Home", icon: HomeIcon },
   { id: "originals", label: "Originals", icon: Flame },
   { id: "slots", label: "Slots", icon: Gamepad2 },
   { id: "live", label: "Live Casino", icon: Radio },

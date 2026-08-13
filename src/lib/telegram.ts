@@ -30,9 +30,49 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// When a Telegram group is upgraded to a supergroup its chat id changes, and
+// the old id starts returning 400 with `migrate_to_chat_id` pointing at the new
+// one. We cache that per warm process so delivery self-heals even if the env
+// var still holds the stale id.
+let migratedChatId: string | null = null;
+
+interface SendOutcome {
+  ok: boolean;
+  description?: string;
+  migrateTo?: string;
+}
+
+async function sendOnce(token: string, chatId: string, threadId: string | undefined, text: string): Promise<SendOutcome> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_thread_id: threadId ? Number(threadId) : undefined,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      }),
+    });
+    const j = (await res.json().catch(() => null)) as
+      | { ok?: boolean; description?: string; parameters?: { migrate_to_chat_id?: number } }
+      | null;
+    if (j?.ok) return { ok: true };
+    const migrate = j?.parameters?.migrate_to_chat_id;
+    return {
+      ok: false,
+      description: j?.description || `HTTP ${res.status}`,
+      migrateTo: migrate ? String(migrate) : undefined,
+    };
+  } catch (e) {
+    return { ok: false, description: e instanceof Error ? e.message : "send error" };
+  }
+}
+
 export async function sendTelegramAlert({ event, title, message }: AlertInput): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const chatId = migratedChatId ?? process.env.TELEGRAM_CHAT_ID;
   const threadId = process.env.TELEGRAM_THREAD_ID;
 
   // Persist first so we always have a record, even on delivery failure.
@@ -64,38 +104,24 @@ export async function sendTelegramAlert({ event, title, message }: AlertInput): 
   }
 
   const text = `<b>${esc(title)}</b>\n${esc(message)}`;
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        message_thread_id: threadId ? Number(threadId) : undefined,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
-    });
-    const ok = res.ok;
-    if (record) {
-      await db.telegramNotification
-        .update({
-          where: { id: record.id },
-          data: ok
-            ? { status: "sent", sentAt: new Date() }
-            : { status: "failed", errorMessage: `HTTP ${res.status}` },
-        })
-        .catch(() => {});
-    }
-  } catch (e) {
-    if (record) {
-      await db.telegramNotification
-        .update({
-          where: { id: record.id },
-          data: { status: "failed", errorMessage: e instanceof Error ? e.message : "send error" },
-        })
-        .catch(() => {});
-    }
+  let result = await sendOnce(token, chatId, threadId || undefined, text);
+
+  // Follow a supergroup migration once, then remember the new id for this
+  // process so later alerts go straight to it.
+  if (!result.ok && result.migrateTo) {
+    migratedChatId = result.migrateTo;
+    result = await sendOnce(token, result.migrateTo, threadId || undefined, text);
+  }
+
+  if (record) {
+    await db.telegramNotification
+      .update({
+        where: { id: record.id },
+        data: result.ok
+          ? { status: "sent", sentAt: new Date() }
+          : { status: "failed", errorMessage: result.description ?? "send failed" },
+      })
+      .catch(() => {});
   }
 }
 

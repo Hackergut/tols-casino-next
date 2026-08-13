@@ -374,15 +374,11 @@ function CasinoPage() {
       <MobileBottomNav
         activeSection={activeSection}
         chatOpen={chatOpen}
-        onMenu={() => setMenuOpen(true)}
-        onSearch={() => {
-          const el = document.getElementById("global-search");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          (el as HTMLInputElement | null)?.focus();
-        }}
-        onChat={() => setChatOpen(true)}
-        onRewards={() => handleSectionChange("rewards")}
+        onHome={() => handleSectionChange("lobby")}
         onCasino={() => handleSectionChange("originals")}
+        onRewards={() => handleSectionChange("rewards")}
+        onChat={() => setChatOpen(true)}
+        onMenu={() => setMenuOpen(true)}
       />
 
       {authed === false && !gateDismissed && (

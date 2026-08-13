@@ -92,7 +92,7 @@ export function DepositModal() {
 
   const withdraw = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/withdrawals", {
+      const r = await fetch("/api/casino-withdrawals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: Number(withdrawAmount), walletAddress: withdrawAddress, chain: withdrawChain }),
