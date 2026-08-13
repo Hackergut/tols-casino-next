@@ -1,1 +1,123 @@
-J3VzZSBjbGllbnQnOwoKaW1wb3J0IFJlYWN0IGZyb20gJ3JlYWN0JzsKaW1wb3J0IHsKICBMYXlvdXREYXNoYm9hcmQsIFVzZXJzLCBXYWxsZXQsIEFycm93RG93blRvTGluZSwgQXJyb3dVcEZyb21MaW5lLAogIEdhbWVwYWQyLCBUcm9waHksIFBlcmNlbnQsIFNoaWVsZCwgU2V0dGluZ3MsIEJlbGwsCiAgQ2hldnJvbkxlZnQsIENoZXZyb25SaWdodCwgTWVudSwgWCwgQWN0aXZpdHksIFphcCwgRXllLAogIENyZWRpdENhcmQsIExheWVycywgU3RhciwgVXNlcnMyLCBHaWZ0LCBHbG9iZSwKICBBbGVydFRyaWFuZ2xlLCBEYXRhYmFzZSwgVGFnCn0gZnJvbSAnbHVjaWRlLXJlYWN0JzsKaW1wb3J0IHsgdXNlQWRtaW5TdG9yZSwgdHlwZSBBZG1pblBhZ2UgfSBmcm9tICdAL3N0b3Jlcy9hZG1pbic7CmltcG9ydCB7IGNuIH0gZnJvbSAnQC9saWIvdXRpbHMnOwoKY29uc3QgTkFWX1NFQ1RJT05TID0gWwogIHsKICAgIGxhYmVsOiAnT3ZlcnZpZXcnLAogICAgaXRlbXM6IFsKICAgICAgeyBwYWdlOiAnZGFzaGJvYXJkJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnRGFzaGJvYXJkJywgaWNvbjogTGF5b3V0RGFzaGJvYXJkIH0sCiAgICAgIHsgcGFnZTogJ2xpdmUtbW9uaXRvcicgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ0xpdmUgTW9uaXRvcicsIGljb246IEFjdGl2aXR5IH0sCiAgICBdLAogIH0sCiAgewogICAgbGFiZWw6ICdQbGF5ZXJzJywKICAgIGl0ZW1zOiBbCiAgICAgIHsgcGFnZTogJ3VzZXJzJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnVXNlcnMnLCBpY29uOiBVc2VycyB9LAogICAgICB7IHBhZ2U6ICd3YWxsZXRzJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnV2FsbGV0cycsIGljb246IFdhbGxldCB9LAogICAgICB7IHBhZ2U6ICdyZXNwb25zaWJsZS1nYW1pbmcnIGFzIEFkbWluUGFnZSwgbGFiZWw6ICdSZXNwb25zaWJsZSBHYW1pbmcnLCBpY29uOiBTaGllbGQgfSwKICAgIF0sCiAgfSwKICB7CiAgICBsYWJlbDogJ0ZpbmFuY2UnLAogICAgaXRlbXM6IFsKICAgICAgeyBwYWdlOiAnZGVwb3NpdHMnIGFzIEFkbWluUGFnZSwgbGFiZWw6ICdEZXBvc2l0cycsIGljb246IEFycm93RG93blRvTGluZSB9LAogICAgICB7IHBhZ2U6ICd3aXRoZHJhd2Fscycgc XMgQWRtaW5QYWdlLCBsYWJlbDogJ1dpdGhkcmF3YWxzJywgaWNvbjogQXJyb3dVcEZyb21MaW5lIH0sCiAgICAgIHsgcGFnZTogJ2RlcG9zaXQtYWRkcmVzc2VzJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnRGVwb3NpdCBBZGRyZXNzZXMnLCBpY29uOiBDcmVkaXRDYXJkIH0sCiAgICBdLAogIH0sCiAgewogICAgbGFiZWw6ICdHYW1lcycsCiAgICBpdGVtczogWwogICAgICB7IHBhZ2U6ICdiZXRzJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnQmV0cycsIGljb246IEdhbWVwYWQyIH0sCiAgICAgIHsgcGFnZTogJ2Nhc2luby1sb2JieScgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ0Nhc2lubyBMb2JieScsIGljb246IExheWVycyB9LAogICAgICB7IHBhZ2U6ICdzbG90LWdhbWVzJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnU2xvdCBHYW1lcycsIGljb246IFN0YXIgfSwKICAgICAgeyBwYWdlOiAnZ2FtZXMtY2F0YWxvZycgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ0dhbWVzIENhdGFsb2cnLCBpY29uOiBEYXRhYmFzZSB9LAogICAgICB7IHBhZ2U6ICdkZW1vLXNlc3Npb25zJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnRGVtbyBTZXNzaW9ucycsIGljb246IEV5ZSB9LAogICAgICB7IHBhZ2U6ICdqYWNrcG90JyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnSmFja3BvdCcsIGljb246IFRyb3BoeSB9LAogICAgICB7IHBhZ2U6ICd0b3VybmFtZW50cycgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ1RvdXJuYW1lbnRzJywgaWNvbjogVHJvcGh5IH0sCiAgICBdLAogIH0sCiAgewogICAgbGFiZWw6ICdPcHMnLAogICAgaXRlbXM6IFsKICAgICAgeyBwYWdlOiAncnRwLWNvbnRyb2wnIGFzIEFkbWluUGFnZSwgbGFiZWw6ICdSVFAgQ29udHJvbCcsIGljb246IFBlcmNlbnQgfSwKICAgICAgeyBwYWdlOiAndGVsZWdyYW0tYWxlcnRzJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnVGVsZWdyYW0gQWxlcnRzJywgaWNvbjogQmVsbCB9LAogICAgICB7IHBhZ2U6ICdub3RpZmljYXRpb25zJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnTm90aWZpY2F0aW9ucycsIGljb246IEJlbGwgfSwKICAgICAgeyBwYWdlOiAnYXVkaXQtbG9ncycgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ0F1ZGl0IExvZ3MnLCBpY29uOiBBbGVydFRyaWFuZ2xlIH0sCiAgICBdLAogIH0sCiAgewogICAgbGFiZWw6ICdNYXJrZXRpbmcnLAogICAgaXRlbXM6IFsKICAgICAgeyBwYWdlOiAnYWZmaWxpYXRlcycgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ0FmZmlsaWF0ZXMnLCBpY29uOiBVc2VyczIgfSwKICAgICAgeyBwYWdlOiAncHJvbW90aW9ucycgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ1Byb21vdGlvbnMnLCBpY29uOiBHaWZ0IH0sCiAgICAgIHsgcGFnZTogJ2xveWFsdHknIGFzIEFkbWluUGFnZSwgbGFiZWw6ICdMb3lhbHR5JywgaWNvbjogU3RhciB9LAogICAgICB7IHBhZ2U6ICdib251cy1lbmdpbmUnIGFzIEFkbWluUGFnZSwgbGFiZWw6ICdCb251cyBFbmdpbmUnLCBpY29uOiBaYXAgfSwKICAgIF0sCiAgfSwKICB7CiAgICBsYWJlbDogJ0NvbmZpZycsCiAgICBpdGVtczogWwogICAgICB7IHBhZ2U6ICdzZXR0aW5ncycgYXMgQWRtaW5QYWdlLCBsYWJlbDogJ1NldHRpbmdzJywgaWNvbjogU2V0dGluZ3MgfSwKICAgICAgeyBwYWdlOiAnc2l0ZS1jb25maWcnIGFzIEFkbWluUGFnZSwgbGFiZWw6ICdTaXRlIENvbmZpZycsIGljb246IEdsb2JlIH0sCiAgICAgIHsgcGFnZTogJ3doaXRlLWxhYmVsJyBhcyBBZG1pblBhZ2UsIGxhYmVsOiAnV2hpdGUgTGFiZWwnLCBpY29uOiBUYWcgfSwKICAgIF0sCiAgfSwKXTsKCmV4cG9ydCBmdW5jdGlvbiBNb2JpbGVNZW51QnV0dG9uKCkgewogIGNvbnN0IGlzT3BlbiA9IHVzZUFkbWluU3RvcmUoKHMpID0+IHMuaXNTaWRlYmFyT3Blbik7CiAgY29uc3Qgc2V0T3BlbiA9IHVzZUFkbWluU3RvcmUoKHMpID0+IHMuc2V0U2lkZWJhck9wZW4pOwogIHJldHVybiAoCiAgICA8YnV0dG9uCiAgICAgIG9uQ2xpY2s9eygpID0+IHNldE9wZW4oIWlzT3Blbil9CiAgICAgIGNsYXNzTmFtZT0iYWRtaW4tbW9iaWxlLW9ubHkgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgcm91bmRlZC1tZCBwLTIgdGV4dC1mb3JlZ3JvdW5kLzcwIGhvdmVyOmJnLWFjY2VudC81MCBob3Zlcjp0ZXh0LWZvcmVncm91bmQgdHJhbnNpdGlvbi1jb2xvcnMiCiAgICAgIGFyaWEtbGFiZWw9e2lzT3BlbiA/ICdDbG9zZSBtZW51JyA6ICdPcGVuIG1lbnUnfQogICAgICBzdHlsZT17eyB3aWR0aDogNDQsIGhlaWdodDogNDQgfX0KICAgID4KICAgICAge2lzT3BlbiA/IDxYIGNsYXNzTmFtZT0iaC01IHctNSIgLz4gOiA8TWVudSBjbGFzc05hbWU9ImgtNSB3LTUiIC8+fQogICAgPC9idXR0b24+CiAgKTsKfQoKZXhwb3J0IGZ1bmN0aW9uIEFkbWluU2lkZWJhcigpIHsKICBjb25zdCBjdXJyZW50UGFnZSA9IHVzZUFkbWluU3RvcmUoKHMpID0+IHMuY3VycmVudFBhZ2UpOwogIGNvbnN0IHNldFBhZ2UgPSB1c2VBZG1pblN0b3JlKChzKSA9PiBzLnNldFBhZ2UpOwogIGNvbnN0IGlzQ29sbGFwc2VkID0gdXNlQWRtaW5TdG9yZSgocykgPT4gcy5pc1NpZGViYXJDb2xsYXBzZWQpOwogIGNvbnN0IHRvZ2dsZUNvbGxhcHNlID0gdXNlQWRtaW5TdG9yZSgocykgPT4gcy50b2dnbGVTaWRlYmFyQ29sbGFwc2UpOwogIGNvbnN0IGlzT3BlbiA9IHVzZUFkbWluU3RvcmUoKHMpID0+IHMuaXNTaWRlYmFyT3Blbik7CiAgY29uc3Qgc2V0T3BlbiA9IHVzZUFkbWluU3RvcmUoKHMpID0+IHMuc2V0U2lkZWJhck9wZW4pOwoKICByZXR1cm4gKAogICAgPD4KICAgICAge2lzT3BlbiAmJiAoCiAgICAgICAgPGRpdiBjbGFzc05hbWU9ImFkbWluLW1vYmlsZS1vbmx5IGZpeGVkIGluc2V0LTAgei00MCBiZy1ibGFjay82MCBiYWNrZHJvcC1ibHVyLXNtIiBvbkNsaWNrPXsoKSA9PiBzZXRPcGVuKGZhbHNlKX0gLz4KICAgICAgKX0KICAgICAgPGFzaWRlIGNsYXNzTmFtZT17Y24oCiAgICAgICAgJ2FkbWluLXNpZGViYXIgZml4ZWQgbGVmdC0wIHRvcC0wIHotNTAgZmxleCBoLWZ1bGwgZmxleC1jb2wgYm9yZGVyLXIgYm9yZGVyLWJvcmRlci81MCBiZy1iYWNrZ3JvdW5kLzk1IGJhY2tkcm9wLWJsdXItbWQgdHJhbnNpdGlvbi1hbGwgZHVyYXRpb24tMzAwJywKICAgICAgICBpc0NvbGxhcHNlZCA/ICdhZG1pbi1zaWRlYmFyLWNvbGxhcHNlZCcgOiAnYWRtaW4tc2lkZWJhci1leHBhbmRlZCcsCiAgICAgICAgaXNPcGVuID8gJ3RyYW5zbGF0ZS14LTAnIDogJy10cmFuc2xhdGUteC1mdWxsIG1kOnRyYW5zbGF0ZS14LTAnLAogICAgICApfT4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT17Y24oJ2ZsZXggaXRlbXMtY2VudGVyIGJvcmRlci1iIGJvcmRlci1ib3JkZXIvNTAgcHgtNCcsIGlzQ29sbGFwc2VkID8gJ2gtMTQganVzdGlmeS1jZW50ZXInIDogJ2gtMTQgZ2FwLTMnKX0+CiAgICAgICAgICB7IWlzQ29sbGFwc2VkICYmIDxzcGFuIGNsYXNzTmFtZT0iZm9udC1kaXNwbGF5IHRleHQtbGcgZm9udC1ib2xkIHVwcGVyY2FzZSB0cmFja2luZy13aWRlciIgc3R5bGU9e3sgY29sb3I6ICd2YXIoLS1jb2xvci1saW1lKScgfX0+VE9MUzwvc3Bhbj59CiAgICAgICAgICB7IWlzQ29sbGFwc2VkICYmIDxzcGFuIGNsYXNzTmFtZT0idGV4dC14cyB0ZXh0LW11dGVkLWZvcmVncm91bmQiPkFkbWluPC9zcGFuPn0KICAgICAgICAgIHtpc0NvbGxhcHNlZCAmJiA8c3BhbiBjbGFzc05hbWU9ImZvbnQtZGlzcGxheSB0ZXh0LWJhc2UgZm9udC1ib2xkIHVwcGVyY2FzZSIgc3R5bGU9e3sgY29sb3I6ICd2YXIoLS1jb2xvci1saW1lKScgfX0+VDwvc3Bhbj59CiAgICAgICAgPC9kaXY+CiAgICAgICAgPG5hdiBjbGFzc05hbWU9ImZsZXgtMSBvdmVyZmxvdy15LWF1dG8gcHktMyBweC0yIHNwYWNlLXktNCI+CiAgICAgICAgICB7TkFWX1NFQ1RJT05TLm1hcCgoc2VjdGlvbikgPT4gKAogICAgICAgICAgICA8ZGl2IGtleT17c2VjdGlvbi5sYWJlbH0+CiAgICAgICAgICAgICAgeyFpc0NvbGxhcHNlZCAmJiA8cCBjbGFzc05hbWU9Im1iLTEgcHgtMiB0ZXh0LVsxMHB4XSBmb250LXNlbWlib2xkIHVwcGVyY2FzZSB0cmFja2luZy13aWRlc3QgdGV4dC1tdXRlZC1mb3JlZ3JvdW5kLzYwIj57c2VjdGlvbi5sYWJlbH08L3A+fQogICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPSJzcGFjZS15LTAuNSI+CiAgICAgICAgICAgICAgICB7c2VjdGlvbi5pdGVtcy5tYXAoKHsgcGFnZSwgbGFiZWwsIGljb246IEljb24gfSkgPT4gewogICAgICAgICAgICAgICAgICBjb25zdCBhY3RpdmUgPSBjdXJyZW50UGFnZSA9PT0gcGFnZTsKICAgICAgICAgICAgICAgICAgcmV0dXJuICgKICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIGtleT17cGFnZX0gb25DbGljaz17KCkgPT4geyBzZXRQYWdlKHBhZ2UpOyBzZXRPcGVuKGZhbHNlKTsgfX0KICAgICAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT17Y24oJ2ZsZXggdy1mdWxsIGl0ZW1zLWNlbnRlciBnYXAtMyByb3VuZGVkLWxnIHB4LTMgcHktMiB0ZXh0LXNtIGZvbnQtbWVkaXVtIHRyYW5zaXRpb24tYWxsIGR1cmF0aW9uLTE1MCcsIGFjdGl2ZSA/ICdiZy1saW1lLTQwMC8xMCB0ZXh0LWxpbWUtNDAwJyA6ICd0ZXh0LW11dGVkLWZvcmVncm91bmQgaG92ZXI6YmctYWNjZW50LzUwIGhvdmVyOnRleHQtZm9yZWdyb3VuZCcsIGlzQ29sbGFwc2VkICYmICdqdXN0aWZ5LWNlbnRlciBweC0yJyl9CiAgICAgICAgICAgICAgICAgICAgICBzdHlsZT17YWN0aXZlID8geyBib3hTaGFkb3c6ICdpbnNldCAwIDAgMCAxcHggcmdiYSgyMDQsMjU1LDAsMC4yKScgfSA6IHt9fQogICAgICAgICAgICAgICAgICAgICAgdGl0bGU9e2lzQ29sbGFwc2VkID8gbGFiZWwgOiB1bmRlZmluZWR9PgogICAgICAgICAgICAgICAgICAgICAgPEljb24gY2xhc3NOYW1lPXtjbignc2hyaW5rLTAgaC00IHctNCcsIGFjdGl2ZSA/ICd0ZXh0LWxpbWUtNDAwJyA6ICd0ZXh0LWN1cnJlbnQnKX0gLz4KICAgICAgICAgICAgICAgICAgICAgIHshaXNDb2xsYXBzZWQgJiYgPHNwYW4gY2xhc3NOYW1lPSJ0cnVuY2F0ZSI+e2xhYmVsfTwvc3Bhbj59CiAgICAgICAgICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICAgICAgICAgICk7CiAgICAgICAgICAgICAgICB9KX0KICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICApKX0KICAgICAgICA8L25hdj4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iYWRtaW4tZGVza3RvcC1vbmx5IGJvcmRlci10IGJvcmRlci1ib3JkZXIvNTAgcC0yIj4KICAgICAgICAgIDxidXR0b24gb25DbGljaz17dG9nZ2xlQ29sbGFwc2V9IGNsYXNzTmFtZT0iZmxleCB3LWZ1bGwgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHJvdW5kZWQtbGcgcC0yIHRleHQtbXV0ZWQtZm9yZWdyb3VuZCBob3ZlcjpiZy1hY2NlbnQvNTAgaG92ZXI6dGV4dC1mb3JlZ3JvdW5kIHRyYW5zaXRpb24tY29sb3JzIiBzdHlsZT17eyBoZWlnaHQ6IDM2IH19PgogICAgICAgICAgICB7aXNDb2xsYXBzZWQgPyA8Q2hldnJvblJpZ2h0IGNsYXNzTmFtZT0iaC00IHctNCIgLz4gOiA8Q2hldnJvbkxlZnQgY2xhc3NOYW1lPSJoLTQgdy00IiAvPn0KICAgICAgICAgIDwvYnV0dG9uPgogICAgICAgIDwvZGl2PgogICAgICA8L2FzaWRlPgogICAgPC8+CiAgKTsKfQo=
+'use client';
+
+import React from 'react';
+import {
+  LayoutDashboard, Users, Wallet, ArrowDownToLine, ArrowUpFromLine,
+  Gamepad2, Trophy, Percent, Shield, Settings, Bell,
+  ChevronLeft, ChevronRight, Menu, X, Activity, Zap, Eye,
+  CreditCard, Layers, Star, Users2, Gift, Globe,
+  AlertTriangle, Database, Tag
+} from 'lucide-react';
+import { useAdminStore, type AdminPage } from '@/stores/admin';
+import { cn } from '@/lib/utils';
+
+const NAV_SECTIONS = [
+  { label: 'Overview', items: [
+    { page: 'dashboard' as AdminPage, label: 'Dashboard', icon: LayoutDashboard },
+    { page: 'live-monitor' as AdminPage, label: 'Live Monitor', icon: Activity },
+  ]},
+  { label: 'Players', items: [
+    { page: 'users' as AdminPage, label: 'Users', icon: Users },
+    { page: 'wallets' as AdminPage, label: 'Wallets', icon: Wallet },
+    { page: 'responsible-gaming' as AdminPage, label: 'Responsible Gaming', icon: Shield },
+  ]},
+  { label: 'Finance', items: [
+    { page: 'deposits' as AdminPage, label: 'Deposits', icon: ArrowDownToLine },
+    { page: 'withdrawals' as AdminPage, label: 'Withdrawals',icon: ArrowUpFromLine },
+    { page: 'deposit-addresses' as AdminPage, label: 'Deposit Addresses', icon: CreditCard },
+  ]},
+  { label: 'Games', items: [
+    { page: 'bets' as AdminPage, label: 'Bets', icon: Gamepad2 },
+    { page: 'casino-lobby' as AdminPage, label: 'Casino Lobby', icon: Layers },
+    { page: 'slot-games' as AdminPage, label: 'Slot Games', icon: Star },
+    { page: 'games-catalog' as AdminPage, label: 'Games Catalog', icon: Database },
+    { page: 'demo-sessions' as AdminPage, label: 'Demo Sessions', icon: Eye },
+    { page: 'jackpot' as AdminPage, label: 'Jackpot', icon: Trophy },
+    { page: 'tournaments' as AdminPage, label: 'Tournaments', icon: Trophy },
+  ]},
+  { label: 'Ops', items: [
+    { page: 'rtp-control' as AdminPage, label: 'RTP Control', icon: Percent },
+    { page: 'telegram-alerts' as AdminPage, label: 'Telegram Alerts', icon: Bell },
+    { page: 'notifications' as AdminPage, label: 'Notifications', icon: Bell },
+    { page: 'audit-logs' as AdminPage, label: 'Audit Logs', icon: AlertTriangle },
+  ]},
+  { label: 'Marketing', items: [
+    { page: 'affiliates' as AdminPage, label: 'Affiliates', icon: Users2 },
+    { page: 'promotions' as AdminPage, label: 'Promotions', icon: Gift },
+    { page: 'loyalty' as AdminPage, label: 'Loyalty', icon: Star },
+    { page: 'bonus-engine' as AdminPage, label: 'Bonus Engine', icon: Zap },
+  ]},
+  { label: 'Config', items: [
+    { page: 'settings' as AdminPage, label: 'Settings', icon: Settings },
+    { page: 'site-config' as AdminPage, label: 'Site Config', icon: Globe },
+    { page: 'white-label' as AdminPage, label: 'White Label', icon: Tag },
+  ]},
+];
+
+export function MobileMenuButton() {
+  const isOpen = useAdminStore((s) => s.isSidebarOpen);
+  const setOpen = useAdminStore((s) => s.setSidebarOpen);
+  return (
+    <button onClick={() => setOpen(!isOpen)}
+      className="admin-mobile-only flex items-center justify-center rounded-md p-2 text-foreground/70 hover:bg-accent/50 hover:text-foreground transition-colors"
+      aria-label={isOpen ? 'Close menu' : 'Open menu'}
+      style={{ width: 44, height: 44 }}>
+      {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+    </button>
+  );
+}
+
+export function AdminSidebar() {
+  const currentPage = useAdminStore((s) => s.currentPage);
+  const setPage = useAdminStore((s) => s.setPage);
+  const isCollapsed = useAdminStore((s) => s.isSidebarCollapsed);
+  const toggleCollapse = useAdminStore((s) => s.toggleSidebarCollapse);
+  const isOpen = useAdminStore((s) => s.isSidebarOpen);
+  const setOpen = useAdminStore((s) => s.setSidebarOpen);
+  return (
+    <>
+      {isOpen && <div className="admin-mobile-only fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />}
+      <aside className={cn(
+        'admin-sidebar fixed left-0 top-0 z-50 flex h-full flex-col border-r border-border/50 bg-background/95 backdrop-blur-md transition-all duration-300',
+        isCollapsed ? 'admin-sidebar-collapsed' : 'admin-sidebar-expanded',
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+      )}>
+        <div className={cn('flex items-center border-b border-border/50 px-4', isCollapsed ? 'h-14 justify-center' : 'h-14 gap-3')}>
+          {!isCollapsed && <span className="font-display text-lg font-bold uppercase tracking-wider" style={{ color: 'var(--color-lime)' }}>TOLS</span>}
+          {!isCollapsed && <span className="text-xs text-muted-foreground">Admin</span>}
+          {isCollapsed && <span className="font-display text-base font-bold uppercase" style={{ color: 'var(--color-lime)' }}>T</span>}
+        </div>
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.label}>
+              {!isCollapsed && <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{section.label}</p>}
+              <div className="space-y-0.5">
+                {section.items.map(({ page, label, icon: Icon }) => {
+                  const active = currentPage === page;
+                  return (
+                    <button key={page} onClick={() => { setPage(page); setOpen(false); }}
+                      className={cn('flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
+                        active ? 'bg-lime-400/10 text-lime-400' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+                        isCollapsed && 'justify-center px-2')}
+                      style={active ? { boxShadow: 'inset 0 0 0 1px rgba(204,255,0,0.2)' } : { }}
+                      title={isCollapsed ? label : undefined}>
+                      <Icon className={cn('shrink-0 h-4 w-4', active ? 'text-lime-400' : 'text-current')} />
+                      {!isCollapsed && <span className="truncate">{label}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <div className="admin-desktop-only border-t border-border/50 p-2">
+          <button onClick={toggleCollapse}
+            className="flex w-full items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+            style={{ height: 36 }}>
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
