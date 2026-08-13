@@ -57,6 +57,10 @@ const VirtualGamesPage = dynamic(
   () => import('@/components/admin/modules/virtual-games-page').then((m) => ({ default: m.VirtualGamesPage })),
   { loading: () => <PageLoader /> },
 );
+const DepositAddressesPage = dynamic(
+  () => import('@/components/admin/modules/deposit-addresses-page').then((m) => ({ default: m.DepositAddressesPage })),
+  { loading: () => <PageLoader /> },
+);
 const BetsPage = dynamic(
   () => import('@/components/admin/modules/bets-page').then((m) => ({ default: m.BetsPage })),
   { loading: () => <PageLoader /> },
@@ -161,6 +165,10 @@ const RtpControlPage = dynamic(
   () => import('@/components/admin/modules/ops/rtp-control-page').then((m) => ({ default: m.RtpControlPage })),
   { loading: () => <PageLoader /> },
 );
+const LiveMonitorPage = dynamic(
+  () => import('@/components/admin/modules/ops/live-monitor-page').then((m) => ({ default: m.LiveMonitorPage })),
+  { loading: () => <PageLoader /> },
+);
 
 /* ------------------------------------------------------------------ */
 /*  Page Router                                                        */
@@ -187,6 +195,8 @@ function PageRouter() {
       return <CasinoLobbyPage />;
     case 'virtual-games':
       return <VirtualGamesPage />;
+    case 'deposit-addresses':
+      return <DepositAddressesPage />;
     case 'bets':
       return <BetsPage />;
     case 'demo-sessions':
@@ -239,6 +249,8 @@ function PageRouter() {
       return <TelegramAlertsPage />;
     case 'rtp-control':
       return <RtpControlPage />;
+    case 'live-monitor':
+      return <LiveMonitorPage />;
     default:
       return <DashboardPage />;
   }
@@ -468,10 +480,6 @@ function PageHeader() {
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
 
-  // Check localStorage AFTER mount to avoid SSR/CSR hydration mismatch.
-  // Server renders PasswordGate (authenticated=false); client's first
-  // render also has authenticated=false (matching the server), then
-  // useEffect updates to the real value.
   useEffect(() => {
     try {
       if (localStorage.getItem('tols_admin_auth') === 'true') {
