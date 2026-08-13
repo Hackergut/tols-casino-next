@@ -1,18 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CHAINS, CHAIN_IDS } from "@/lib/chains";
+import CoinIcon from "./CoinIcon";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-interface ChainOption {
-  id: string;
-  name: string;
-  symbol: string;
-  color: string;
+/*
+ * Deposit panel — pick a USD amount + network and the deposit address is shown
+ * statically right there (it's the platform's fixed receive address, not a
+ * per-user wallet). Each deposit gets a UNIQUE crypto amount so the balance
+ * credits itself once the payment lands — no tx hash required from the player.
+ *
+ * Fully responsive; original coin logos; all colours from theme tokens.
+ */
+
+const PRESETS = [10, 25, 50, 100];
+
+// Format a crypto amount without rounding away the unique fingerprint.
+function fmtCrypto(n: number): string {
+  if (!Number.isFinite(n)) return "0";
+  return parseFloat(n.toFixed(8)).toString();
 }
 
-interface DepositIntent {
+type Intent = {
   id: string;
   chain: string;
   name: string;
@@ -23,322 +32,289 @@ interface DepositIntent {
   minConfirmations: number;
   amount: number;
   amountUsd: number;
-  uri: string;
   qr: string | null;
-  status: string;
-  message: string;
-}
+  userRef: string;
+};
 
-interface DepositStatus {
-  id: string;
-  status: string;
-  credited: boolean;
-  amount: number;
-  amountUsd: number;
-}
-
-type PanelStep = "form" | "awaiting" | "credited";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-const CHAINS: ChainOption[] = [
-  { id: "tron", name: "Tron (TRC-20)", symbol: "USDT", color: "#ff0013" },
-  { id: "bsc", name: "BNB Smart Chain", symbol: "USDT", color: "#f3ba2f" },
-  { id: "sol", name: "Solana", symbol: "USDT", color: "#9945ff" },
-  { id: "eth", name: "Ethereum", symbol: "USDT", color: "#627eea" },
-];
-
-const PRESET_AMOUNTS = [10, 25, 50, 100, 250, 500];
-const POLL_INTERVAL = 8000; // 8 seconds
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 export default function DepositPanel() {
-  const [step, setStep] = useState<PanelStep>("form");
-  const [chain, setChain] = useState<string>(CHAINS[0].id);
-  const [amount, setAmount] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [intent, setIntent] = useState<DepositIntent | null>(null);
-  const [txHash, setTxHash] = useState("");
-  const [hashSubmitting, setHashSubmitting] = useState(false);
-  const [hashMessage, setHashMessage] = useState<string | null>(null);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const [chain, setChain] = useState("btc");
+  const [amount, setAmount] = useState(50);
 
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  const [intent, setIntent] = useState<Intent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
-  // Create deposit intent
-  const handleDeposit = useCallback(async () => {
-    const usd = parseFloat(amount);
-    if (!usd || usd <= 0) {
-      setError("Enter a valid amount");
-      return;
-    }
-    setLoading(true);
-    setError(null);
+  const [copied, setCopied] = useState<null | "addr" | "amt">(null);
+  const [status, setStatus] = useState<"waiting" | "credited">("waiting");
+  const [stars, setStars] = useState<{ busy: boolean; msg: string }>({ busy: false, msg: "" });
 
-    try {
-      const res = await fetch("/api/deposits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chain, amountUsd: usd }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Failed to create deposit");
-      }
-      setIntent(json.data);
-      setStep("awaiting");
-      startPolling(json.data.id);
-    } catch (e: any) {
-      setError(e.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }, [chain, amount]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Poll deposit status
-  const startPolling = useCallback((depositId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/deposits/status/${depositId}`);
-        if (!res.ok) return;
-        const json = await res.json();
-        const data: DepositStatus = json.data ?? json;
-        if (data.credited) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setStep("credited");
-        }
-      } catch {
-        // Silently retry on next interval
-      }
-    }, POLL_INTERVAL);
-  }, []);
+  const isTg =
+    typeof window !== "undefined" && !!(window as any).Telegram?.WebApp && !!(window as any).Telegram?.WebApp?.initData;
 
-  // Attach tx hash
-  const handleAttachHash = useCallback(async () => {
-    if (!intent || !txHash.trim()) return;
-    setHashSubmitting(true);
-    setHashMessage(null);
-    try {
-      const res = await fetch("/api/deposits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ depositId: intent.id, txHash: txHash.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || "Failed");
-      setHashMessage(json.data?.message || "Transaction registered!");
-      setTxHash("");
-    } catch (e: any) {
-      setHashMessage(e.message);
-    } finally {
-      setHashSubmitting(false);
-    }
-  }, [intent, txHash]);
+  const meta = CHAINS[chain];
 
-  // Reset
-  const handleReset = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    setStep("form");
-    setIntent(null);
-    setError(null);
-    setTxHash("");
-    setHashMessage(null);
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
-  // CREDITED
-  if (step === "credited") {
-    return (
-      <div className="bg-[#1a1d2e] rounded-xl border border-green-500/20 p-6 w-full max-w-md mx-auto text-center">
-        <div className="text-4xl mb-3">\u2705</div>
-        <h3 className="text-xl font-bold text-green-400 mb-2">Deposit Credited!</h3>
-        <p className="text-gray-300 text-sm mb-1">
-          ${intent?.amountUsd} has been added to your balance.
-        </p>
-        <p className="text-gray-500 text-xs mb-5">
-          {intent?.amount} {intent?.symbol} on {intent?.name}
-        </p>
-        <button
-          onClick={handleReset}
-          className="px-6 py-2.5 bg-[#ccff00] text-black font-semibold rounded-lg hover:bg-[#b8e600] transition-colors text-sm"
-        >
-          Make Another Deposit
-        </button>
-      </div>
-    );
-  }
+  // Poll deposit history until the current intent is credited.
+  const startPolling = useCallback((id: string) => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch("/api/deposits");
+        const j = await r.json();
+        const row = Array.isArray(j?.data) ? j.data.find((d: any) => d.id === id) : null;
+        if (row?.credited) {
+          setStatus("credited");
+          stopPolling();
+          setTimeout(() => window.location.reload(), 2200);
+        }
+      } catch { /* keep polling */ }
+    }, 15000);
+  }, []);
 
-  // AWAITING PAYMENT
-  if (step === "awaiting" && intent) {
-    return (
-      <div className="bg-[#1a1d2e] rounded-xl border border-white/5 p-6 w-full max-w-md mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Send Payment</h3>
-          <button onClick={handleReset} className="text-xs text-gray-400 hover:text-white transition-colors">
-            \u2190 Back
-          </button>
-        </div>
+  // Load (or reuse) the deposit intent for the current selection. The address
+  // is static; only the unique amount + QR are (re)issued per selection.
+  const loadIntent = useCallback(async (ch: string, usd: number) => {
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch("/api/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chain: ch, amountUsd: usd }),
+      });
+      const j = await r.json();
+      if (j.success) {
+        setIntent(j.data);
+        setStatus("waiting");
+        startPolling(j.data.id);
+      } else {
+        setIntent(null);
+        setErr(j.error || "Deposits for this network aren’t available yet");
+      }
+    } catch {
+      setIntent(null);
+      setErr("Network error");
+    }
+    setLoading(false);
+  }, [startPolling]);
 
-        {/* Chain badge */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: intent.color }} />
-          <span className="text-sm text-gray-300">{intent.name}</span>
-        </div>
+  // Debounced reload whenever the selection changes (so typing a custom amount
+  // doesn't fire a request per keystroke).
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => loadIntent(chain, amount), 450);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [chain, amount, loadIntent]);
 
-        {/* QR Code */}
-        {intent.qr && (
-          <div className="flex justify-center mb-4">
-            <img src={intent.qr} alt="QR Code" className="w-48 h-48 rounded-lg bg-white p-2" />
-          </div>
-        )}
+  useEffect(() => () => stopPolling(), []);
 
-        {/* Amount */}
-        <div className="bg-[#0f1118] rounded-lg p-4 mb-3 border border-white/5">
-          <p className="text-xs text-gray-400 mb-1">Send exactly:</p>
-          <p className="text-xl font-bold text-[#ccff00]">
-            {intent.amount} {intent.symbol}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">\u2248 ${intent.amountUsd} USD</p>
-        </div>
+  const copyText = async (text: string, which: "addr" | "amt") => {
+    try { await navigator.clipboard.writeText(text); setCopied(which); setTimeout(() => setCopied(null), 1500); } catch {}
+  };
 
-        {/* Address */}
-        <div className="bg-[#0f1118] rounded-lg p-4 mb-3 border border-white/5">
-          <p className="text-xs text-gray-400 mb-1">To address:</p>
-          <p className="text-sm font-mono text-white break-all select-all">{intent.address}</p>
-          {intent.memo && (
-            <div className="mt-2 pt-2 border-t border-white/5">
-              <p className="text-xs text-gray-400">Memo/Tag:</p>
-              <p className="text-sm font-mono text-yellow-300">{intent.memo}</p>
-            </div>
-          )}
-        </div>
+  const payWithStars = async () => {
+    const wa = (window as any).Telegram?.WebApp;
+    if (!wa) return setStars({ busy: false, msg: "Open this inside Telegram to pay with Stars." });
+    setStars({ busy: true, msg: "Creating invoice..." });
+    try {
+      const r = await fetch("/api/payments/stars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountUsdt: amount }),
+      });
+      const j = await r.json();
+      if (!j.success) return setStars({ busy: false, msg: j.error || "Invoice failed" });
+      const { invoiceLink, depositId } = j.data;
+      setStars({ busy: true, msg: "Awaiting Stars payment..." });
+      wa.openInvoice?.(invoiceLink, (st: string) => {
+        if (st === "paid") pollStars(depositId);
+        else setStars({ busy: false, msg: st === "cancelled" ? "Payment cancelled." : "Payment pending." });
+      });
+    } catch { setStars({ busy: false, msg: "Network error" }); }
+  };
 
-        {/* Copy address button */}
-        <button
-          onClick={() => navigator.clipboard?.writeText(intent.address)}
-          className="w-full py-2 mb-4 text-xs text-gray-300 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-        >
-          \ud83d\udccb Copy Address
-        </button>
+  const pollStars = async (depositId: string) => {
+    setStars({ busy: true, msg: "Confirming on server..." });
+    for (let i = 0; i < 20; i++) {
+      await new Promise((res) => setTimeout(res, 1500));
+      try {
+        const r = await fetch(`/api/payments/stars/status?depositId=${depositId}`);
+        const j = await r.json();
+        if (j?.data?.status === "paid") { setStars({ busy: false, msg: "Paid! Balance credited." }); window.location.reload(); return; }
+        if (j?.data?.status === "failed") { setStars({ busy: false, msg: "Payment failed." }); return; }
+      } catch {}
+    }
+    setStars({ busy: false, msg: "Confirmation timed out — your balance updates once the webhook lands." });
+  };
 
-        {/* Status indicator */}
-        <div className="flex items-center gap-2 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-lg mb-4">
-          <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-          <span className="text-xs text-yellow-300">Waiting for payment... auto-checking every 8s</span>
-        </div>
+  const lime = "var(--color-lime)";
+  const raised = "var(--color-surface-raised)";
+  const color = intent?.color ?? meta?.color;
 
-        {/* Optional: attach tx hash */}
-        <details className="group">
-          <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition-colors">
-            Already sent? Paste your transaction hash to speed things up
-          </summary>
-          <div className="mt-3 flex gap-2">
-            <input
-              type="text"
-              placeholder="0x... or transaction hash"
-              value={txHash}
-              onChange={(e) => setTxHash(e.target.value)}
-              className="flex-1 bg-[#0f1118] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ccff00]/50"
-            />
+  return (
+    <div className="mx-auto w-full max-w-md space-y-4">
+      {/* Amount */}
+      <div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount (USD)</div>
+        <div className="grid grid-cols-4 gap-2">
+          {PRESETS.map((p) => (
             <button
-              onClick={handleAttachHash}
-              disabled={hashSubmitting || !txHash.trim()}
-              className="px-4 py-2 bg-[#ccff00]/20 text-[#ccff00] rounded-lg text-xs font-medium hover:bg-[#ccff00]/30 disabled:opacity-50 transition-colors"
+              key={p}
+              onClick={() => setAmount(p)}
+              className="rounded-lg py-2 text-sm font-bold transition-colors"
+              style={{
+                background: amount === p ? lime : raised,
+                color: amount === p ? "var(--color-bg)" : "var(--color-foreground)",
+              }}
             >
-              {hashSubmitting ? "..." : "Submit"}
+              ${p}
+            </button>
+          ))}
+        </div>
+        <div className="relative mt-2">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">$</span>
+          <input
+            type="number"
+            min={1}
+            value={amount}
+            onChange={(e) => setAmount(Math.max(1, Number(e.target.value) || 0))}
+            className="w-full rounded-lg py-2 pl-7 pr-3 text-sm font-semibold outline-none"
+            style={{ background: raised, color: "var(--color-foreground)", border: "1px solid var(--color-border-strong)" }}
+          />
+        </div>
+      </div>
+
+      {/* Network — original coin logos */}
+      <div>
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Network</div>
+        <div className="flex flex-wrap gap-2">
+          {CHAIN_IDS.map((id) => {
+            const c = CHAINS[id];
+            const active = id === chain;
+            return (
+              <button
+                key={id}
+                onClick={() => setChain(id)}
+                className="flex items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-2.5 text-xs font-semibold transition-all"
+                style={{
+                  background: active ? lime : raised,
+                  color: active ? "var(--color-bg)" : "var(--color-foreground)",
+                  boxShadow: active ? `0 0 0 2px ${c.color}66` : "none",
+                }}
+              >
+                <CoinIcon chain={id} size={18} />
+                {c.symbol}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Telegram Stars (only inside Telegram) */}
+      {isTg && (
+        <div className="rounded-2xl p-4" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border-strong)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-bold">Pay with Telegram Stars</div>
+              <div className="text-xs text-muted-foreground">Telegram’s in-app wallet · instant</div>
+            </div>
+            <button
+              onClick={payWithStars}
+              disabled={stars.busy}
+              className="rounded-lg px-4 py-2 text-sm font-bold transition-colors"
+              style={{ background: lime, color: "var(--color-bg)" }}
+            >
+              {stars.busy ? "..." : `⭐ Pay`}
             </button>
           </div>
-          {hashMessage && (
-            <p className="text-xs mt-2 text-gray-400">{hashMessage}</p>
-          )}
-        </details>
-      </div>
-    );
-  }
-
-  // DEPOSIT FORM
-  return (
-    <div className="bg-[#1a1d2e] rounded-xl border border-white/5 p-6 w-full max-w-md mx-auto">
-      <h2 className="text-xl font-bold text-white mb-1">Deposit</h2>
-      <p className="text-sm text-gray-400 mb-5">
-        Send crypto to your account. Credited automatically after on-chain confirmation.
-      </p>
-
-      {/* Chain selector */}
-      <label className="block text-sm text-gray-400 mb-1.5">Select Network</label>
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        {CHAINS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setChain(c.id)}
-            className={`px-3 py-2.5 rounded-lg text-xs font-medium transition-all border ${
-              chain === c.id
-                ? "border-[#ccff00]/50 bg-[#ccff00]/10 text-[#ccff00]"
-                : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
-            }`}
-          >
-            <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: c.color }} />
-            {c.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Amount input */}
-      <label className="block text-sm text-gray-400 mb-1.5">Amount (USD)</label>
-      <input
-        type="number"
-        inputMode="decimal"
-        placeholder="Enter amount in USD"
-        value={amount}
-        onChange={(e) => { setAmount(e.target.value); setError(null); }}
-        className="w-full bg-[#0f1118] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#ccff00]/50 transition-colors mb-3"
-      />
-
-      {/* Preset amounts */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {PRESET_AMOUNTS.map((preset) => (
-          <button
-            key={preset}
-            onClick={() => setAmount(String(preset))}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-              amount === String(preset)
-                ? "bg-[#ccff00]/20 text-[#ccff00] border border-[#ccff00]/30"
-                : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10"
-            }`}
-          >
-            ${preset}
-          </button>
-        ))}
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {error}
+          {stars.msg && <div className="mt-2 text-xs text-muted-foreground">{stars.msg}</div>}
         </div>
       )}
 
-      {/* Submit */}
-      <button
-        onClick={handleDeposit}
-        disabled={loading || !amount}
-        className={`w-full py-3 rounded-lg font-semibold text-sm transition-all ${
-          loading || !amount
-            ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-            : "bg-[#ccff00] text-black hover:bg-[#b8e600] cursor-pointer"
-        }`}
-      >
-        {loading ? "Creating deposit..." : "Generate Payment Address"}
-      </button>
+      {/* Deposit card — static address + unique amount, shown directly */}
+      <div className="overflow-hidden rounded-2xl" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border-strong)" }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-4">
+          <div className="flex items-center gap-2">
+            <CoinIcon chain={chain} size={22} />
+            <span className="text-sm font-bold" style={{ color: "var(--color-foreground)" }}>{meta?.name}</span>
+          </div>
+          {loading ? (
+            <span className="text-[11px] font-semibold text-muted-foreground">Updating…</span>
+          ) : status === "credited" ? (
+            <span className="text-[11px] font-bold" style={{ color: lime }}>✓ Credited</span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: color }} />
+              Awaiting transfer
+            </span>
+          )}
+        </div>
+
+        {err && !intent ? (
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground">{err}</div>
+        ) : (
+          <div className="flex flex-col items-center px-4 py-4">
+            {/* QR */}
+            <div className="relative rounded-2xl bg-white p-3" style={{ boxShadow: `0 0 0 2px ${color}55, 0 12px 30px rgba(0,0,0,.4)` }}>
+              {intent?.qr ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={intent.qr} alt="Deposit QR" className="h-44 w-44 sm:h-52 sm:w-52" style={{ opacity: loading ? 0.5 : 1, transition: "opacity .2s" }} />
+              ) : (
+                <div className="h-44 w-44 animate-pulse rounded-lg bg-black/10 sm:h-52 sm:w-52" />
+              )}
+              <div
+                className="absolute -left-2 -top-2 h-9 w-9 overflow-hidden rounded-full"
+                style={{ boxShadow: "0 4px 12px rgba(0,0,0,.4)" }}
+              >
+                <CoinIcon chain={chain} size={36} />
+              </div>
+            </div>
+
+            {/* Exact amount to send — the headline */}
+            <div
+              onClick={() => intent && copyText(fmtCrypto(intent.amount), "amt")}
+              className="mt-4 w-full cursor-pointer rounded-xl px-3 py-3 text-center transition-colors"
+              style={{ background: raised, border: `1px solid ${color}44` }}
+            >
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Send exactly · {copied === "amt" ? "copied!" : "tap to copy"}
+              </div>
+              <div className="mt-0.5 break-all font-mono text-xl font-extrabold" style={{ color: "var(--color-foreground)" }}>
+                {intent ? `${fmtCrypto(intent.amount)} ${intent.symbol}` : "…"}
+              </div>
+              <div className="text-xs font-semibold" style={{ color: lime }}>≈ ${intent?.amountUsd ?? amount}</div>
+            </div>
+
+            {/* Static address */}
+            <button
+              onClick={() => intent && copyText(intent.address, "addr")}
+              disabled={!intent}
+              className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left"
+              style={{ background: raised }}
+            >
+              <span className="truncate font-mono text-xs" style={{ color: "var(--color-foreground)" }}>{intent?.address ?? "…"}</span>
+              <span className="shrink-0 text-xs font-semibold" style={{ color: copied === "addr" ? lime : "var(--color-muted-foreground)" }}>
+                {copied === "addr" ? "Copied" : "Copy"}
+              </span>
+            </button>
+
+            <div className="mt-3 w-full space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+              <div>
+                Send the <b style={{ color: "var(--color-foreground)" }}>exact amount</b> above — the unique figure is how the payment is matched to you automatically.
+              </div>
+              {intent?.memo ? <div style={{ color: "var(--color-loss)" }}>⚠ Memo/Tag required: <b>{intent.memo}</b></div> : null}
+              <div>{intent?.minConfirmations ?? 2} network confirmations required. Credited automatically — no action needed.</div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
