@@ -43,22 +43,39 @@ export default function AdminPage() {
     setLoading(true);
     setError('');
     try {
-      const r = await fetch('/api/ops/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+      const r = await fetch('/api/ops/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
       const j = await r.json();
       if (j?.success) setAuthed(true);
       else setError(j?.error || 'Invalid password');
-    } catch { setError('Connection error'); }
-    finally { setLoading(false); }
+    } catch {
+      setError('Connection error');
+    } finally {
+      setLoading(false);
+    }
   }, [pw]);
 
   if (!authed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <form onSubmit={login} className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-md">
-          <h1 className="text-center text-xl font-bold" style={{ color: 'var(--color-lime)' }}>Admin Access</h1>
-          <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Enter admin password" className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-lime-400/50 focus:outline-none" />
+          <h1 className="text-center text-xl font-bold" style={{ color: 'var(--color-lime)' }}>
+            Admin Access
+          </h1>
+          <input
+            type="password"
+            value={pw}
+            onChange={e => setPw(e.target.value)}
+            placeholder="Enter admin password"
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-lime-400/50 focus:outline-none"
+          />
           {error && <p className="text-sm text-red-400">{error}</p>}
-          <Button type="submit" disabled={loading} className="w-full bg-lime-400 text-black hover:bg-lime-300">{loading ? 'Authenticating…' : 'Enter'}</Button>
+          <Button type="submit" disabled={loading} className="w-full bg-lime-400 text-black hover:bg-lime-300">
+            {loading ? 'Authenticating...' : 'Enter'}
+          </Button>
         </form>
       </div>
     );
@@ -89,4 +106,5 @@ export default function AdminPage() {
     }
   };
 
-  return <div className="admin-content admin-page-enter">{renderPage()}</div>;'
+  return <div className="admin-content admin-page-enter">{renderPage()}</div>;
+}
