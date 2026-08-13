@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// GET /api/games-lobby?category=originals|slots|live|table|instant|all&featured=true
+// GET /api/games-lobby?category=originals|slots|live|table|instant|all&featured=true&vendor=eurovirtuals
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
     const featured = searchParams.get("featured") === "true";
+    const vendor = searchParams.get("vendor");
 
     const where: Record<string, unknown> = { enabled: true };
     if (category && category !== "all") where.category = category;
     if (featured) where.featured = true;
+    if (vendor) where.provider = { equals: vendor, mode: "insensitive" };
 
     const games = await db.casinoGame.findMany({
       where,

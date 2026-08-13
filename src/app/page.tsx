@@ -14,6 +14,7 @@ import { CasinoSidebar } from "@/components/lobby/CasinoSidebar";
 import { CasinoFooter } from "@/components/lobby/CasinoFooter";
 import { GameLoading, LobbyGameCard } from "@/components/lobby/GameCards";
 import { GameDetailModal } from "@/components/lobby/GameDetailModal";
+import { VirtualGameModal } from "@/components/lobby/VirtualGameModal";
 import { LobbyView, GamesGridSkeleton, EmptyGames } from "@/components/lobby/LobbyView";
 import { HomeView } from "@/components/lobby/HomeView";
 import { AuthGate } from "@/components/lobby/AuthGate";
@@ -93,6 +94,7 @@ function CasinoPage() {
   const [activeEvGame, setActiveEvGame] = useState<EvGame | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [detailGame, setDetailGame] = useState<LobbyGame | null>(null);
+  const [virtualGame, setVirtualGame] = useState<LobbyGame | null>(null);
   // null = still checking, so the gate never flashes for a signed-in player.
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [gateDismissed, setGateDismissed] = useState(true);
@@ -223,6 +225,8 @@ function CasinoPage() {
     if (game.gameType === "original") {
       setActiveGame(game.slug);
       setActiveSection("originals");
+    } else if (game.gameType === "external_virtual") {
+      setVirtualGame(game);
     } else {
       setDetailGame(game);
     }
@@ -353,6 +357,7 @@ function CasinoPage() {
       </div>
 
       {detailGame && <GameDetailModal game={detailGame} onClose={() => setDetailGame(null)} />}
+      {virtualGame && <VirtualGameModal game={virtualGame} onClose={() => setVirtualGame(null)} />}
 
       <MobileBottomNav
         activeSection={activeSection}

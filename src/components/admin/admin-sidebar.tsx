@@ -85,6 +85,7 @@ const NAV_DESCRIPTIONS: Record<AdminPage, string> = {
   'deposit-tracker': 'Deposit tracking by registration',
   'telegram-alerts': 'Telegram notification alerts',
   'rtp-control': 'RTP control panel',
+  'virtual-games': 'EuroVirtuals integration: config, transactions, test launch',
 };
 
 interface NavGroup {
@@ -118,6 +119,7 @@ const navGroups: NavGroup[] = [
       { page: 'casino-lobby', label: 'Casino', icon: <Gamepad2 className="h-4 w-4" />, badge: true },
       { page: 'games-catalog', label: 'Games Catalog', icon: <Layers className="h-4 w-4" /> },
       { page: 'slot-games', label: 'Slot Games', icon: <Dice1 className="h-4 w-4" /> },
+      { page: 'virtual-games', label: 'Virtual Games', icon: <Gamepad2 className="h-4 w-4" />, badge: true },
       { page: 'bets', label: 'Bets', icon: <Dice1 className="h-4 w-4" />, badge: true },
       { page: 'demo-sessions', label: 'Demo Sessions', icon: <Play className="h-4 w-4" /> },
       { page: 'jackpot', label: 'Global Jackpot', icon: <Trophy className="h-4 w-4" /> },

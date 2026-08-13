@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Gamepad2, Home, Layers, Radio, LayoutGrid, Search } from "lucide-react";
 import { LobbyGameCard } from "./GameCards";
 import { Carousel } from "./Carousel";
+import { VirtualGamesView } from "./VirtualGamesView";
 import { timeAgo, type CasinoStats, type LiveBet, type LobbyGame } from "./lobby-types";
 
 /* Italian category tabs mapped to grid filters. */
@@ -14,6 +15,7 @@ const IT_TABS = [
   { id: "originals", label: "Originali", icon: Gamepad2 },
   { id: "slots", label: "Slot", icon: Layers },
   { id: "live", label: "Casinò dal vivo", icon: Radio },
+  { id: "virtual", label: "Virtuali", icon: Radio },
   { id: "table", label: "Giochi da Tavolo", icon: LayoutGrid },
 ] as const;
 
@@ -148,6 +150,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
       activeTab === "originals" ? g.gameType === "original" :
       activeTab === "slots" ? g.gameType === "external_slot" :
       activeTab === "live" ? g.isLive :
+      activeTab === "virtual" ? g.gameType === "external_virtual" :
       activeTab === "table" ? /table|baccarat|blackjack|roulette|poker/i.test(g.name) :
       true;
     const okQuery = query ? g.name.toLowerCase().includes(query.toLowerCase()) : true;
@@ -194,8 +197,10 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
 
       <MegaJackpot />
 
-      {/* TOLS GAMES — HIG shelf carousel */}
-      {loading ? (
+      {/* Virtuali tab uses its own dedicated view (EuroVirtuals catalog). */}
+      {activeTab === "virtual" ? (
+        <VirtualGamesView onGameSelect={onGameClick} />
+      ) : loading ? (
         <GamesGridSkeleton />
       ) : filteredGames.length === 0 ? (
         <EmptyGames label="Nessun gioco in questa categoria" />
