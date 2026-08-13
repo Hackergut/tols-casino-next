@@ -11,6 +11,7 @@ interface Props {
   initialBalance: number;
 }
 
+
 type Phase = 'betting' | 'running' | 'cashed' | 'crashed';
 
 interface HistoryEntry {
@@ -19,20 +20,10 @@ interface HistoryEntry {
   payout: number;
 }
 
-/* ── Neon + Glass constants ── */
-const NEON = {
-  lime: '0 0 12px rgba(204,255,0,0.4), 0 0 40px rgba(204,255,0,0.1)',
-  win: '0 0 16px rgba(0,255,102,0.5), 0 0 50px rgba(0,255,102,0.12)',
-  loss: '0 0 16px rgba(255,51,102,0.5), 0 0 50px rgba(255,51,102,0.12)',
-};
-const GLASS = {
-  panel: { background: 'rgba(22,22,26,0.65)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px' } as React.CSSProperties,
-};
-
-/** Deterministic jitter for shatter animation */
+/** Deterministic jitter so the shatter looks random but renders stably. */
 function jitter(i: number, salt: number): number {
   const x = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
-  return (x - Math.floor(x)) * 2 - 1;
+  return (x - Math.floor(x)) * 2 - 1; // -1..1
 }
 
 const W = 600;
@@ -63,7 +54,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
   useEffect(() => { autoCashoutRef.current = autoCashout; }, [autoCashout]);
   useEffect(() => { betAmountRef.current = betAmount; }, [betAmount]);
 
-  // Screen-space points
+  // Screen-space points — one mapping shared by path, comet trail and shatter.
   const scaled = useMemo(() => {
     if (chartPoints.length < 2) return [];
     const maxX = Math.max(5, chartPoints[chartPoints.length - 1].x);
@@ -86,7 +77,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
     return chartPath + ` L ${W - PAD} ${H - PAD} L ${PAD} ${H - PAD} Z`;
   }, [chartPath]);
 
-  // Shatter segments for crash animation
+  // Shatter fragments: the curve broken into short segments that fly apart on bust.
   const shatterSegments = useMemo(() => {
     if (scaled.length < 4) return [];
     const segs: string[] = [];
@@ -103,291 +94,416 @@ export function CrashGame({ onBack, initialBalance }: Props) {
 
   // Axis labels
   const axisLabels = useMemo(() => {
-    if (chartPoints.length < 2) return { xLabels: [] as string[], yLabels: [] as string[] };
+    if (chartPoints.length < 2) return { xLabels: [], yLabels: [] };
     const maxX = Math.max(5, chartPoints[chartPoints.length - 1].x);
     const maxY = Math.max(2, ...chartPoints.map(p => p.y)) * 1.15;
     const xLabels: string[] = [];
-    for (let i = 0; i <= 4; i++) xLabels.push((maxX * i / 4).toFixed(1) + 's');
     const yLabels: string[] = [];
-    for (let i = 0; i <= 3; i++) yLabels.push((maxY * i / 3).toFixed(2) + '×');
-    return { xLabels, yLabels };
+    const xStep = maxX <= 10 ? 2 : maxX <= 30 ? 5 : 10;
+    const yStep = maxY <= 3 ? 0.5 : maxY <= 8 ? 1 : maxY <= 20 ? 2 : 5;
+    for (let t = 0; t <= maxX; t += xStep) xLabels.push(t.toFixed(0) + 's');
+    for (let m = 0; m <= maxY; m += yStep) yLabels.push(m.toFixed(m < 1 ? 1 : 0) + 'x');
+    return { xLabels, yLabels, maxX, maxY };
   }, [chartPoints]);
 
-  /* ── Cash out (PRESERVED) ── */
-  const cashOut = useCallback(() => {
+  const cashOut = useCallback(async () => {
     if (phase !== 'running') return;
-    const p = betAmountRef.current * multiplier;
-    setPayout(p);
-    setPhase('cashed');
-    setBalance(prev => prev + p);
-    setHistory(prev => [{ multiplier, result: 'cashed', payout: p }, ...prev].slice(0, 20));
     if (animRef.current) cancelAnimationFrame(animRef.current);
+    const cashMult = Math.floor(multiplier * 100) / 100;
+    setPhase('cashed');
+    try {
+      const res = await fetch('/api/bets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game: 'crash', amount: betAmountRef.current, payload: { cashOutAt: cashMult } }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPayout(data.data.payout);
+        setBalance(data.data.newBalance);
+        setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
+        setHistory(prev => [{ multiplier: cashMult, result: 'win', payout: data.data.payout }, ...prev].slice(0, 10));
+      }
+    } catch { /* ignore */ }
   }, [phase, multiplier]);
 
   useEffect(() => { cashOutRef.current = cashOut; }, [cashOut]);
 
-  /* ── Start game (PRESERVED — all API logic intact) ── */
+  // Animation loop — rAF owns game-critical timing (do not convert to Framer Motion).
+  useEffect(() => {
+    if (phase !== 'running') return;
+    let frameCount = 0;
+    const animate = () => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const m = Math.pow(Math.E, 0.06 * elapsed);
+      const mFloor = Math.floor(m * 100) / 100;
+      setMultiplier(mFloor);
+      // Record chart points every ~3 frames
+      if (frameCount % 3 === 0) {
+        setChartPoints(prev => {
+          const next = [...prev, { x: elapsed, y: mFloor }];
+          return next.length > 300 ? next.slice(-300) : next;
+        });
+      }
+      frameCount++;
+      if (m >= currentCrashRef.current) {
+        setPhase('crashed');
+        setMultiplier(currentCrashRef.current);
+        setChartPoints(prev => [...prev, { x: elapsed, y: currentCrashRef.current }]);
+        return;
+      }
+      if (autoCashoutRef.current > 0 && m >= autoCashoutRef.current) {
+        cashOutRef.current?.();
+        return;
+      }
+      animRef.current = requestAnimationFrame(animate);
+    };
+    animRef.current = requestAnimationFrame(animate);
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+  }, [phase]);
+
   const startGame = useCallback(async () => {
-    if (phase !== 'betting' || betAmount <= 0 || betAmount > balance) return;
-    setBalance(prev => prev - betAmount);
-    setPhase('running');
+    if (betAmount <= 0 || betAmount > balance) return;
     setMultiplier(1);
     setPayout(0);
+    setCrashPoint(0);
     setChartPoints([{ x: 0, y: 1 }]);
-
+    setPhase('running');
+    startTimeRef.current = Date.now();
+    const cp = 1 + Math.random() * 15;
+    currentCrashRef.current = Math.max(1, cp);
     try {
-      const res = await fetch('/api/bets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: 'crash', amount: betAmount, payload: { autoCashout } }) });
+      const res = await fetch('/api/bets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game: 'crash', amount: betAmount, payload: { cashOutAt: 0 } }),
+      });
       const data = await res.json();
       if (data.success) {
-        const cp = data.data.payload.crashPoint;
-        currentCrashRef.current = cp;
-        setCrashPoint(cp);
-        setBalance(data.data.newBalance + betAmount); // will be subtracted by animation
+        const serverCp = (data.data.payload as { crashPoint: number }).crashPoint;
+        setCrashPoint(serverCp);
+        currentCrashRef.current = serverCp;
         setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
-
-        // Animate multiplier
-        startTimeRef.current = performance.now();
-        const animate = (now: number) => {
-          const elapsed = (now - startTimeRef.current) / 1000;
-          const m = Math.pow(Math.E, 0.05 * elapsed * elapsed);
-          if (m >= cp) {
-            setMultiplier(cp);
-            setChartPoints(prev => [...prev, { x: elapsed, y: cp }]);
-            setPhase('crashed');
-            setHistory(prev => [{ multiplier: cp, result: 'crashed', payout: 0 }, ...prev].slice(0, 20));
-            return;
-          }
-          // Auto cashout
-          if (autoCashoutRef.current > 0 && m >= autoCashoutRef.current) {
-            cashOutRef.current?.();
-            return;
-          }
-          setMultiplier(m);
-          setChartPoints(prev => [...prev, { x: elapsed, y: m }]);
-          animRef.current = requestAnimationFrame(animate);
-        };
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        setPhase('betting');
-        setBalance(prev => prev + betAmount);
+        if (serverCp <= 1) {
+          setMultiplier(1);
+          setPhase('crashed');
+          setBalance(data.data.newBalance);
+          setChartPoints([{ x: 0, y: 1 }]);
+          setHistory(prev => [{ multiplier: 1, result: 'lose', payout: 0 }, ...prev].slice(0, 10));
+        }
       }
-    } catch {
-      setPhase('betting');
-      setBalance(prev => prev + betAmount);
-    }
-  }, [phase, betAmount, balance, autoCashout]);
+    } catch { /* ignore */ }
+  }, [betAmount, balance]);
 
   const reset = useCallback(() => {
     setPhase('betting');
     setMultiplier(1);
-    setCrashPoint(0);
     setPayout(0);
+    setCrashPoint(0);
     setChartPoints([]);
   }, []);
 
-  // Chart glow color
-  const chartColor = phase === 'crashed' ? '#ff3366' : phase === 'cashed' ? '#00ff66' : '#ccff00';
-  const chartGlow = phase === 'crashed' ? 'rgba(255,51,102,0.6)' : phase === 'cashed' ? 'rgba(0,255,102,0.6)' : 'rgba(204,255,0,0.5)';
+  const potentialPayout = useMemo(() => (betAmount * multiplier).toFixed(2), [betAmount, multiplier]);
+
+  const lineColor = phase === 'crashed' ? 'var(--loss)' : 'var(--color-lime)';
+  const gradId = phase === 'crashed' ? 'crashGradLoss' : 'crashGradLime';
+
+  // Multiplier readout scales with value (log growth, capped) — driven by the
+  // same per-frame state the rAF loop already writes, so no extra work.
+  const multScale = reduced ? 1 : 1 + Math.min(0.4, Math.log10(Math.max(multiplier, 1)) * 0.45);
+
+  // Grid parallax: rows drift downward as the multiplier climbs; modulo the row
+  // spacing so the wrap is seamless.
+  const rowSpace = (H - 80) / ((axisLabels.yLabels?.length || 3) + 1);
+  const gridShift = reduced ? 0 : (Math.log(Math.max(multiplier, 1)) * 26) % rowSpace;
+
+  const trail = phase === 'running' ? scaled.slice(-10) : [];
+  const head = scaled.length > 1 ? scaled[scaled.length - 1] : null;
 
   return (
-    <div className="game-wrapper compact-game">
+    <div className="space-y-4">
+      
       {/* Header */}
-      <div className="g-header" style={{ ...GLASS.panel, padding: '12px 16px', marginBottom: '12px' }}>
-        <button onClick={onBack} className="g-back group" aria-label="Back"><ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" /></button>
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="btn-press rounded-lg p-2 text-foreground/70 transition-colors hover:bg-secondary/50" aria-label="Back">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <div>
-          <h1 className="text-base font-display font-bold text-white">Crash</h1>
-          <p className="text-xs text-white/50">Cash out before it crashes</p>
+          <h1 className="text-xl font-bold text-foreground">Crash</h1>
+          <p className="text-xs text-muted-foreground">Watch the multiplier rise — cash out before it crashes!</p>
         </div>
       </div>
 
-      <div className="game-grid">
-        {/* === CHART AREA === */}
-        <div className="space-y-3">
-          <div className="relative" style={{ ...GLASS.panel, padding: '16px', boxShadow: phase === 'crashed' ? NEON.loss : phase === 'cashed' ? NEON.win : 'none', transition: 'box-shadow 0.4s ease' }}>
-            {/* Multiplier Display */}
-            <div className="text-center mb-3">
-              <motion.div
-                className="text-4xl font-mono font-black tabular-nums"
-                style={{ color: chartColor, textShadow: `0 0 20px ${chartGlow}` }}
-                animate={phase === 'crashed' && !reduced ? { scale: [1, 1.08, 1] } : {}}
-                transition={{ duration: 0.3 }}
-              >
-                {multiplier.toFixed(2)}×
-              </motion.div>
-              <AnimatePresence>
-                {phase === 'cashed' && (
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-1">
-                    <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(0,255,102,0.12)', color: '#00ff66', border: '1px solid rgba(0,255,102,0.3)' }}>
-                      +${payout.toFixed(2)}
-                    </span>
-                  </motion.div>
-                )}
-                {phase === 'crashed' && (
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-1">
-                    <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(255,51,102,0.12)', color: '#ff3366', border: '1px solid rgba(255,51,102,0.3)' }}>
-                      CRASHED @ {crashPoint.toFixed(2)}×
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        {/* Chart Area */}
+        <div className="lg:col-span-3">
+          <div
+            className={`relative overflow-hidden rounded-xl border bg-gradient-to-br from-surface to-surface-raised transition-colors ${
+              phase === 'running' ? 'border-lime/20' : 'border-border/40'
+            } ${!reduced && phase === 'crashed' ? 'game-shake game-flash-red' : ''} ${!reduced && phase === 'cashed' ? 'game-flash-lime' : ''}`}
+            style={{ minHeight: 320 }}
+          >
+            {/* Particles (capped well under 50; disabled for reduced motion) */}
+            {phase === 'running' && !reduced && (
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="game-particle"
+                    style={{
+                      left: `${(i * 5.2 + 2) % 100}%`,
+                      bottom: 0,
+                      width: `${3 + (i % 3)}px`,
+                      height: `${3 + (i % 3)}px`,
+                      background: i % 2 === 0 ? 'var(--color-lime)' : 'var(--lime-200)',
+                      opacity: 0.7,
+                      animationDuration: `${2 + (i % 4) * 0.7}s`,
+                      animationDelay: `${(i * 0.3) % 3}s`,
+                      '--dx': `${(i % 2 === 0 ? 1 : -1) * (10 + (i % 5) * 8)}px`,
+                    } as React.CSSProperties}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Multiplier Overlay */}
+            <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center">
+              <div className={phase === 'running' && !reduced ? 'game-pulse' : ''} style={{ transform: `scale(${multScale})`, transition: 'transform 120ms linear' }}>
+                <div
+                  className={`font-mono text-6xl font-black tabular-nums sm:text-7xl ${
+                    phase === 'running' || phase === 'cashed' ? 'glow-lime text-lime' : phase === 'crashed' ? 'glow-red text-loss' : 'text-foreground/90'
+                  }`}
+                  style={{ transition: 'color 0.3s' }}
+                >
+                  {multiplier.toFixed(2)}x
+                </div>
+              </div>
+              {phase === 'crashed' && <p className="mt-2 text-sm font-bold uppercase tracking-widest text-loss">Crashed!</p>}
+              {phase === 'cashed' && (
+                <div className="relative">
+                  <p className="mt-2 text-sm font-bold tracking-wide text-win">CASHED OUT!</p>
+                  <span className={`absolute -top-2 left-1/2 -translate-x-1/2 font-mono text-lg font-black tabular-nums text-win ${reduced ? '' : 'game-float-win'}`}>
+                    +${payout.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {phase === 'betting' && <p className="mt-2 text-sm text-muted-foreground/60">Place your bet to start</p>}
             </div>
 
-            {/* SVG Chart — neon glow line */}
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'clamp(160px, 30vw, 240px)' }}>
-              {/* Grid lines */}
-              {[0.25, 0.5, 0.75].map(f => (
-                <line key={f} x1={PAD} y1={H - PAD - f * (H - PAD * 2)} x2={W - PAD} y2={H - PAD - f * (H - PAD * 2)} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-              ))}
-              <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+            {/* SVG Chart */}
+            <div className="w-full" style={{ height: 320 }}>
+              <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <linearGradient id="crashGradLime" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-lime)" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="var(--color-lime)" stopOpacity="0.02" />
+                  </linearGradient>
+                  <linearGradient id="crashGradLoss" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--loss)" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="var(--loss)" stopOpacity="0.02" />
+                  </linearGradient>
+                  <filter id="glowLine">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
+                </defs>
+                {/* Grid — parallax drift while the multiplier climbs */}
+                <g className="chart-grid" style={{ transform: `translateY(${gridShift}px)` }}>
+                  {axisLabels.yLabels?.map((_, i) => {
+                    const y = H - PAD - ((i + 1) / (axisLabels.yLabels.length + 1)) * (H - 80);
+                    return <line key={`h${i}`} x1={PAD} y1={y} x2={W - PAD} y2={y} />;
+                  })}
+                  {axisLabels.xLabels?.map((_, i) => {
+                    const x = PAD + ((i + 1) / (axisLabels.xLabels.length + 1)) * (W - PAD * 2);
+                    return <line key={`v${i}`} x1={x} y1={PAD} x2={x} y2={H - PAD} />;
+                  })}
+                </g>
+                {/* Axis labels */}
+                <g className="chart-axis">
+                  {axisLabels.xLabels?.map((label, i) => {
+                    const x = PAD + ((i + 1) / (axisLabels.xLabels.length + 1)) * (W - PAD * 2);
+                    return <text key={`x-${i}`} x={x} y={H - 10} textAnchor="middle">{label}</text>;
+                  })}
+                  {axisLabels.yLabels?.map((label, i) => {
+                    const y = H - PAD - ((i + 1) / (axisLabels.yLabels.length + 1)) * (H - 80);
+                    return <text key={`y-${i}`} x={PAD - 5} y={y + 3} textAnchor="end">{label}</text>;
+                  })}
+                </g>
+                {/* Axis lines */}
+                <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+                <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
 
-              {/* Fill area with gradient */}
-              {chartFillPath && phase !== 'crashed' && (
-                <path d={chartFillPath} fill={phase === 'cashed' ? 'rgba(0,255,102,0.06)' : 'rgba(204,255,0,0.04)'} />
-              )}
+                {/* Curve shatter on bust */}
+                {phase === 'crashed' && !reduced && shatterSegments.length > 0 ? (
+                  <g>
+                    {shatterSegments.map((d, i) => (
+                      <motion.path
+                        key={`${d.length}-${i}`}
+                        d={d}
+                        fill="none"
+                        stroke="var(--loss)"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                        initial={{ opacity: 1, x: 0, y: 0, rotate: 0 }}
+                        animate={{
+                          opacity: 0,
+                          x: jitter(i, 1) * 46,
+                          y: 24 + Math.abs(jitter(i, 2)) * 70,
+                          rotate: jitter(i, 3) * 32,
+                        }}
+                        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: i * 0.012 }}
+                      />
+                    ))}
+                  </g>
+                ) : (
+                  <>
+                    {/* Area fill under the curve */}
+                    {chartFillPath && <path d={chartFillPath} fill={`url(#${gradId})`} />}
+                    {/* Curve with animated glow */}
+                    {chartPath && (
+                      <path d={chartPath} fill="none" stroke={lineColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" filter={reduced ? undefined : 'url(#glowLine)'} />
+                    )}
+                  </>
+                )}
 
-              {/* Main curve — neon glow via filter */}
-              {phase !== 'crashed' && chartPath && (
-                <>
-                  <path d={chartPath} fill="none" stroke={chartColor} strokeWidth="3" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 6px ${chartGlow})` }} />
-                  {/* Comet head */}
-                  {scaled.length > 1 && phase === 'running' && (
-                    <circle cx={scaled[scaled.length - 1].x} cy={scaled[scaled.length - 1].y} r="5" fill={chartColor} style={{ filter: `drop-shadow(0 0 10px ${chartGlow})` }}>
-                      {!reduced && <animate attributeName="r" values="4;6;4" dur="0.8s" repeatCount="indefinite" />}
-                    </circle>
-                  )}
-                </>
-              )}
-
-              {/* Shatter on crash */}
-              {phase === 'crashed' && shatterSegments.map((seg, i) => (
-                <motion.path
-                  key={i}
-                  d={seg}
-                  fill="none"
-                  stroke="#ff3366"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  initial={{ opacity: 1, x: 0, y: 0 }}
-                  animate={reduced ? { opacity: 0 } : { opacity: 0, x: jitter(i, 1) * 40, y: jitter(i, 2) * 30 + 20 }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                  style={{ filter: 'drop-shadow(0 0 4px rgba(255,51,102,0.6))' }}
-                />
-              ))}
-
-              {/* Axis labels */}
-              {axisLabels.xLabels.map((l, i) => (
-                <text key={`x-${i}`} x={PAD + i * (W - PAD * 2) / 4} y={H - 10} fill="rgba(255,255,255,0.25)" fontSize="10" textAnchor="middle" fontFamily="monospace">{l}</text>
-              ))}
-              {axisLabels.yLabels.map((l, i) => (
-                <text key={`y-${i}`} x={PAD - 8} y={H - PAD - i * (H - PAD * 2) / 3 + 4} fill="rgba(255,255,255,0.25)" fontSize="10" textAnchor="end" fontFamily="monospace">{l}</text>
-              ))}
-            </svg>
+                {/* Comet head + motion trail */}
+                {phase === 'running' && head && (
+                  <g>
+                    {!reduced && trail.map((p, i) => (
+                      <circle
+                        key={i}
+                        cx={p.x}
+                        cy={p.y}
+                        r={1 + (i / trail.length) * 3.2}
+                        fill="var(--color-lime)"
+                        opacity={0.06 + (i / trail.length) * 0.32}
+                      />
+                    ))}
+                    <circle cx={head.x} cy={head.y} r={4.5} fill="var(--color-lime)" style={{ filter: 'drop-shadow(0 0 8px var(--color-lime))' }} />
+                  </g>
+                )}
+              </svg>
+            </div>
           </div>
 
-          {/* History badges — neon pills */}
+          {/* Crash History Badges */}
           {history.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-white/40">History:</span>
-              {history.slice(0, 12).map((h, i) => {
-                const style: React.CSSProperties = h.multiplier < 2
-                  ? { background: 'rgba(255,51,102,0.1)', color: '#ff3366', border: '1px solid rgba(255,51,102,0.25)', boxShadow: '0 0 6px rgba(255,51,102,0.15)' }
-                  : h.multiplier < 5
-                    ? { background: 'rgba(255,181,46,0.1)', color: '#ffb52e', border: '1px solid rgba(255,181,46,0.25)', boxShadow: '0 0 6px rgba(255,181,46,0.15)' }
-                    : { background: 'rgba(204,255,0,0.1)', color: '#ccff00', border: '1px solid rgba(204,255,0,0.3)', boxShadow: '0 0 8px rgba(204,255,0,0.2)' };
-                return (
-                  <motion.span
-                    key={i}
-                    initial={reduced ? false : { opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-md px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums"
-                    style={style}
-                  >
-                    {h.multiplier.toFixed(2)}×
-                  </motion.span>
-                );
-              })}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">History:</span>
+              <AnimatePresence initial={false}>
+                {history.map((h, i) => {
+                  const cls = h.multiplier < 2
+                    ? 'text-loss bg-loss/10 border-loss/20'
+                    : h.multiplier < 5
+                      ? 'text-pending bg-pending/10 border-pending/20'
+                      : 'text-win bg-win/10 border-win/20';
+                  return (
+                    <motion.span
+                      key={`${h.multiplier}-${i}-${history.length}`}
+                      initial={reduced ? false : { opacity: 0, scale: 0.8, y: -6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                      className={`rounded-md border px-2.5 py-1 font-mono text-xs font-bold tabular-nums ${cls}`}
+                    >
+                      {h.multiplier.toFixed(2)}x
+                    </motion.span>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           )}
 
           {/* Provably Fair */}
-          <div style={{ ...GLASS.panel, overflow: 'hidden' }}>
-            <button onClick={() => setShowPF(v => !v)} className="w-full flex items-center justify-between px-4 py-3">
+          <div className="mt-3 overflow-hidden rounded-xl border border-border/40 bg-surface">
+            <button onClick={() => setShowPF(v => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-secondary/30">
               <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5" style={{ color: '#ccff00', filter: 'drop-shadow(0 0 4px rgba(204,255,0,0.4))' }} />
-                <span className="text-xs font-semibold text-white/60">Provably Fair</span>
+                <Shield className="w-4 h-4 text-lime" />
+                <span className="text-sm font-semibold text-foreground/70">Provably Fair</span>
               </div>
-              {showPF ? <ChevronUp className="w-4 h-4 text-white/30" /> : <ChevronDown className="w-4 h-4 text-white/30" />}
+              {showPF ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
             </button>
             {showPF && (
-              <div className="px-4 pb-3 pt-2 space-y-2 border-t border-white/[0.04]">
-                <div className="flex justify-between"><span className="text-[11px] text-white/40">Server Seed Hash</span><span className="text-[11px] font-mono text-white/55">{pfData ? pfData.serverSeedHash.slice(0, 20) + '...' : '—'}</span></div>
-                <div className="flex justify-between"><span className="text-[11px] text-white/40">Client Seed</span><span className="text-[11px] font-mono text-white/55">{pfData ? pfData.clientSeed : '—'}</span></div>
-                <div className="flex justify-between"><span className="text-[11px] text-white/40">Nonce</span><span className="text-[11px] font-mono text-white/55">{pfData ? pfData.nonce : '—'}</span></div>
+              <div className="space-y-2 border-t border-border/30 px-4 pb-4">
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-xs text-muted-foreground">Server Seed Hash</span>
+                  <span className="font-mono text-xs text-foreground/60">{pfData ? pfData.serverSeedHash.slice(0, 20) + '...' : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-xs text-muted-foreground">Client Seed</span>
+                  <span className="font-mono text-xs text-foreground/60">{pfData ? pfData.clientSeed : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-xs text-muted-foreground">Nonce</span>
+                  <span className="font-mono text-xs text-foreground/60">{pfData ? pfData.nonce : '—'}</span>
+                </div>
+                <button className="btn-press mt-1 w-full rounded-lg border border-lime/15 bg-lime/10 py-2 text-xs font-semibold uppercase tracking-wide text-lime transition-colors hover:bg-lime/20">
+                  Verify
+                </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* === CONTROLS PANEL === */}
+        {/* Controls Panel */}
         <div className="space-y-3">
-          {/* Balance */}
-          <div style={{ ...GLASS.panel, padding: '14px 16px' }}>
-            <p className="text-[10px] uppercase tracking-wide text-white/40 mb-1">Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="text-xl font-black font-mono tabular-nums" style={{ color: '#ccff00', textShadow: '0 0 10px rgba(204,255,0,0.3)' }} />
+          {/* Balance — posted-tick signature */}
+          <div className="rounded-xl border border-lime/10 bg-gradient-to-br from-surface to-surface-raised p-4">
+            <p className="mb-1 text-xs text-muted-foreground">Balance</p>
+            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="text-2xl font-bold text-lime" />
           </div>
 
-          {/* Bet Controls */}
-          <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={phase !== 'betting'} />
+          {/* Current Multiplier / Potential Payout */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border/40 bg-surface p-3">
+              <p className="text-xs text-muted-foreground">Multiplier</p>
+              <p className="font-mono text-lg font-bold tabular-nums text-foreground">{multiplier.toFixed(2)}x</p>
+            </div>
+            <div className="rounded-xl border border-border/40 bg-surface p-3">
+              <p className="text-xs text-muted-foreground">Payout</p>
+              <p className="font-mono text-lg font-bold tabular-nums text-lime">${potentialPayout}</p>
+            </div>
+          </div>
+
+          <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={phase === 'running'} />
 
           {/* Auto Cashout */}
-          <div style={{ ...GLASS.panel, padding: '12px 14px' }}>
-            <label className="text-[10px] uppercase tracking-wide text-white/40 block mb-2">Auto Cashout</label>
+          <div className="rounded-xl border border-border/40 bg-surface p-4">
+            <p className="mb-2 text-xs text-muted-foreground">Auto Cashout</p>
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 value={autoCashout}
-                onChange={(e) => setAutoCashout(Math.max(1.01, Number(e.target.value)))}
+                onChange={e => setAutoCashout(Math.max(1.01, Number(e.target.value)))}
                 step="0.1"
-                min="1.01"
-                disabled={phase !== 'betting'}
-                className="flex-1 py-2 px-3 rounded-lg text-sm font-mono font-bold bg-[rgba(15,16,21,0.8)] text-white/90 border border-white/[0.08] focus:border-[rgba(204,255,0,0.3)] focus:outline-none transition-colors"
+                className="flex-1 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 font-mono text-sm font-medium tabular-nums text-foreground outline-none focus:border-lime/40"
+                disabled={phase === 'running'}
               />
-              <span className="text-sm font-bold text-white/50">×</span>
+              <span className="text-xs font-bold text-muted-foreground">×</span>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          {phase === 'betting' && (
+          {/* Action Button */}
+          {phase === 'running' ? (
+            <motion.button
+              onClick={cashOut}
+              whileTap={reduced ? undefined : { scale: 0.97 }}
+              className="w-full rounded-xl bg-lime py-4 text-sm font-black uppercase tracking-widest text-bg shadow-[0_0_30px] shadow-lime/30 transition-shadow hover:shadow-lime/45"
+            >
+              Cash Out ${potentialPayout}
+            </motion.button>
+          ) : (phase === 'crashed' || phase === 'cashed') ? (
+            <button onClick={reset} className="btn-press flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-secondary/50 py-4 text-sm font-bold uppercase tracking-wide text-foreground/70 transition-colors hover:text-foreground">
+              <RotateCcw className="w-4 h-4" /> Bet Again
+            </button>
+          ) : (
             <motion.button
               onClick={startGame}
               disabled={betAmount <= 0 || betAmount > balance}
               whileTap={reduced ? undefined : { scale: 0.97 }}
-              className="w-full py-4 rounded-xl text-base font-black uppercase tracking-wide transition-all disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, #ccff00, #a8e600)', color: '#0f1015', boxShadow: betAmount <= 0 || betAmount > balance ? 'none' : NEON.lime }}
+              className="w-full rounded-xl bg-lime py-4 text-sm font-black uppercase tracking-widest text-bg shadow-[0_0_30px] shadow-lime/20 transition-shadow hover:shadow-lime/35 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
             >
               Place Bet
             </motion.button>
-          )}
-          {phase === 'running' && (
-            <motion.button
-              onClick={cashOut}
-              whileTap={reduced ? undefined : { scale: 0.97 }}
-              animate={reduced ? {} : { boxShadow: ['0 0 12px rgba(0,255,102,0.4)', '0 0 24px rgba(0,255,102,0.6)', '0 0 12px rgba(0,255,102,0.4)'] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="w-full py-4 rounded-xl text-base font-black uppercase tracking-wide"
-              style={{ background: 'linear-gradient(135deg, #00ff66, #00cc52)', color: '#0f1015' }}
-            >
-              Cash Out @ {multiplier.toFixed(2)}×
-            </motion.button>
-          )}
-          {(phase === 'crashed' || phase === 'cashed') && (
-            <button
-              onClick={reset}
-              className="w-full py-4 rounded-xl text-base font-bold uppercase tracking-wide transition-all"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}
-            >
-              New Round
-            </button>
           )}
         </div>
       </div>

@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     totalCount,
     offset,
     limit,
-    withdrawals: rows.map((w) > ({
+    withdrawals: rows.map((w) => ({
       id: w.id,
       userId: w.userId,
       username: w.user?.username ?? "",

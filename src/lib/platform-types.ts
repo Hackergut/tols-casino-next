@@ -1,1 +1,18 @@
-Ly8gUGxhdGZvcm0gdHlwZXMgZm9yIHNldHRpbmdzIHBhZ2UKZXhwb3J0IHR5cGUgUGxhdGZvcm1UeXBlID0gJ3RlbGVncmFtJyB8ICd3aGF0c2FwcCcgfCAnZW1haWwnIHwgJ3Ntcycgf CAnd2ViaG9vayc7CgpleHBvcnQgaW50ZXJmYWNlIFBsYXRmb3JtQ29ubmVjdGlvbiB7CiAgaWQ6IHN0cmluZzsKICB0eXBlOiBQbGF0Zm9ybVR5cGU7CiAgbGFiZWw6IHN0cmluZzsKICBlbmFibGVkOiBib29sZWFuOwogIGNvbmZpZzogUmVjb3JkPHN0cmluZywgc3RyaW5nPjsKfQoKZXhwb3J0IGNvbnN0IFBMQVRGT1JNX1RZUEVTOiBQbGF0Zm9ybVR5cGVbXSA9IFsKICAndGVsZWdyYW0nLAogICd3aGF0c2FwcCcsCiAgJ2VtYWlsJywKICAnc21zJywKICAnd2ViaG9vaycsClxdOwo=
+// Platform types for settings page
+export type PlatformType = 'telegram' | 'whatsapp' | 'email' | 'sms' | 'webhook';
+
+export interface PlatformConnection {
+  id: string;
+  type: PlatformType;
+  label: string;
+  enabled: boolean;
+  config: Record<string, string>;
+}
+
+export const PLATFORM_TYPES: PlatformType[] = [
+  'telegram',
+  'whatsapp',
+  'email',
+  'sms',
+  'webhook',
+];

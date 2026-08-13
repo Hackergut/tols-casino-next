@@ -8,13 +8,14 @@ import { ok, err } from "@/lib/session";
 // submits payment. Returns lean JSON so it's cheap to poll every few seconds.
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) return err("Unauthorized", 401);
 
   const deposit = await db.casinoDeposit.findFirst({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
     select: {
       id: true,
       status: true,
