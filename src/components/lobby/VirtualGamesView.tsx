@@ -1,7 +1,10 @@
 "use client";
 
 // Virtual Games tab — EuroVirtuals catalog rendered as LobbyGameCards.
-// Fetches /api/games-lobby?vendor=eurovirtuals. Empty state mirrors LobbyView's.
+// Fetches /api/eurovirtuals/games — EuroVirtuals' live /v1/games catalogue
+// (5-min server cache), NOT a local table: no CasinoGame rows are ever seeded
+// for this vendor, so /api/games-lobby?vendor=eurovirtuals would stay empty.
+// Empty state mirrors LobbyView's.
 
 import { useEffect, useState } from "react";
 import { Gamepad2 } from "lucide-react";
@@ -26,7 +29,7 @@ export function VirtualGamesView({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
-    fetch("/api/games-lobby?vendor=eurovirtuals")
+    fetch("/api/eurovirtuals/games")
       .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
       .then(({ ok, j }) => {
         if (cancelled) return;
@@ -36,21 +39,21 @@ export function VirtualGamesView({
           return;
         }
         const list: LobbyGame[] = (j.data || []).map((g: Record<string, unknown>) => ({
-          id: String(g.id),
-          slug: String(g.slug ?? g.id),
-          name: String(g.name),
-          provider: String(g.provider),
+          id: String(g.game_uuid),
+          slug: String(g.game_uuid),
+          name: String(g.game_name),
+          provider: String(g.provider ?? "EuroVirtuals"),
           category: String(g.category ?? "virtual"),
-          imageUrl: String(g.imageUrl ?? ""),
-          thumbnailUrl: String(g.thumbnailUrl ?? g.imageUrl ?? ""),
-          rtp: g.rtp != null ? Number(g.rtp) : null,
-          volatility: g.volatility != null ? String(g.volatility) : null,
-          isLive: Boolean(g.isLive),
-          isNew: Boolean(g.isNew),
-          featured: Boolean(g.featured),
-          description: g.description != null ? String(g.description) : null,
+          imageUrl: String(g.thumbnail ?? ""),
+          thumbnailUrl: String(g.thumbnail ?? ""),
+          rtp: null,
+          volatility: null,
+          isLive: false,
+          isNew: false,
+          featured: false,
+          description: null,
           gameType: "external_virtual",
-          popularity: Number(g.popularity ?? 0),
+          popularity: 0,
         }));
         setGames(list);
       })

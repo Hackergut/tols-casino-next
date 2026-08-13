@@ -21,7 +21,7 @@ import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
 import { motion, useReducedMotion } from "framer-motion";
 import { LobbyGameCard } from "./GameCards";
-import { EurovirtualsRow, type EvGame } from "./EurovirtualsRow";
+import { EurovirtualsRow } from "./EurovirtualsRow";
 import type { LobbyGame } from "./lobby-types";
 
 interface Props {
@@ -29,7 +29,6 @@ interface Props {
   loading: boolean;
   onGameClick: (game: LobbyGame) => void;
   onNavigate: (section: string) => void;
-  onEvGameSelect?: (game: EvGame) => void;
   authenticated?: boolean;
 }
 
@@ -300,7 +299,7 @@ function MegaJackpot() {
 }
 
 /* ── Page ── */
-export function HomeView({ games, loading, onGameClick, onNavigate, onEvGameSelect, authenticated }: Props) {
+export function HomeView({ games, loading, onGameClick, onNavigate, authenticated }: Props) {
   const originals = games.filter((g) => g.gameType === "original");
   const slots = games.filter((g) => g.gameType === "external_slot");
   const live = games.filter((g) => g.isLive);
@@ -337,7 +336,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate, onEvGameSele
           {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
           {row("Slots", <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, "slots", "slots")}
           {row("Live Casino", <Radio className="h-5 w-5 shrink-0 text-lime" />, live, "live tables", "live")}
-          {onEvGameSelect && <EurovirtualsRow onSelect={onEvGameSelect} />}
+          <EurovirtualsRow onSelect={onGameClick} />
 
           <WeeklyRace />
 

@@ -24,8 +24,6 @@ import { ProfileSectionView, isProfileSection } from "@/components/lobby/Profile
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { GameFeedback } from "@/components/casino/GameFeedback";
-import { EuroVirtualsGame } from "@/components/casino/game-eurovirtuals";
-import type { EvGame } from "@/components/lobby/EurovirtualsRow";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
 import { useUIStore } from "@/lib/store";
@@ -91,7 +89,6 @@ function CasinoPage() {
   const [stats, setStats] = useState<CasinoStats | null>(null);
   const [liveBets, setLiveBets] = useState<LiveBet[]>([]);
   const [activeGame, setActiveGame] = useState<string | null>(null);
-  const [activeEvGame, setActiveEvGame] = useState<EvGame | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [detailGame, setDetailGame] = useState<LobbyGame | null>(null);
   const [virtualGame, setVirtualGame] = useState<LobbyGame | null>(null);
@@ -236,17 +233,8 @@ function CasinoPage() {
     setActiveGame(gameId);
   }, []);
 
-  const handleEvGameSelect = useCallback((game: EvGame) => {
-    setActiveEvGame(game);
-  }, []);
-
   const handleBackFromGame = useCallback(() => {
     setActiveGame(null);
-    refreshBalance();
-  }, [refreshBalance]);
-
-  const handleBackFromEvGame = useCallback(() => {
-    setActiveEvGame(null);
     refreshBalance();
   }, [refreshBalance]);
 
@@ -301,11 +289,7 @@ function CasinoPage() {
         <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} />
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-            {activeEvGame ? (
-              <CompactGameShell gameKey={`ev:${activeEvGame.game_uuid}`}>
-                <EuroVirtualsGame gameUuid={activeEvGame.game_uuid} gameName={activeEvGame.game_name} onBack={handleBackFromEvGame} />
-              </CompactGameShell>
-            ) : activeGame ? (
+            {activeGame ? (
               <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => handleSectionChange("lobby")} />
@@ -317,7 +301,6 @@ function CasinoPage() {
                 loading={loading}
                 onGameClick={handleGameClick}
                 onNavigate={handleSectionChange}
-                onEvGameSelect={handleEvGameSelect}
                 authenticated={authed === true}
               />
             ) : activeSection === "lobby-classic" ? (
@@ -352,7 +335,7 @@ function CasinoPage() {
             )}
           </div>
           {/* The footer is page chrome — in-game it only eats board space. */}
-          {!activeGame && !activeEvGame && <CasinoFooter onNavigate={handleSectionChange} />}
+          {!activeGame && <CasinoFooter onNavigate={handleSectionChange} />}
         </main>
       </div>
 
