@@ -160,7 +160,15 @@ export async function POST(req: NextRequest) {
   const limited = await rateLimit("bet", LIMITS.bet);
   if (limited) return limited;
 
-  const user = await getSession();
+  // getSession() throws for a guest (no DEMO fallback in production); without
+  // this guard an unauthenticated bet crashed the route with a bare 500
+  // instead of a clean, expected 401.
+  let user;
+  try {
+    user = await getSession();
+  } catch {
+    return err("Sign in to play", 401);
+  }
   if (!user.wallet) return err("No wallet", 400);
 
   const body = await req.json().catch(() => null);
