@@ -207,6 +207,81 @@ is also strictly fairer than what it replaced, where the board was reshuffled
 between clicks. Restoring a true mid-flight cash-out needs a stateful round API
 (open round → cash out), which is a server change, not a UI one.
 
+## The framework
+
+Every Original is now assembled from the same parts, in the same order. A game
+file contains only its canvas and its own controls; everything else is the
+frame.
+
+```
+┌──────────────────────────────────────────────┐
+│ back · title · P/L · RTP · sound ⚡ · history │
+├───────────────┬──────────────────────────────┤
+│ Manual │ Auto │                              │
+│ bet amount    │        game canvas           │
+│ ½   2×        │                              │
+│ $1 $5 $25 Max │                              │
+│ game inputs   │                              │
+│ [   BET   ]   │                              │
+├───────────────┴──────────────────────────────┤
+│ provably fair · seed commitment              │
+├──────────────────────────────────────────────┤
+│ # Game · breadcrumbs · description           │
+│ House edge · RTP · Volatility · Provider     │
+├──────────────────────────────────────────────┤
+│ More from TOLS Originals  →  (sibling rail)  │
+├──────────────────────────────────────────────┤
+│ My Bets │ Latest Bets │ High Rollers    [10] │
+│ User · Game · Bet · Multiplier · Payout      │
+└──────────────────────────────────────────────┘
+```
+
+### One description per game
+
+`src/lib/originals-registry.ts` holds the name, tagline, description, artwork
+and volatility of every Original. Metadata used to be spread across the game
+component, the lobby card and the hero carousel, so renaming a game meant
+finding four copies.
+
+The RTP field is not typed — it references `TARGET_RTP`, `SLOTS_RTP` or
+`ROULETTE_RTP`. A card therefore cannot advertise a return the engine does not
+pay, and a test asserts the field never becomes a literal.
+
+### Settings that persist
+
+`src/lib/game-settings.ts` keeps the player's setup across games and reloads.
+Two scopes, because they behave differently:
+
+- **Global** — stake, Manual/Auto mode, sound, Quick Play, P/L visibility.
+  The stake is shared deliberately: it used to reset to a per-game hardcoded
+  default (some games 5, some 1), so moving between games silently changed how
+  much you were betting.
+- **Per game** — risk, rows, mine count, target multiplier. Stored under the
+  game id and validated against that game's own options on read, so a saved
+  Keno `classic` risk cannot leak into Plinko, which has no such setting.
+
+Only presentation state is persisted. Never the balance, never a seed, never
+anything the server is authoritative for — a test enforces this.
+
+`useSkipAnimation()` folds the OS reduced-motion preference and the Quick Play
+toggle into one question. Games used to consult only the first, which is why
+Quick Play had nothing to switch off.
+
+### What the framework tests enforce
+
+`tests/originals-framework.test.mjs` reads the source rather than rendering, and
+fails the build if a game drifts:
+
+- every game component has a registry entry, and vice versa;
+- every game renders inside `GameFrame` and passes a `gameId`;
+- no game hand-rolls a header or back button;
+- no game calls `/api/bets` directly — the lifecycle stays in `useBet()`;
+- no game mutates the balance locally;
+- registry RTPs reference `game-math`, and every artwork file exists.
+
+That last one caught four games pointing at `.jpg` artwork that only ever
+existed as `.png`.
+
 ## Adding a game
 
 1. Put the payout model in `game-math.ts`, generated from `TARGET_RTP`.

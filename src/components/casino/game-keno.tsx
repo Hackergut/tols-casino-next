@@ -19,23 +19,32 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { KENO_POOL, KENO_DRAWN, kenoHitProb } from '@/lib/game-math';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 
 const MAX_PICKS = 10;
 type Risk = 'classic' | 'low' | 'medium' | 'high';
 
 interface KenoPayload { drawn: number[]; hits: number; picks: number[] }
 
-export function KenoGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const { balance, busy, error, history, fairness, place } = useBet<KenoPayload>('keno', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
-  const [risk, setRisk] = useState<Risk>('classic');
+export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<KenoPayload>('keno', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [risk, setRisk] = useGameSetting<Risk>('keno', 'risk', 'classic', ['classic', 'low', 'medium', 'high']);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [drawn, setDrawn] = useState<Set<number>>(new Set());
   const [drawing, setDrawing] = useState(false);
@@ -110,9 +119,13 @@ export function KenoGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="keno"
       title="Keno"
       subtitle={`Pick up to ${MAX_PICKS} — ${KENO_DRAWN} of ${KENO_POOL} are drawn`}
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={

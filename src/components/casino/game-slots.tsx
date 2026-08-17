@@ -21,11 +21,15 @@ import {
 import { Application, Assets, Sprite, Container, Graphics, Texture } from 'pixi.js';
 import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { slotPaytable, SLOTS_RTP } from '@/lib/game-math';
 
 interface Props {
   onBack: () => void;
   initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
 }
 
 const QUICK_BETS = [1, 5, 10, 50, 100];
@@ -70,7 +74,8 @@ interface ReelState {
 }
 
 export interface SlotsHandle {
-  spin: (grid: number[][], winSym: number) => Promise<void>;
+  /** `skip` snaps the reels to the final grid — reduced motion or Quick Play. */
+  spin: (grid: number[][], winSym: number, skip?: boolean) => Promise<void>;
 }
 
 const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, ref) {
@@ -168,7 +173,7 @@ const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, re
   useImperativeHandle(
     ref,
     () => ({
-      spin: (grid: number[][], winSym: number) =>
+      spin: (grid: number[][], winSym: number, skip?: boolean) =>
         new Promise<void>((resolve) => {
           const app = appRef.current;
           const reels = reelsRef.current;
@@ -189,7 +194,9 @@ const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, re
             strip[stopOff + 2] = grid[r][2]; // bottom
             reel.strip = strip;
             reel.stopOff = stopOff;
-            reel.duration = 1000 + r * 550;
+            // Quick Play / reduced motion still settles left-to-right, just
+            // fast enough to read as a snap rather than a spin.
+            reel.duration = skip ? 90 + r * 40 : 1000 + r * 550;
             reel.start = now;
             reel.done = false;
             reel.off = 0;
@@ -251,10 +258,14 @@ const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, re
   );
 });
 
-export function SlotsGame({ onBack, initialBalance }: Props) {
-  const { balance, busy, error, history, fairness, place } =
+export function SlotsGame({ onBack, initialBalance, onPickGame }: Props) {
+  const skipAnim = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } =
     useBet<{ grid: number[][]; winSym: number }>('slots', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
   const [outcome, setOutcome] = useState<null | { won: boolean; multiplier: number; profit: number }>(null);
   const reelsRef = useRef<SlotsHandle | null>(null);
 
@@ -263,15 +274,19 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
     const data = await place(betAmount);
     if (!data) return;
     // The reels animate to the grid the server already picked.
-    await reelsRef.current?.spin(data.payload.grid, data.payload.winSym);
+    await reelsRef.current?.spin(data.payload.grid, data.payload.winSym, skipAnim);
     setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - betAmount });
-  }, [place, betAmount]);
+  }, [place, betAmount, skipAnim]);
 
   return (
     <GameFrame
+      gameId="slots"
       title="Neon Sevens"
       subtitle="Three reels, one payline"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       rtp={SLOTS_RTP}

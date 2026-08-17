@@ -12,11 +12,15 @@ import {
 import Matter from 'matter-js';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { plinkoTable, type Risk, type PlinkoRows } from '@/lib/game-math';
 
 interface Props {
   onBack: () => void;
   initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
 }
 
 
@@ -242,7 +246,8 @@ function findOffsetForBin(geo: Geo, target: number): number {
 
 /* ── Canvas physics board ── */
 export interface PlinkoBoardHandle {
-  drop: (targetBin: number) => Promise<void>;
+  /** `skip` lands the ball immediately — reduced motion or Quick Play. */
+  drop: (targetBin: number, skip?: boolean) => Promise<void>;
 }
 
 interface BoardProps {
@@ -393,11 +398,21 @@ const PlinkoBoard = forwardRef<PlinkoBoardHandle, BoardProps>(function PlinkoBoa
   useImperativeHandle(
     ref,
     () => ({
-      drop: (targetBin: number) =>
+      drop: (targetBin: number, skip?: boolean) =>
         new Promise<void>((resolve) => {
           const engine = engineRef.current;
           const geo = geoRef.current;
           if (!engine) return resolve();
+
+          if (skip) {
+            // No physics run: highlight the winning bin and settle at once.
+            for (const b of ballsRef.current) Matter.Composite.remove(engine.world, b);
+            ballsRef.current = [];
+            trailRef.current = [];
+            flashBinRef.current = { bin: targetBin, until: performance.now() + 900 };
+            draw();
+            return resolve();
+          }
 
           // Remove any leftover balls
           for (const b of ballsRef.current) Matter.Composite.remove(engine.world, b);
@@ -470,11 +485,15 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-export function PlinkoGame({ onBack, initialBalance }: Props) {
-  const { balance, busy, error, history, fairness, place } = useBet<{ slot: number }>('plinko', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
-  const [rows, setRows] = useState<PlinkoRows>(12);
-  const [risk, setRisk] = useState<Risk>('medium');
+export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
+  const skipAnim = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ slot: number }>('plinko', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [rows, setRows] = useGameSetting<PlinkoRows>('plinko', 'rows', 12, [8, 12, 16]);
+  const [risk, setRisk] = useGameSetting<Risk>('plinko', 'risk', 'medium', ['low', 'medium', 'high']);
   const [outcome, setOutcome] = useState<null | { won: boolean; multiplier: number; profit: number }>(null);
 
   const boardRef = useRef<PlinkoBoardHandle | null>(null);
@@ -486,15 +505,19 @@ export function PlinkoGame({ onBack, initialBalance }: Props) {
     const data = await place(betAmount, { rows, risk });
     if (!data) return;
     // Animate to the server-decided bin, then reveal.
-    await boardRef.current?.drop(data.payload.slot);
+    await boardRef.current?.drop(data.payload.slot, skipAnim);
     setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - betAmount });
-  }, [place, betAmount, rows, risk]);
+  }, [place, betAmount, rows, risk, skipAnim]);
 
   return (
     <GameFrame
+      gameId="plinko"
       title="Plinko"
       subtitle="Drop the ball and follow it down"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={

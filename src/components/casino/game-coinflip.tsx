@@ -3,19 +3,28 @@
 /* Coinflip on the shared Originals frame. */
 
 import { useCallback, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { TARGET_RTP } from '@/lib/game-math';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 
 const MULTIPLIER = 2 * TARGET_RTP;
 
-export function CoinflipGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const { balance, busy, error, history, fairness, place } = useBet<{ flip: string }>('coinflip', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
+export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ flip: string }>('coinflip', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
   const [choice, setChoice] = useState<'heads' | 'tails'>('heads');
   const [face, setFace] = useState<'heads' | 'tails'>('heads');
   const [outcome, setOutcome] = useState<null | { won: boolean; profit: number }>(null);
@@ -39,9 +48,13 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="coinflip"
       title="Coinflip"
       subtitle="Call it in the air"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={

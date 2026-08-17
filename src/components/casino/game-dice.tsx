@@ -12,62 +12,65 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
-import { chanceMultiplier } from '@/lib/game-math';
+import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
+import { chanceMultiplier, MAX_WIN_CHANCE } from '@/lib/game-math';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 type Result = null | { won: boolean; roll: number; payout: number; multiplier: number };
 
-export function DiceGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const [balance, setBalance] = useState(initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
-  const [target, setTarget] = useState(50);
+export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } =
+    useBet<{ roll: number }>('dice', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [target, setTarget] = useGameSetting<number>('dice', 'target', 50);
   const [isOver, setIsOver] = useState(true);
-  const [rolling, setRolling] = useState(false);
   const [result, setResult] = useState<Result>(null);
   const [animatedRoll, setAnimatedRoll] = useState(50);
-  const [history, setHistory] = useState<number[]>([]);
-  const [fairness, setFairness] = useState<{ serverSeedHash: string; clientSeed: string; nonce: number } | null>(null);
   const [showResult, setShowResult] = useState(false);
   const rollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const winChance = useMemo(() => (isOver ? 100 - target : target), [target, isOver]);
+
+  // Flipping the side moves the bound to the other end of the slider, so an
+  // otherwise-valid target can fall outside it.
+  useEffect(() => {
+    const lo = isOver ? Math.ceil(100 - MAX_WIN_CHANCE) : 2;
+    const hi = isOver ? 98 : Math.floor(MAX_WIN_CHANCE);
+    const clamped = Math.min(hi, Math.max(lo, target));
+    if (clamped !== target) setTarget(clamped);
+  }, [isOver, target, setTarget]);
   // Same helper the server uses, so the quoted multiplier cannot drift from the
   // paid one — the two used to be independent copies of `99 / chance`.
   const multiplier = useMemo(() => chanceMultiplier(winChance), [winChance]);
   const payout = betAmount * multiplier;
 
   const roll = useCallback(async () => {
-    if (rolling || betAmount <= 0 || betAmount > balance) return;
-    setRolling(true); setResult(null); setShowResult(false);
+    setResult(null);
+    setShowResult(false);
 
     const interval = reduced ? undefined : setInterval(() => setAnimatedRoll(Math.random() * 100), 50);
     if (interval) rollIntervalRef.current = interval;
 
-    try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'dice', amount: betAmount, payload: { target, isOver } }),
-      });
-      const data = await res.json();
-      if (interval) clearInterval(interval);
-      if (data.success) {
-        const p = data.data.payload as { roll: number };
-        setResult({ won: data.data.won, roll: p.roll, payout: data.data.payout, multiplier: data.data.multiplier });
-        setAnimatedRoll(p.roll);
-        setBalance(data.data.newBalance);
-        setFairness({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
-        setHistory((prev) => [data.data.won ? data.data.multiplier : 0, ...prev].slice(0, 10));
-        setShowResult(true);
-      }
-    } catch {
-      if (interval) clearInterval(interval);
-    }
-    setRolling(false);
-  }, [rolling, betAmount, balance, target, isOver, reduced]);
+    const data = await place(betAmount, { target, isOver });
+    if (interval) clearInterval(interval);
+    if (!data) return;
+
+    setResult({ won: data.won, roll: data.payload.roll, payout: data.payout, multiplier: data.multiplier });
+    setAnimatedRoll(data.payload.roll);
+    setShowResult(true);
+  }, [place, betAmount, target, isOver, reduced]);
 
   useEffect(() => () => { if (rollIntervalRef.current) clearInterval(rollIntervalRef.current); }, []);
 
@@ -76,9 +79,13 @@ export function DiceGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="dice"
       title="Dice"
       subtitle="Roll over or under your target"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={
@@ -86,10 +93,10 @@ export function DiceGame({ onBack, initialBalance }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={rolling}
+          disabled={busy}
           action={
-            <BetButton onClick={roll} disabled={betAmount <= 0 || betAmount > balance} busy={rolling}>
-              {rolling ? 'Rolling…' : 'Roll Dice'}
+            <BetButton onClick={roll} disabled={betAmount <= 0 || betAmount > balance} busy={busy}>
+              {busy ? 'Rolling…' : 'Roll Dice'}
             </BetButton>
           }
         >
@@ -97,7 +104,7 @@ export function DiceGame({ onBack, initialBalance }: Props) {
             label="Direction"
             value={isOver ? 'over' : 'under'}
             onChange={(v) => { setIsOver(v === 'over'); setResult(null); setShowResult(false); }}
-            disabled={rolling}
+            disabled={busy}
             options={[
               { value: 'over', label: `Over ${target}` },
               { value: 'under', label: `Under ${target}` },
@@ -138,12 +145,22 @@ export function DiceGame({ onBack, initialBalance }: Props) {
           )}
         </div>
 
+        {/*
+          * Slider bounds are derived from MAX_WIN_CHANCE, not hardcoded. At a
+          * 6% edge a 98% win chance pays 0.96x — a "win" that shrinks your
+          * balance. The old min/max of 2..98 let the player ask for exactly
+          * that; the engine clamps it anyway, so the slider used to promise a
+          * chance the server would silently refuse.
+          *
+          * "Over" wins above the target, so its chance is 100 - target: the
+          * bound applies to opposite ends of the slider depending on side.
+          */}
         <input
           type="range"
-          min={2}
-          max={98}
+          min={isOver ? Math.ceil(100 - MAX_WIN_CHANCE) : 2}
+          max={isOver ? 98 : Math.floor(MAX_WIN_CHANCE)}
           value={target}
-          disabled={rolling}
+          disabled={busy}
           onChange={(e) => { setTarget(Number(e.target.value)); setResult(null); setShowResult(false); }}
           className="dice__slider"
           aria-label="Target"

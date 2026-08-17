@@ -38,6 +38,11 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const [fairness, setFairness] = useState<Fairness | null>(null);
+  /** Session profit/loss and settled-bet count, for the shared frame header
+   *  and to refresh the bet feed. Presentation only — the balance the server
+   *  returns stays authoritative. */
+  const [profit, setProfit] = useState(0);
+  const [betCount, setBetCount] = useState(0);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -82,6 +87,8 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
           nonce: data.nonce,
         });
         setHistory((prev) => [data.won ? data.multiplier : 0, ...prev].slice(0, 10));
+        setProfit((p) => Math.round((p + (data.payout - amount)) * 100) / 100);
+        setBetCount((c) => c + 1);
         return data;
       } catch {
         if (alive.current) setError("Network error");
@@ -95,5 +102,5 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
     [busy, balance, game],
   );
 
-  return { balance, setBalance, busy, error, history, fairness, place };
+  return { balance, setBalance, busy, error, history, fairness, profit, betCount, place };
 }

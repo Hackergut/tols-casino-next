@@ -999,3 +999,251 @@
 .roul__zero:disabled,
 .roul__outside:disabled { opacity: .55; cursor: not-allowed; }
 .roul__recent { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* ══════════════════════════════════════════════════════════
+   Framework chrome shared by every Original
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Header: session P/L + persistent preference toggles ── */
+.tols-game__pnl {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--loss);
+  background: color-mix(in oklab, var(--loss) 12%, transparent);
+  white-space: nowrap;
+}
+.tols-game__pnl[data-up] {
+  color: var(--win);
+  background: color-mix(in oklab, var(--win) 12%, transparent);
+}
+
+.tols-game__prefs { display: flex; gap: 4px; }
+.tols-game__pref {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: rgba(255, 255, 255, .38);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.tols-game__pref[data-active] { color: var(--lime-300); border-color: color-mix(in oklab, var(--lime-300) 40%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .tols-game__pref:hover { color: #fff; }
+}
+.tols-game__pref:active { transform: scale(.97); }
+
+/* ── Bet mode tabs (Manual / Auto) ── */
+.tols-bet__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.tols-bet__modes button {
+  padding: 7px 0;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, .45);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.tols-bet__modes button[data-active] { background: var(--surface); color: #fff; }
+.tols-bet__modes button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Below-the-fold stack ── */
+.tols-game__below {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin-top: 26px;
+}
+
+/* ── Info block ── */
+.tols-info__title { font-size: 22px; font-weight: 800; color: #fff; margin: 0 0 8px; }
+.tols-info__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.tols-info__crumb {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: rgba(255, 255, 255, .55);
+}
+.tols-info__body {
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, .5);
+  max-width: 68ch;
+  margin: 0 0 16px;
+}
+.tols-info__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.tols-info__facts > div {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.tols-info__facts dt {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: rgba(255, 255, 255, .35);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.tols-info__facts dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Sibling games rail ── */
+.tols-more__head {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .75);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.tols-more__rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.tols-more__card {
+  flex: 0 0 122px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tols-more__card:hover { transform: translateY(-2px); border-color: color-mix(in oklab, var(--lime-300) 45%, transparent); }
+}
+.tols-more__card:active { transform: scale(.97); }
+.tols-more__art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: var(--bg);
+  background-size: cover;
+  background-position: center;
+}
+.tols-more__name { font-size: 12px; font-weight: 700; color: #fff; padding: 0 9px; }
+.tols-more__rtp {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--lime-300);
+  padding: 0 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Bet feed ── */
+.tols-feed__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.tols-feed__rows {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, .7);
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.tols-feed__scroll { overflow-x: auto; }
+.tols-feed__table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.tols-feed__table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: rgba(255, 255, 255, .32);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tols-feed__table th.num,
+.tols-feed__table td.num { text-align: right; }
+.tols-feed__table td {
+  padding: 9px 10px;
+  color: rgba(255, 255, 255, .62);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  white-space: nowrap;
+}
+.tols-feed__table td[data-win] { color: var(--win); }
+.tols-feed__table tbody tr:last-child td { border-bottom: none; }
+.tols-feed__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+.tols-feed__empty {
+  text-align: center;
+  color: rgba(255, 255, 255, .3);
+  padding: 22px 0;
+}
+
+@media (max-width: 640px) {
+  .tols-game__prefs { order: 3; }
+  .tols-info__title { font-size: 19px; }
+}

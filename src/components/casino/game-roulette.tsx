@@ -18,11 +18,15 @@ import {
 import { Undo2 } from 'lucide-react';
 import { GameFrame, BetButton, StatRow } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { ROULETTE_RTP } from '@/lib/game-math';
 
 interface Props {
   onBack: () => void;
   initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
 }
 
 const CHIPS = [1, 5, 10, 25, 100];
@@ -43,7 +47,8 @@ function easeOutQuart(t: number): number {
 
 /* ── Wheel canvas ── */
 export interface RouletteHandle {
-  spin: (winning: number) => Promise<void>;
+  /** `skip` settles on the winning pocket at once. */
+  spin: (winning: number, skip?: boolean) => Promise<void>;
 }
 
 const RouletteWheel = forwardRef<RouletteHandle, unknown>(function RouletteWheel(_p, ref) {
@@ -163,10 +168,18 @@ const RouletteWheel = forwardRef<RouletteHandle, unknown>(function RouletteWheel
   useImperativeHandle(
     ref,
     () => ({
-      spin: (winning: number) =>
+      spin: (winning: number, skip?: boolean) =>
         new Promise<void>((resolve) => {
           const idx = WHEEL_ORDER.indexOf(winning);
           const startRot = rotRef.current % (Math.PI * 2);
+
+          if (skip) {
+            // Settle straight onto the winning pocket, no orbit.
+            rotRef.current = -(idx * PA) % (Math.PI * 2);
+            ballRef.current = { angle: -Math.PI / 2, radius: R_POCKET - 2 };
+            draw();
+            return resolve();
+          }
           // Rotate so winning pocket ends at the top pointer.
           const targetRot = -(idx * PA) + Math.PI * 2 * 6; // 6 full turns
           const startBallAngle = -Math.PI / 2;
@@ -219,8 +232,9 @@ const DOZENS = [
   { key: 'dozen3', label: '3rd 12', type: 'dozen3' },
 ];
 
-export function RouletteGame({ onBack, initialBalance }: Props) {
-  const { balance, busy, error, history, fairness, place } = useBet<{ winning: number }>('roulette', initialBalance);
+export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
+  const skipAnim = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ winning: number }>('roulette', initialBalance);
   const [chip, setChip] = useState(1);
   const [bets, setBets] = useState<Map<string, Bet>>(new Map());
   const [spinning, setSpinning] = useState(false);
@@ -252,11 +266,11 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
     const data = await place(totalStaked, { bets: Array.from(bets.values()) });
     if (!data) { setSpinning(false); return; }
     const winning = data.payload.winning;
-    await wheelRef.current?.spin(winning);
+    await wheelRef.current?.spin(winning, skipAnim);
     setResult({ winning, won: data.won, payout: data.payout });
     setRecent((prev) => [winning, ...prev].slice(0, 12));
     setSpinning(false);
-  }, [bets, totalStaked, balance, place]);
+  }, [bets, totalStaked, balance, place, skipAnim]);
 
   const chipOn = (type: string, value?: number) => bets.get(betKey(type, value))?.amount ?? 0;
 
@@ -269,9 +283,13 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="roulette"
       title="Roulette"
       subtitle="European single zero — the best odds on the site"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       rtp={ROULETTE_RTP}

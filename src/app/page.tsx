@@ -267,6 +267,14 @@ function CasinoPage() {
     refreshBalance();
   }, [refreshBalance]);
 
+  const handleSwitchGame = useCallback((gameId: string) => {
+    setActiveGame(gameId);
+    refreshBalance();
+    // The incoming game mounts with its own canvas; without this the player
+    // lands mid-page on the previous game's bet feed.
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [refreshBalance]);
+
   // Filter games by search
   const displayedGames = searchQuery
     ? games.filter((g) => g.name.toLowerCase().includes(searchQuery.toLowerCase()) || g.provider.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -275,7 +283,15 @@ function CasinoPage() {
   // Render active game
   const renderGame = () => {
     if (!activeGame) return null;
-    const props = { onBack: handleBackFromGame, initialBalance: balance };
+    // onPickGame powers the "More from TOLS Originals" rail under every
+    // canvas: switching game keeps the player in the game view rather than
+    // bouncing them through the lobby. Balance is refreshed on the way, since
+    // the outgoing game may have settled bets.
+    const props = {
+      onBack: handleBackFromGame,
+      initialBalance: balance,
+      onPickGame: handleSwitchGame,
+    };
     switch (activeGame) {
       case "crash": return <CrashGame {...props} />;
       case "dice": return <DiceGame {...props} />;

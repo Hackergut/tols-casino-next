@@ -3,18 +3,27 @@
 /* Limbo on the shared Originals frame. */
 
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { TARGET_RTP, MIN_WIN_MULTIPLIER } from '@/lib/game-math';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 
-export function LimboGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const { balance, busy, error, history, fairness, place } = useBet<{ roll: number }>('limbo', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
-  const [target, setTarget] = useState(2);
+export function LimboGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ roll: number }>('limbo', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [target, setTarget] = useGameSetting<number>('limbo', 'target', 2);
   const [display, setDisplay] = useState(1);
   const [outcome, setOutcome] = useState<null | { won: boolean; roll: number; profit: number }>(null);
   const raf = useRef<number | undefined>(undefined);
@@ -53,9 +62,13 @@ export function LimboGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="limbo"
       title="Limbo"
       subtitle="Set a target — the roll must clear it"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={

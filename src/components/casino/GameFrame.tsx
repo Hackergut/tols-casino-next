@@ -36,15 +36,27 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Shield, ChevronDown, Check, Copy } from "lucide-react";
+import { ArrowLeft, Shield, ChevronDown, Check, Copy, Volume2, VolumeX, Zap } from "lucide-react";
 import { HOUSE_EDGE } from "@/lib/game-math";
+import { useGameSettings } from "@/lib/game-settings";
+import { getOriginal, type OriginalId } from "@/lib/originals-registry";
+import { GameInfoBlock, MoreOriginals, BetFeed } from "@/components/casino/GameInfo";
 
 /* ─────────────────────────── Frame ─────────────────────────── */
 
 export interface GameFrameProps {
-  title: string;
+  /** Registry id. Supplies the title, description, artwork and RTP. */
+  gameId: OriginalId;
+  /** Override the registry title only when a game needs to. */
+  title?: string;
   subtitle?: string;
   onBack: () => void;
+  /** Switch to a sibling Original from the rail below the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+  /** Session profit/loss, shown in the header when enabled. */
+  profit?: number;
+  /** Bump after each settled bet so the feed picks it up. */
+  betCount?: number;
   /** Left rail: bet amount, game-specific inputs, the action button. */
   controls: React.ReactNode;
   /** The game itself. */
@@ -58,16 +70,29 @@ export interface GameFrameProps {
 }
 
 export function GameFrame({
+  gameId,
   title,
   subtitle,
   onBack,
+  onPickGame,
+  profit,
+  betCount,
   controls,
   children,
   history,
   fairness,
   rtp,
 }: GameFrameProps) {
-  const effectiveRtp = rtp ?? 1 - HOUSE_EDGE;
+  const meta = getOriginal(gameId);
+  const effectiveRtp = rtp ?? meta?.rtp ?? 1 - HOUSE_EDGE;
+  const heading = title ?? meta?.name ?? gameId;
+  const sub = subtitle ?? meta?.tagline;
+
+  const soundEnabled = useGameSettings((s) => s.soundEnabled);
+  const toggleSound = useGameSettings((s) => s.toggleSound);
+  const quickPlay = useGameSettings((s) => s.quickPlay);
+  const setQuickPlay = useGameSettings((s) => s.setQuickPlay);
+  const showProfit = useGameSettings((s) => s.showProfit);
 
   return (
     <div className="tols-game">
@@ -76,12 +101,44 @@ export function GameFrame({
           <ArrowLeft className="size-4" />
         </button>
         <div className="tols-game__title">
-          <h1 className="font-display">{title}</h1>
-          {subtitle && <p>{subtitle}</p>}
+          <h1 className="font-display">{heading}</h1>
+          {sub && <p>{sub}</p>}
         </div>
+
+        {showProfit && typeof profit === "number" && profit !== 0 && (
+          <span className="tols-game__pnl" data-up={profit > 0 || undefined}>
+            {profit > 0 ? "+" : "−"}${Math.abs(profit).toFixed(2)}
+          </span>
+        )}
+
         <span className="tols-game__edge" title={`House edge ${((1 - effectiveRtp) * 100).toFixed(2)}%`}>
           RTP {(effectiveRtp * 100).toFixed(2)}%
         </span>
+
+        {/* Settings that follow the player between games. */}
+        <div className="tols-game__prefs">
+          <button
+            type="button"
+            className="tols-game__pref"
+            onClick={toggleSound}
+            data-active={soundEnabled || undefined}
+            aria-pressed={soundEnabled}
+            title={soundEnabled ? "Mute" : "Unmute"}
+          >
+            {soundEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+          </button>
+          <button
+            type="button"
+            className="tols-game__pref"
+            onClick={() => setQuickPlay(!quickPlay)}
+            data-active={quickPlay || undefined}
+            aria-pressed={quickPlay}
+            title="Quick play — skip result animations"
+          >
+            <Zap className="size-3.5" />
+          </button>
+        </div>
+
         {history && history.length > 0 && <HistoryStrip values={history} />}
       </header>
 
@@ -91,6 +148,14 @@ export function GameFrame({
       </div>
 
       <FairnessBar fairness={fairness} rtp={effectiveRtp} />
+
+      {meta && (
+        <div className="tols-game__below">
+          <GameInfoBlock meta={meta} />
+          {onPickGame && <MoreOriginals current={gameId} onPick={onPickGame} />}
+          <BetFeed gameId={gameId} refreshKey={betCount} />
+        </div>
+      )}
     </div>
   );
 }
@@ -217,6 +282,9 @@ export function BetPanel({
   children?: React.ReactNode;
   action: React.ReactNode;
 }) {
+  const mode = useGameSettings((s) => s.mode);
+  const setMode = useGameSettings((s) => s.setMode);
+
   const clamp = useCallback(
     (v: number) => {
       if (!Number.isFinite(v)) return min;
@@ -227,6 +295,24 @@ export function BetPanel({
 
   return (
     <div className="tols-bet">
+      {/* Mode tabs sit above the amount in every game, so the control the
+          player reaches for first is always in the same place. */}
+      <div className="tols-bet__modes" role="tablist" aria-label="Bet mode">
+        {(["manual", "auto"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            data-active={mode === m || undefined}
+            onClick={() => setMode(m)}
+            disabled={disabled}
+          >
+            {m === "manual" ? "Manual" : "Auto"}
+          </button>
+        ))}
+      </div>
+
       <label className="tols-bet__label" htmlFor="tols-bet-amount">
         Bet Amount
         <span className="tols-bet__balance">${balance.toFixed(2)}</span>

@@ -22,22 +22,31 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { Gem, Bomb } from 'lucide-react';
 import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { minesMultiplier, minesSurvival, minesIsFloored } from '@/lib/game-math';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 
 const TILES = 25;
 
-export function MinesGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const { balance, busy, error, history, fairness, place } =
+export function MinesGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } =
     useBet<{ layout: boolean[]; picks: number[] }>('mines', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
-  const [mineCount, setMineCount] = useState(3);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [mineCount, setMineCount] = useGameSetting<number>('mines', 'mines', 3);
   const [picks, setPicks] = useState<Set<number>>(new Set());
   const [layout, setLayout] = useState<boolean[] | null>(null);
   const [outcome, setOutcome] = useState<null | { won: boolean; profit: number }>(null);
@@ -83,9 +92,13 @@ export function MinesGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="mines"
       title="Mines"
       subtitle={`Pick your tiles — ${mineCount} of ${TILES} are mined`}
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={

@@ -14,12 +14,18 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { wheelTable, type Risk } from '@/lib/game-math';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 
 const SEGMENTS = 20;
 const SEG_ANGLE = 360 / SEGMENTS;
@@ -35,11 +41,14 @@ function wedgeFill(mult: number, max: number): string {
   return `color-mix(in oklab, var(--lime-300) ${Math.round(18 + t * 55)}%, var(--surface))`;
 }
 
-export function WheelGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const { balance, busy, error, history, fairness, place } = useBet<{ segment: number; mult: number }>('wheel', initialBalance);
-  const [betAmount, setBetAmount] = useState(1);
-  const [risk, setRisk] = useState<Risk>('medium');
+export function WheelGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ segment: number; mult: number }>('wheel', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [risk, setRisk] = useGameSetting<Risk>('wheel', 'risk', 'medium', ['low', 'medium', 'high']);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [winning, setWinning] = useState<number | null>(null);
@@ -100,9 +109,13 @@ export function WheelGame({ onBack, initialBalance }: Props) {
 
   return (
     <GameFrame
+      gameId="wheel"
       title="Wheel"
       subtitle="Spin for the multiplier under the pointer"
       onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
       history={history}
       fairness={fairness}
       controls={
