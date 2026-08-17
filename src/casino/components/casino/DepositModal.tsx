@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useUIStore, useSessionStore } from "@/lib/store";
+import { useBalanceStore } from "@/lib/balance-store";
 import { formatCurrency, shortAddress } from "@/lib/types";
 import { toast } from "sonner";
 import DepositPanel from "@/components/casino/DepositPanel";
@@ -46,7 +47,18 @@ interface AddressData {
 
 export function DepositModal() {
   const { depositOpen, setDepositOpen, setAuthOpen } = useUIStore();
-  const { balance, user } = useSessionStore();
+  const { user } = useSessionStore();
+  /*
+   * Read the balance from the ordered store, not from useSessionStore.
+   *
+   * The lobby poll mirrors the balance into useSessionStore as well, but that
+   * write carries no sequence token — so a poll response that started before a
+   * bet settled still applied there after being correctly discarded by the
+   * ordered store. The wallet modal then showed the pre-bet figure while the
+   * game showed the settled one: the same number, two values, on screen at
+   * once. There is one authoritative balance and this is it.
+   */
+  const balance = useBalanceStore((s) => s.balance);
   const qc = useQueryClient();
 
   const [chain, setChain] = useState("btc");

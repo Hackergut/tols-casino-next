@@ -24,7 +24,7 @@
   "crons": [
     {
       "path": "/api/bridge/health?probe=true",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }

@@ -361,7 +361,7 @@ export function LiveMonitorPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#888" }} />
                 <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: "#888" }} unit="%" />
-                <Tooltip contentStyle={{ background: "#1a1b20", border: "1px solid #333", borderRadius: 8, fontSize: 12 }} formatter={(v: number, _n: string, p: { payload: { game: string; reason: string } }) => [`${v}% (${p.payload.game})`, p.payload.reason || "RTP"]} />
+                <Tooltip contentStyle={{ background: "#1a1b20", border: "1px solid #333", borderRadius: 8, fontSize: 12 }} formatter={((v: number, _n: string, p: { payload?: { game?: string; reason?: string } }) => [`${v}% (${p?.payload?.game ?? "—"})`, p?.payload?.reason || "RTP"]) as never} />
                 <Area type="monotone" dataKey="rtp" stroke="var(--color-lime, #ccff00)" strokeWidth={2} fill="url(#rtpGrad)" dot={{ r: 3 }} />
               </AreaChart>
             </ResponsiveContainer>

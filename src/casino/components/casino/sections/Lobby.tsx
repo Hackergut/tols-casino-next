@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { TARGET_RTP } from '@/lib/game-math';
 import { Trophy, Flame, Sparkles, TrendingUp, Users, Zap, ChevronRight, Dices, Rocket, CircleDot, Bomb, TrendingUp as Limbo, Coins, Disc, Grid3x3, Play, Cherry, Store } from "lucide-react";
 import { GameCard } from "../GameCard";
 import { JackpotTicker, OdometerText } from "../JackpotTicker";
@@ -137,7 +138,7 @@ export function Lobby({ onSelectGame, onNavigate }: { onSelectGame: (slug: strin
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-lime" />
             <h2 className="text-lg font-bold uppercase tracking-wide">TOLS Originals</h2>
-            <span className="rounded bg-lime/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime">99% RTP</span>
+            <span className="rounded bg-lime/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-lime">{(TARGET_RTP * 100).toFixed(0)}% RTP</span>
           </div>
           <button onClick={() => onNavigate("originals")} className="flex items-center gap-0.5 text-xs text-muted-foreground transition-colors hover:text-lime">
             View all <ChevronRight className="h-3 w-3" />

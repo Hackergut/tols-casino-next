@@ -10,28 +10,28 @@ import {
   forwardRef,
 } from 'react';
 import Matter from 'matter-js';
-import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
+import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
+import { plinkoTable, type Risk, type PlinkoRows } from '@/lib/game-math';
 
 interface Props {
   onBack: () => void;
   initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
 }
 
 
-/* ── Multiplier tables matching backend (src/app/api/bets/route.ts) ── */
-const MULTIPLIER_TABLES: Record<string, number[]> = {
-  '8-low': [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
-  '8-medium': [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13],
-  '8-high': [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29],
-  '12-low': [10, 3, 1.3, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.3, 3, 10],
-  '12-medium': [58, 15, 7, 3, 1.5, 1, 0.5, 1, 1.5, 3, 7, 15, 58],
-  '12-high': [420, 70, 14, 5, 2, 1, 0.2, 1, 2, 5, 14, 70, 420],
-  '16-low': [16, 9, 2, 1.4, 1.4, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.4, 1.4, 2, 9, 16],
-  '16-medium': [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110],
-  '16-high': [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000],
-};
+/*
+ * Bin multipliers come from plinkoTable() — the same function the bet route
+ * pays from. They used to be hardcoded here, and they were the ORIGINAL
+ * uncalibrated tables: the '12-high' row below once read 420x at the edges and
+ * measured 251% RTP. After the payouts were recalibrated server-side, the
+ * board went on printing the old numbers under each bin while the server paid
+ * the new ones. Deriving them guarantees the label matches the payout.
+ */
 
 /* ── Theme colours (hex — canvas can't read CSS vars) ── */
 const COL = {
@@ -246,7 +246,8 @@ function findOffsetForBin(geo: Geo, target: number): number {
 
 /* ── Canvas physics board ── */
 export interface PlinkoBoardHandle {
-  drop: (targetBin: number) => Promise<void>;
+  /** `skip` lands the ball immediately — reduced motion or Quick Play. */
+  drop: (targetBin: number, skip?: boolean) => Promise<void>;
 }
 
 interface BoardProps {
@@ -266,7 +267,11 @@ const PlinkoBoard = forwardRef<PlinkoBoardHandle, BoardProps>(function PlinkoBoa
   const flashBinRef = useRef<{ bin: number; until: number } | null>(null);
   const multRef = useRef<number[]>(multipliers);
 
-  multRef.current = multipliers;
+  // Kept in sync in an effect, not during render: the canvas draw loop reads
+  // this ref outside React's render cycle.
+  useEffect(() => {
+    multRef.current = multipliers;
+  }, [multipliers]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -393,11 +398,21 @@ const PlinkoBoard = forwardRef<PlinkoBoardHandle, BoardProps>(function PlinkoBoa
   useImperativeHandle(
     ref,
     () => ({
-      drop: (targetBin: number) =>
+      drop: (targetBin: number, skip?: boolean) =>
         new Promise<void>((resolve) => {
           const engine = engineRef.current;
           const geo = geoRef.current;
           if (!engine) return resolve();
+
+          if (skip) {
+            // No physics run: highlight the winning bin and settle at once.
+            for (const b of ballsRef.current) Matter.Composite.remove(engine.world, b);
+            ballsRef.current = [];
+            trailRef.current = [];
+            flashBinRef.current = { bin: targetBin, until: performance.now() + 900 };
+            draw();
+            return resolve();
+          }
 
           // Remove any leftover balls
           for (const b of ballsRef.current) Matter.Composite.remove(engine.world, b);
@@ -470,208 +485,95 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-export function PlinkoGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
-  const [betAmount, setBetAmount] = useState(5);
-  const [rows, setRows] = useState<8 | 12 | 16>(12);
-  const [risk, setRisk] = useState<'low' | 'medium' | 'high'>('medium');
-  const [dropping, setDropping] = useState(false);
-  const [result, setResult] = useState<null | { won: boolean; slot: number; multiplier: number; payout: number }>(null);
-  const [history, setHistory] = useState<Array<{ slot: number; multiplier: number; result: string; payout: number }>>([]);
+export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
+  const skipAnim = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ slot: number }>('plinko', initialBalance);
+  // Stake is shared across every Original and survives navigation, so it
+  // cannot silently jump when the player switches game.
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+  const [rows, setRows] = useGameSetting<PlinkoRows>('plinko', 'rows', 12, [8, 12, 16]);
+  const [risk, setRisk] = useGameSetting<Risk>('plinko', 'risk', 'medium', ['low', 'medium', 'high']);
+  const [outcome, setOutcome] = useState<null | { won: boolean; multiplier: number; profit: number }>(null);
 
   const boardRef = useRef<PlinkoBoardHandle | null>(null);
 
-  const multipliers = useMemo(() => {
-    const key = `${rows}-${risk}`;
-    return MULTIPLIER_TABLES[key] ?? MULTIPLIER_TABLES['12-medium'];
-  }, [rows, risk]);
+  const multipliers = useMemo(() => plinkoTable(rows, risk), [rows, risk]);
 
   const dropBall = useCallback(async () => {
-    if (dropping || betAmount <= 0 || betAmount > balance) return;
-    setDropping(true);
-    setResult(null);
-
-    try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'plinko', amount: betAmount, payload: { rows, risk } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { slot: number };
-        // Animate the ball to the server-decided slot, then reveal the result.
-        await boardRef.current?.drop(payload.slot);
-        const r = {
-          won: data.data.won,
-          slot: payload.slot,
-          multiplier: data.data.multiplier,
-          payout: data.data.payout,
-        };
-        setResult(r);
-        setBalance(data.data.newBalance);
-        setHistory((prev) =>
-          [{ slot: payload.slot, multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
-        );
-      }
-    } catch {
-      /* ignore */
-    }
-    setDropping(false);
-  }, [dropping, betAmount, balance, rows, risk]);
+    setOutcome(null);
+    const data = await place(betAmount, { rows, risk });
+    if (!data) return;
+    // Animate to the server-decided bin, then reveal.
+    await boardRef.current?.drop(data.payload.slot, skipAnim);
+    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - betAmount });
+  }, [place, betAmount, rows, risk, skipAnim]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-white">Plinko</h1>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Drop the ball and watch it bounce to a multiplier!</p>
-        </div>
+    <GameFrame
+      gameId="plinko"
+      title="Plinko"
+      subtitle="Drop the ball and follow it down"
+      onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
+      history={history}
+      fairness={fairness}
+      controls={
+        <BetPanel
+          amount={betAmount}
+          setAmount={setBetAmount}
+          balance={balance}
+          disabled={busy}
+          action={
+            <BetButton onClick={dropBall} disabled={betAmount <= 0 || betAmount > balance} busy={busy}>
+              {busy ? 'Dropping…' : 'Drop Ball'}
+            </BetButton>
+          }
+        >
+          <SegmentedControl<Risk>
+            label="Risk"
+            value={risk}
+            onChange={setRisk}
+            disabled={busy}
+            options={[
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Med' },
+              { value: 'high', label: 'High' },
+            ]}
+          />
+          <SegmentedControl<PlinkoRows>
+            label="Rows"
+            value={rows}
+            onChange={setRows}
+            disabled={busy}
+            options={[
+              { value: 8, label: '8' },
+              { value: 12, label: '12' },
+              { value: 16, label: '16' },
+            ]}
+          />
+          <div>
+            <StatRow label="Top multiplier" value={`${Math.max(...multipliers).toFixed(2)}×`} tone="lime" />
+            <StatRow label="Lowest bin" value={`${Math.min(...multipliers).toFixed(2)}×`} />
+          </div>
+          {error && <p className="tols-error">{error}</p>}
+        </BetPanel>
+      }
+    >
+      <div className="plinko">
+        <PlinkoBoard ref={boardRef} rows={rows} multipliers={multipliers} />
+        <p className="plinko__verdict" data-won={outcome?.won || undefined}>
+          {busy
+            ? '…'
+            : outcome
+              ? outcome.won
+                ? `${outcome.multiplier.toFixed(2)}× — +$${outcome.profit.toFixed(2)}`
+                : `${outcome.multiplier.toFixed(2)}× — -$${Math.abs(outcome.profit).toFixed(2)}`
+              : 'Ready'}
+        </p>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Game Board */}
-        <div className="lg:col-span-3">
-          <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <PlinkoBoard ref={boardRef} rows={rows} multipliers={multipliers} />
-
-            {/* Result Banner */}
-            {result && (
-              <div className="px-4 py-3 text-center" style={{
-                background: result.won
-                  ? 'linear-gradient(90deg, color-mix(in oklab, var(--color-lime) 8%, transparent), color-mix(in oklab, var(--color-lime) 15%, transparent), color-mix(in oklab, var(--color-lime) 8%, transparent))'
-                  : 'linear-gradient(90deg, color-mix(in oklab, var(--color-loss) 8%, transparent), color-mix(in oklab, var(--color-loss) 15%, transparent), color-mix(in oklab, var(--color-loss) 8%, transparent))',
-                borderTop: '1px solid rgba(255,255,255,0.05)'
-              }}>
-                <div className="flex items-center justify-center gap-3">
-                  <span className={`text-lg font-bold font-mono tabular-nums ${result.won ? 'text-lime' : 'text-loss'}`}>
-                    {result.won ? `+$${result.payout.toFixed(2)}` : `-$${betAmount.toFixed(2)}`}
-                  </span>
-                  <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    at {result.multiplier}x
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Controls Panel */}
-        <div className="space-y-3">
-          {/* Balance */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-          </div>
-
-          {/* Rows */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Pins</p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {([8, 12, 16] as const).map(r => (
-                <button key={r} onClick={() => setRows(r)}
-                  className="py-2 rounded-lg text-xs font-semibold transition-all"
-                  style={rows === r
-                    ? { background: 'color-mix(in oklab, var(--color-lime) 15%, transparent)', color: 'var(--color-lime)', border: '1px solid color-mix(in oklab, var(--color-lime) 30%, transparent)', boxShadow: '0 0 12px color-mix(in oklab, var(--color-lime) 15%, transparent)' }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  disabled={dropping}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Risk */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Risk</p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {(['low', 'medium', 'high'] as const).map(r => (
-                <button key={r} onClick={() => setRisk(r)}
-                  className="py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-all"
-                  style={risk === r
-                    ? { background: r === 'low' ? 'color-mix(in oklab, var(--color-win) 15%, transparent)' : r === 'high' ? 'color-mix(in oklab, var(--color-loss) 15%, transparent)' : 'color-mix(in oklab, var(--color-lime) 15%, transparent)', color: r === 'low' ? 'var(--color-win)' : r === 'high' ? 'var(--color-loss)' : 'var(--color-lime)', border: `1px solid ${r === 'low' ? 'color-mix(in oklab, var(--color-win) 30%, transparent)' : r === 'high' ? 'color-mix(in oklab, var(--color-loss) 30%, transparent)' : 'color-mix(in oklab, var(--color-lime) 30%, transparent)'}`, boxShadow: `0 0 12px ${r === 'low' ? 'color-mix(in oklab, var(--color-win) 15%, transparent)' : r === 'high' ? 'color-mix(in oklab, var(--color-loss) 15%, transparent)' : 'color-mix(in oklab, var(--color-lime) 15%, transparent)'}` }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  disabled={dropping}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-            {/* Mini multiplier distribution */}
-            <div className="mt-3 flex flex-wrap gap-1">
-              {multipliers.map((m, i) => (
-                <span key={i} className="text-[8px] px-1.5 py-0.5 rounded font-mono font-bold"
-                  style={{
-                    background: getSlotBgColorVar(m),
-                    color: getSlotColorVar(m),
-                    border: `1px solid ${getSlotColorVar(m)}22`
-                  }}
-                >
-                  {m}x
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Bet Amount */}
-          <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={dropping} />
-
-{/* Bet Button */}
-          <button onClick={dropBall}
-            disabled={dropping || betAmount <= 0 || betAmount > balance}
-            className="w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-30"
-            style={{
-              background: dropping ? 'color-mix(in oklab, var(--color-lime) 30%, transparent)' : 'var(--color-lime)',
-              color: 'var(--color-bg)',
-              boxShadow: dropping ? 'none' : '0 0 20px color-mix(in oklab, var(--color-lime) 30%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}
-          >
-            {dropping ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(10,12,16,0.3)', borderTopColor: 'var(--color-bg)' }} />
-                Dropping...
-              </span>
-            ) : (
-              'Drop Ball'
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* History */}
-      {history.length > 0 && (
-        <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.5)' }}>Bet History</h3>
-            <button onClick={() => setHistory([])} className="text-[10px] flex items-center gap-1 transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }}>
-              <RotateCcw className="w-3 h-3" /> Clear
-            </button>
-          </div>
-          <div className="max-h-40 overflow-y-auto space-y-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'color-mix(in oklab, var(--color-lime) 20%, transparent) transparent' }}>
-            {history.map((h, i) => (
-              <div key={i} className="flex items-center justify-between py-1.5 px-3 rounded-lg transition-colors"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)' }}>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${h.result === 'win' ? 'bg-win/10 text-win' : 'bg-loss/10 text-loss'}`}>
-                    {h.result.toUpperCase()}
-                  </span>
-                  <span className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    Slot {h.slot} → <span style={{ color: getSlotColorVar(h.multiplier) }}>{h.multiplier}x</span>
-                  </span>
-                </div>
-                <span className={`text-xs font-bold tabular-nums ${h.result === 'win' ? 'text-win' : 'text-loss'}`}>
-                  {h.result === 'win' ? '+' : '-'}${h.payout.toFixed(2)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    </GameFrame>
   );
 }

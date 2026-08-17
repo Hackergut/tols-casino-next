@@ -4,6 +4,7 @@ import { Inter, Michroma, Oswald } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import TelegramWebApp from "@/components/TelegramWebApp";
+import { ComplianceLayer } from "@/components/compliance/ComplianceLayer";
 
 // Display face — wide, geometric, futuristic. Single weight (400) and
 // non-tabular figures, so it is scoped to the wordmark and section headings;
@@ -99,6 +100,10 @@ export default async function RootLayout({
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
         <TelegramWebApp />
         {children}
+        {/* Last in the body so it paints above the app without needing a
+            portal, and so the lobby's own markup streams first. The gate's
+            own z-index — not DOM order — is what keeps it on top. */}
+        <ComplianceLayer />
       </body>
     </html>
   );

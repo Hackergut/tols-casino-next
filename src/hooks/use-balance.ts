@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useBalanceStore } from "@/lib/balance-store";
 
 interface BalanceState {
-  balance: number;
   currency: string;
   loading: boolean;
   error: string | null;
@@ -16,9 +16,17 @@ interface BalanceState {
  * - Provides `optimisticDeduct(amount)` for instant UI feedback on bets.
  * - Auto-refreshes on visibility change (user tabs back) to catch background credits.
  */
+/*
+ * The withdrawal panel's balance was a THIRD independent copy of the same
+ * number, fetched separately from /api/wallet. A player who bet in a game and
+ * then opened the withdraw form was shown the balance as of whenever this hook
+ * last fetched — so "Max" could request more than the wallet holds, and the
+ * request would be rejected by the server for a figure the UI had just offered.
+ * It now reads the shared store; only the currency and request state stay local.
+ */
 export function useBalance() {
+  const balance = useBalanceStore((s) => s.balance);
   const [state, setState] = useState<BalanceState>({
-    balance: 0,
     currency: "USDT",
     loading: true,
     error: null,
@@ -26,6 +34,7 @@ export function useBalance() {
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchBalance = useCallback(async () => {
+    const token = useBalanceStore.getState().begin();
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -40,8 +49,9 @@ export function useBalance() {
       }
       const json = await res.json();
       const data = json.data ?? json;
+      // Tokenised: a bet settling while this request was in flight wins.
+      useBalanceStore.getState().applyPoll(Number(data.balance ?? 0), token);
       setState({
-        balance: Number(data.balance ?? 0),
         currency: data.currency ?? "USDT",
         loading: false,
         error: null,
@@ -50,22 +60,6 @@ export function useBalance() {
       if (e.name === "AbortError") return;
       setState((prev) => ({ ...prev, loading: false, error: e.message }));
     }
-  }, []);
-
-  // Instant UI deduction before the server confirms
-  const optimisticDeduct = useCallback((amount: number) => {
-    setState((prev) => ({
-      ...prev,
-      balance: Math.max(0, prev.balance - amount),
-    }));
-  }, []);
-
-  // Instant UI addition (e.g. winning a bet, deposit credited)
-  const optimisticAdd = useCallback((amount: number) => {
-    setState((prev) => ({
-      ...prev,
-      balance: prev.balance + amount,
-    }));
   }, []);
 
   // Auto-refresh on visibility change
@@ -83,8 +77,7 @@ export function useBalance() {
 
   return {
     ...state,
+    balance,
     refresh: fetchBalance,
-    optimisticDeduct,
-    optimisticAdd,
   };
 }
