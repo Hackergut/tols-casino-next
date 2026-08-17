@@ -55,19 +55,21 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      // Sottodominio Tower + preview Vercel
+      /*
+       * Each directive may appear ONCE. CSP resolves a repeated directive by
+       * keeping the FIRST and discarding the rest, so the duplicate
+       * `frame-src https:` and `connect-src 'self' https://api.telegram.org`
+       * that used to follow these lines were dead: the narrower earlier copies
+       * won. That silently re-broke the vendor-game iframes the wider
+       * `frame-src https:` was added to fix. Merged into one directive each.
+       */
       `connect-src 'self' https://api.telegram.org${BRIDGE_CONNECT} https://*.vercel.app`,
+      // Telegram frames the Mini App; the Tower subdomain frames nothing but is
+      // allowed for the bridge. Everything else is refused.
       `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}`,
-      `frame-src 'self' https://web.telegram.org https://*.telegram.org${TOWER_HOST ? ` ${TOWER_HOST}` : ""} https://*.vercel.app`,
-      "connect-src 'self' https://api.telegram.org",
-      // EuroVirtuals is a multi-provider aggregator (Vimplay, VA Gaming,
-      // aviator.studio, and others it can add without notice) — each game runs
-      // on its own studio's domain. Without an explicit frame-src, CSP falls
-      // back to default-src 'self' and silently blanks the game iframe (no
-      // console output beyond a CSP violation log): reproduced live, this was
-      // the actual cause of "blank page" reports on vendor games.
+      // `https:` covers the EuroVirtuals aggregator, whose games each load from
+      // their own studio domain and cannot be enumerated ahead of time.
       "frame-src https:",
-      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}`,
       "base-uri 'self'",
       "form-action 'self'",
     ].join("; "),

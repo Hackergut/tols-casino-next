@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { tg, esc } from "@/lib/telegram-api";
 
 // ── Telegram notifications ──────────────────────────────────────────────
 // Sends operational alerts (registrations, deposits, withdrawals) to a
@@ -25,11 +26,6 @@ interface AlertInput {
   message: string;
 }
 
-function esc(s: string): string {
-  // Escape HTML for Telegram parse_mode=HTML
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 // When a Telegram group is upgraded to a supergroup its chat id changes, and
 // the old id starts returning 400 with `migrate_to_chat_id` pointing at the new
 // one. We cache that per warm process so delivery self-heals even if the env
@@ -42,32 +38,30 @@ interface SendOutcome {
   migrateTo?: string;
 }
 
-async function sendOnce(token: string, chatId: string, threadId: string | undefined, text: string): Promise<SendOutcome> {
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        message_thread_id: threadId ? Number(threadId) : undefined,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
-    });
-    const j = (await res.json().catch(() => null)) as
-      | { ok?: boolean; description?: string; parameters?: { migrate_to_chat_id?: number } }
-      | null;
-    if (j?.ok) return { ok: true };
-    const migrate = j?.parameters?.migrate_to_chat_id;
-    return {
-      ok: false,
-      description: j?.description || `HTTP ${res.status}`,
-      migrateTo: migrate ? String(migrate) : undefined,
-    };
-  } catch (e) {
-    return { ok: false, description: e instanceof Error ? e.message : "send error" };
-  }
+async function sendOnce(
+  token: string,
+  chatId: string,
+  threadId: string | undefined,
+  text: string,
+): Promise<SendOutcome> {
+  const j = await tg<unknown>(
+    "sendMessage",
+    {
+      chat_id: chatId,
+      message_thread_id: threadId ? Number(threadId) : undefined,
+      text,
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+    },
+    token,
+  );
+  if (j.ok) return { ok: true };
+  const migrate = j.parameters?.migrate_to_chat_id;
+  return {
+    ok: false,
+    description: j.description ?? "send failed",
+    migrateTo: migrate ? String(migrate) : undefined,
+  };
 }
 
 export async function sendTelegramAlert({ event, title, message }: AlertInput): Promise<void> {

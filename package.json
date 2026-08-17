@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "seed:admin": "node scripts/seed-admin.mjs",
-    "telegram:set-webapp": "node scripts/set-telegram-webapp.mjs",
+    "telegram:setup": "node scripts/telegram-setup.mjs",
+    "telegram:reset": "node scripts/telegram-setup.mjs --reset",
     "postinstall": "prisma generate",
     "build:selfhost": "prisma generate && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
   },
