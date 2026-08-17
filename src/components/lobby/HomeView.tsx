@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { TARGET_RTP, SLOTS_RTP } from '@/lib/game-math';
 import {
   Flame, Layers, Radio, LayoutGrid, Gamepad2, Trophy, Gift, Users, Sparkles,
   ChevronRight, Clock, Star,
@@ -219,10 +220,10 @@ function AboutTols() {
       {open && (
         <div className="mt-3 space-y-3 text-sm leading-relaxed text-white/55">
           <p>
-            Game maths is enforced server-side. Roulette pays true single-zero odds at 97.3% RTP,
-            the slots reel weights are normalised so the return is exactly 97%, and Plinko,
-            Mines, Dice, Limbo and Crash all settle on the server before any animation plays —
-            the client only draws the result it was given.
+            Game maths is enforced server-side. The Originals return {(TARGET_RTP * 100).toFixed(0)}%,
+            slots {(SLOTS_RTP * 100).toFixed(0)}%, and Roulette pays true single-zero odds at 97.3% —
+            the best return on the site. Plinko, Mines, Dice, Limbo and Crash all settle on the
+            server before any animation plays; the client only draws the result it was given.
           </p>
           <p>
             Balances move in atomic database transactions, withdrawals hold funds until an

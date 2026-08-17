@@ -6,7 +6,7 @@
  * The problem this solves: all 12 games hand-rolled their own layout. Some
  * wrapped in `space-y-4`, some `space-y-5`, some `space-y-6`, two used bespoke
  * wrappers, and slots/roulette shared nothing at all. Eight of the nine
- * components already in game-shared.tsx (GameLayout, GameHeader, GameStats,
+ * components in the former game-shared.tsx (GameLayout, GameHeader, GameStats,
  * GameProvablyFair, GameHistory…) had zero call sites — the abstraction
  * existed, nobody adopted it, and the games drifted apart.
  *

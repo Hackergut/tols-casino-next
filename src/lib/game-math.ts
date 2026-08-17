@@ -17,15 +17,44 @@
  * the browser.
  */
 
-/** House edge for the Originals. 1% → 99% RTP, the crypto-casino standard. */
-export const HOUSE_EDGE = 0.01;
+/**
+ * House edge for the Originals. 6% → 94% RTP.
+ *
+ * Deeper than the 1% crypto-casino norm and closer to a land-based operator.
+ * That is a commercial decision, not a technical one, and it has consequences
+ * worth stating plainly:
+ *
+ *  - It is legal essentially everywhere; there is no upper bound on house edge
+ *    in the jurisdictions this platform targets. What *is* regulated is
+ *    disclosure, which is why the RTP badge in GameFrame is not optional.
+ *  - It is visible. Players on crypto casinos compare RTP, and 94% against a
+ *    99% competitor is a five-point gap on the one number they check.
+ *  - It changes what a game can offer. See MAX_WIN_CHANCE below.
+ */
+export const HOUSE_EDGE = 0.06;
 export const TARGET_RTP = 1 - HOUSE_EDGE;
 
 /** Roulette is exempt: its edge is structural (single zero → 2.70%). */
 export const ROULETTE_RTP = 36 / 37;
 
-/** Slots run a slightly deeper edge, as physical and online slots do. */
-export const SLOTS_RTP = 0.97;
+/** Slots run the deepest edge, as physical and online slots do. */
+export const SLOTS_RTP = 0.92;
+
+/**
+ * Highest win chance a game may offer, in percent.
+ *
+ * This constraint does not exist at 99% RTP and is the one real casualty of
+ * moving to 94%. A fair payout is RTP/chance, so once the win chance passes
+ * TARGET_RTP the multiplier drops below 1.00 — the game announces a WIN and
+ * hands back less than the stake. At 94% that happens above 94% win chance,
+ * and the payout is already a meaningless 1.0000x at 93%.
+ *
+ * Rather than let a game quote "you win 97% of the time" and then pay 0.96x,
+ * the win chance is capped so every win returns at least MIN_WIN_MULTIPLIER.
+ * Dice's slider range and Limbo's minimum target both derive from this.
+ */
+export const MIN_WIN_MULTIPLIER = 1.02;
+export const MAX_WIN_CHANCE = (TARGET_RTP * 100) / MIN_WIN_MULTIPLIER;
 
 /* ────────────────────────── helpers ────────────────────────── */
 
@@ -382,7 +411,23 @@ export function minesMultiplier(picks: number, mines: number, tiles = MINES_TILE
   for (let i = 0; i < picks; i++) {
     inverse *= (tiles - i) / (safe - i);
   }
-  return inverse * TARGET_RTP;
+  // At a 6% edge the safest possible reveal (1 mine, 1 pick) survives 96% of
+  // the time, so the fair payout is 0.979x — a cash-out that returns less than
+  // the stake. The floor keeps that cash-out honest; the cost is a hair under
+  // the target RTP on exactly that one combination, which is the right way
+  // round. It resolves itself after the second pick.
+  return Math.max(MIN_WIN_MULTIPLIER, inverse * TARGET_RTP);
+}
+
+/**
+ * Whether a (picks, mines) pair pays the exact target, or is floored.
+ * Only the very safest reveals are floored — see minesMultiplier.
+ */
+export function minesIsFloored(picks: number, mines: number, tiles = MINES_TILES): boolean {
+  if (picks <= 0 || picks > tiles - mines) return false;
+  let inverse = 1;
+  for (let i = 0; i < picks; i++) inverse *= (tiles - i) / (tiles - mines - i);
+  return inverse * TARGET_RTP < MIN_WIN_MULTIPLIER;
 }
 
 /** Probability of surviving `picks` reveals. */
@@ -393,11 +438,68 @@ export function minesSurvival(picks: number, mines: number, tiles = MINES_TILES)
   return p;
 }
 
+/* ────────────────────────── Keno ────────────────────────── */
+
+export const KENO_POOL = 40;
+export const KENO_DRAWN = 10;
+
+/**
+ * P(exactly `hits` of the player's `picks` appear in the draw).
+ *
+ * Hypergeometric: choosing `KENO_DRAWN` from `KENO_POOL` without replacement.
+ */
+export function kenoHitProb(picks: number, hits: number): number {
+  const denom = binomial(KENO_POOL, KENO_DRAWN);
+  if (denom === 0) return 0;
+  return (binomial(picks, hits) * binomial(KENO_POOL - picks, KENO_DRAWN - hits)) / denom;
+}
+
+/**
+ * Rescale a Keno paytable row to the target RTP.
+ *
+ * Keno's rows were hand-typed against a 97% target — the same fragility that
+ * left Plinko at 152%. Rather than retype forty rows for the new edge, the
+ * shape is kept (which hits pay, and their relative size, is the game's feel)
+ * and only the scale is re-solved against the real hypergeometric weights.
+ *
+ * `cap` reflects the real liability limit: an uncapped row can quote a
+ * 10-of-10 payout the platform would not actually honour.
+ */
+export function kenoRow(picks: number, shape: number[], targetRtp = TARGET_RTP, cap = 5000): number[] {
+  const probs = shape.map((_, hits) => kenoHitProb(picks, hits));
+  const scaled = normalise(shape, probs, targetRtp);
+
+  // Capping removes return, so whatever the cap takes away is redistributed
+  // across the uncapped paying entries — otherwise the row silently lands
+  // below target, which is exactly the drift this module exists to prevent.
+  if (scaled.some((v) => v > cap)) {
+    const lost = scaled.reduce((acc, v, i) => acc + (v > cap ? (v - cap) * probs[i] : 0), 0);
+    const freeIdx = scaled.map((_, i) => i).filter((i) => scaled[i] <= cap && shape[i] > 0);
+    const freeMass = freeIdx.reduce((acc, i) => acc + scaled[i] * probs[i], 0);
+    if (freeMass > 0) {
+      const boost = 1 + lost / freeMass;
+      for (const i of freeIdx) scaled[i] *= boost;
+    }
+    for (let i = 0; i < scaled.length; i++) if (scaled[i] > cap) scaled[i] = cap;
+  }
+
+  return scaled.map((v) => Math.round(v * 100) / 100);
+}
+
 /* ────────────────────────── Dice / Limbo / Crash ────────────────────────── */
 
-/** Dice and Limbo share one rule: pay 99/chance, so RTP is 99% at every target. */
+/**
+ * Dice and Limbo share one rule: pay RTP/chance, so the return is flat at
+ * every target.
+ *
+ * The upper clamp is MAX_WIN_CHANCE, not an arbitrary 98: past that point the
+ * fair multiplier falls below the stake, so clamping the *chance* keeps every
+ * win worth winning. Clamping the payout instead (what the old
+ * `Math.max(1.01, …)` did) silently pushes RTP above target at the extremes —
+ * that is how dice reached 99.99% before.
+ */
 export function chanceMultiplier(winChancePercent: number): number {
-  const clamped = Math.min(98, Math.max(0.01, winChancePercent));
+  const clamped = Math.min(MAX_WIN_CHANCE, Math.max(0.01, winChancePercent));
   return (TARGET_RTP * 100) / clamped;
 }
 
@@ -419,4 +521,35 @@ export function crashPointFrom(u: number): number {
 /** Limbo shares the crash curve — same distribution, different presentation. */
 export function limboRollFrom(u: number): number {
   return crashPointFrom(u);
+}
+
+/* ────────────────────────── Slots ──────────────────────────
+ * 3 reels × 3 rows, centre row is the single payline, SYM1 is wild.
+ *
+ * This lived inline in the bet route while the UI carried a hand-copied
+ * paytable for display. The two drifted the moment the edge changed — the UI
+ * still advertised the old numbers while the server paid new ones. One
+ * exported table now feeds both.
+ */
+export const SLOT_WEIGHTS = [3, 13, 11, 9, 7, 5]; // SYM1(wild)..SYM6
+const SLOT_BASE_PAY = [60, 4, 6, 9, 14, 22]; // base 3-of-a-kind, SYM1..SYM6
+
+/** Reel-strip symbol probabilities, SYM1..SYM6. */
+export function slotProbs(): number[] {
+  const total = SLOT_WEIGHTS.reduce((a, b) => a + b, 0);
+  return SLOT_WEIGHTS.map((w) => w / total);
+}
+
+/**
+ * Paytable normalised so E[multiplier] on the centre line === SLOTS_RTP.
+ * Wilds complete any symbol, so symbol x wins on (p[x] + p[wild])^3 minus the
+ * all-wild case, which pays at the wild rate instead.
+ */
+export function slotPaytable(): number[] {
+  const p = slotProbs();
+  const p1 = p[0];
+  let rawE = SLOT_BASE_PAY[0] * p1 ** 3;
+  for (let x = 1; x < 6; x++) rawE += SLOT_BASE_PAY[x] * ((p[x] + p1) ** 3 - p1 ** 3);
+  const scale = SLOTS_RTP / rawE;
+  return SLOT_BASE_PAY.map((v) => v * scale);
 }

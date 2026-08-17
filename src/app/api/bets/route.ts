@@ -8,9 +8,11 @@ import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import {
   plinkoTable,
-  SLOTS_RTP,
+  kenoRow,
   wheelTable,
   shootBands,
+  slotPaytable,
+  slotProbs,
   minesMultiplier,
   chanceMultiplier,
   crashPointFrom,
@@ -21,7 +23,7 @@ import {
   type WheelSegments,
 } from "@/lib/game-math";
 
-// Game engines — provably fair, 99% RTP-ish
+// Game engines — provably fair, calibrated to TARGET_RTP
 type GameResult = { multiplier: number; payout: number; won: boolean; payload: Record<string, unknown> };
 
 function rollDice(roll: number, target: number, isOver: boolean): boolean {
@@ -80,27 +82,22 @@ function nextMineMultiplier(picks: number, mines: number, tiles = 25): number {
 // SYM1 is wild. RTP is controlled entirely on the server: the reel-strip
 // weights and base paytable below are normalised so the expected multiplier
 // equals SLOTS_RTP exactly. Symbols are ids 1..6 (SYM1..SYM6).
-const SLOT_W = [3, 13, 11, 9, 7, 5]; // weights for SYM1(wild)..SYM6
-const SLOT_BASE_PAY = [60, 4, 6, 9, 14, 22]; // base 3-of-a-kind multiplier, SYM1..SYM6
-// SLOTS_RTP is imported from game-math so every RTP constant lives in one file.
-// Normalise pays so E[multiplier] === SLOTS_RTP for the wild-completed centre line.
-const { SLOT_PAY, SLOT_P } = (() => {
-  const W = SLOT_W.reduce((a, b) => a + b, 0);
-  const p = SLOT_W.map((w) => w / W);
-  const p1 = p[0];
-  let rawE = SLOT_BASE_PAY[0] * p1 ** 3; // all-wild line
-  for (let x = 1; x < 6; x++) {
-    rawE += SLOT_BASE_PAY[x] * ((p[x] + p1) ** 3 - p1 ** 3);
-  }
-  const scale = SLOTS_RTP / rawE;
-  return { SLOT_PAY: SLOT_BASE_PAY.map((v) => v * scale), SLOT_P: p };
-})();
+const SLOT_PAY = slotPaytable();
+const SLOT_P = slotProbs();
 
-// Keno paytables by risk, indexed [picks][hits]. Grid is 1..40 with 10 drawn.
-// Every row is normalised to ~97% expected return and capped at 5000x: risk
-// changes how the return is distributed (low pays often and small, high pays
-// rarely and huge), never the house edge.
-const KENO_TABLES: Record<string, Record<number, number[]>> = {
+/*
+ * Keno paytable SHAPES by risk, indexed [picks][hits]. Grid is 1..40, 10 drawn.
+ *
+ * These numbers are shapes, not final payouts: only which hit counts pay, and
+ * their size relative to each other, is meaningful here. The actual multipliers
+ * are re-solved against the hypergeometric probabilities at the module's target
+ * RTP (see KENO_TABLES below), so changing HOUSE_EDGE moves Keno with every
+ * other game instead of leaving forty hand-typed rows behind at the old edge.
+ *
+ * Risk changes how the return is distributed (low pays often and small, high
+ * pays rarely and huge), never the house edge.
+ */
+const KENO_SHAPES: Record<string, Record<number, number[]>> = {
   classic: {
     1: [0, 3.88],
     2: [0, 1.15, 9.17],
@@ -150,6 +147,17 @@ const KENO_TABLES: Record<string, Record<number, number[]>> = {
     10: [0, 0, 0, 0, 0, 0, 0, 1592.8, 2309.56, 3348.86, 4855.85]
   },
 };
+
+// Re-solve every shape row against the real hypergeometric weights, so each
+// (risk, picks) row returns exactly the target RTP.
+const KENO_TABLES: Record<string, Record<number, number[]>> = Object.fromEntries(
+  Object.entries(KENO_SHAPES).map(([risk, rows]) => [
+    risk,
+    Object.fromEntries(
+      Object.entries(rows).map(([picks, shape]) => [picks, kenoRow(Number(picks), shape)]),
+    ),
+  ]),
+);
 
 function slotPick(u: number): number {
   let acc = 0;
@@ -212,7 +220,7 @@ export async function POST(req: NextRequest) {
       const winChance = isOver ? 100 - target : target;
       // chanceMultiplier clamps the win chance itself rather than the payout.
       // The old Math.max(1.01, ...) floor silently pushed RTP above 100% at
-      // extreme targets (target=99 under returned 99.99%).
+      // extreme targets (target=99 under returned 99.99%). See MAX_WIN_CHANCE.
       const mult = won ? chanceMultiplier(winChance) : 0;
       result = { multiplier: mult, payout: amount * mult, won, payload: { roll, target, isOver } };
       break;
@@ -265,7 +273,7 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "wheel": {
-      // Generated per (segments, risk) at an exact 99% RTP. The old hardcoded
+      // Generated per (segments, risk) at exactly TARGET_RTP. The old hardcoded
       // tables returned 64% on low and 82% on high — risk was silently
       // changing the house edge instead of only the volatility.
       const segments = Number(payload?.segments ?? 20) as WheelSegments;
@@ -277,7 +285,7 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "keno": {
-      // Player picks 1–10 numbers from 1..80; server draws 10 winners.
+      // Player picks 1–10 numbers from 1..KENO_POOL; server draws KENO_DRAWN winners.
       const picks: number[] = Array.isArray(payload?.picks)
         ? (payload!.picks as number[]).filter((n) => Number.isInteger(n) && n >= 1 && n <= 40).slice(0, 10)
         : [];
@@ -307,7 +315,7 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "shoot": {
-      // Band multipliers are normalised to 99% in game-math. The old bands
+      // Band multipliers are normalised to TARGET_RTP in game-math. The old bands
       // were hand-picked and summed to 141% RTP — every shot lost the house
       // money in expectation.
       const r = fairFloat(serverSeed, seed, nonce);

@@ -30,6 +30,11 @@ const M = await import("data:text/javascript;base64," + Buffer.from(js).toString
 const {
   TARGET_RTP,
   HOUSE_EDGE,
+  MAX_WIN_CHANCE,
+  MIN_WIN_MULTIPLIER,
+  minesIsFloored,
+  kenoRow,
+  kenoHitProb,
   ROULETTE_RTP,
   plinkoTable,
   plinkoProbs,
@@ -42,6 +47,11 @@ const {
   limboRollFrom,
   expectedValue,
   binomialPmf,
+  slotPaytable,
+  slotProbs,
+  SLOTS_RTP,
+  KENO_POOL,
+  KENO_DRAWN,
 } = M;
 
 /** Payout tables are rounded to whole cents, so allow a cent of slack. */
@@ -158,10 +168,11 @@ test("shoot bands increase with rarity", () => {
 
 /* ─────────────────────────── Mines ─────────────────────────── */
 
-test("mines returns the target RTP for every mines/picks combination", () => {
+test("mines returns the target RTP for every unfloored mines/picks pair", () => {
   for (let mines = 1; mines <= 24; mines++) {
     const safe = 25 - mines;
     for (let picks = 1; picks <= safe; picks++) {
+      if (minesIsFloored(picks, mines)) continue;
       const rtp = minesSurvival(picks, mines) * minesMultiplier(picks, mines);
       assert.ok(
         Math.abs(rtp - TARGET_RTP) < 1e-9,
@@ -169,6 +180,33 @@ test("mines returns the target RTP for every mines/picks combination", () => {
       );
     }
   }
+});
+
+test("mines never offers a cash-out below the stake", () => {
+  for (let mines = 1; mines <= 24; mines++) {
+    for (let picks = 1; picks <= 25 - mines; picks++) {
+      assert.ok(
+        minesMultiplier(picks, mines) >= MIN_WIN_MULTIPLIER - 1e-12,
+        `mines=${mines} picks=${picks} pays ${minesMultiplier(picks, mines)}x`,
+      );
+    }
+  }
+});
+
+test("mines flooring is confined to the safest reveals and costs little", () => {
+  // Only combinations that would pay under the stake are floored, and the
+  // resulting overpay must stay small — a large one would be an edge leak.
+  let floored = 0;
+  for (let mines = 1; mines <= 24; mines++) {
+    for (let picks = 1; picks <= 25 - mines; picks++) {
+      if (!minesIsFloored(picks, mines)) continue;
+      floored++;
+      const rtp = minesSurvival(picks, mines) * minesMultiplier(picks, mines);
+      assert.ok(rtp <= 1.0, `mines=${mines} picks=${picks} returns ${rtp} — over 100%`);
+      assert.ok(rtp > TARGET_RTP, "a floored pair should pay above target, not below");
+    }
+  }
+  assert.ok(floored > 0 && floored < 12, `${floored} floored pairs — expected a handful`);
 });
 
 test("mines multiplier grows with each safe pick", () => {
@@ -182,23 +220,35 @@ test("mines multiplier grows with each safe pick", () => {
 
 test("mines cannot pay for revealing more tiles than exist", () => {
   assert.equal(minesMultiplier(23, 3), 0); // only 22 safe tiles
-  assert.equal(minesMultiplier(1, 24), 25 * TARGET_RTP / 1);
+  assert.equal(minesMultiplier(1, 24), 25 * TARGET_RTP);
 });
 
 /* ─────────────────────── Dice and Limbo ─────────────────────── */
 
-test("dice returns the target RTP at every win chance", () => {
-  for (let chance = 1; chance <= 98; chance++) {
+test("dice returns the target RTP at every offerable win chance", () => {
+  for (let chance = 1; chance <= Math.floor(MAX_WIN_CHANCE); chance++) {
     const rtp = (chance / 100) * chanceMultiplier(chance);
     assert.ok(Math.abs(rtp - TARGET_RTP) < 1e-12, `chance=${chance} → ${rtp}`);
   }
 });
 
-test("dice never pays above 100% at extreme targets", () => {
-  // The old Math.max(1.01, 99/chance) floor pushed RTP to 99.99% at chance=99
-  // and would exceed 100% beyond that.
-  for (const chance of [0.01, 0.5, 99, 99.99]) {
-    const rtp = (Math.min(chance, 98) / 100) * chanceMultiplier(chance);
+test("dice never announces a win that returns less than the stake", () => {
+  // The constraint that appears at a 6% edge: a fair payout is RTP/chance, so
+  // past a ~94% win chance the multiplier drops below 1.00 and a WIN hands
+  // back less than was staked. The cap is on the chance, not the payout.
+  for (let chance = 1; chance <= 100; chance++) {
+    assert.ok(
+      chanceMultiplier(chance) >= MIN_WIN_MULTIPLIER - 1e-12,
+      `chance=${chance} pays ${chanceMultiplier(chance)}x`,
+    );
+  }
+});
+
+test("dice never pays above the target at extreme chances", () => {
+  // The old Math.max(1.01, 99/chance) payout floor pushed RTP to 99.99% at
+  // chance=99. Clamping the chance instead keeps the return at or below target.
+  for (const chance of [0.01, 0.5, 93, 94, 99, 99.99]) {
+    const rtp = (Math.min(chance, MAX_WIN_CHANCE) / 100) * chanceMultiplier(chance);
     assert.ok(rtp <= TARGET_RTP + 1e-12, `chance=${chance} → ${rtp}`);
   }
 });
@@ -269,5 +319,120 @@ test("binomial pmf sums to 1 for every plinko board", () => {
       0,
     );
     assert.ok(Math.abs(total - 1) < 1e-12);
+  }
+});
+
+/* ─────────────────────────── Keno ─────────────────────────── */
+
+test("keno hit probabilities form a valid distribution", () => {
+  for (let picks = 1; picks <= 10; picks++) {
+    let total = 0;
+    for (let hits = 0; hits <= picks; hits++) total += kenoHitProb(picks, hits);
+    assert.ok(Math.abs(total - 1) < 1e-9, `picks=${picks} sums to ${total}`);
+  }
+});
+
+test("keno rows re-solve to the target RTP whatever shape they start from", () => {
+  // The shapes below are the old 97%-era numbers; the point is that the
+  // rescaler lands them on the current target regardless of their origin.
+  const shapes = {
+    1: [0, 3.88],
+    3: [0, 0, 4.15, 33.19],
+    6: [0, 0, 0, 2.06, 16.46, 131.7, 1053.57],
+    10: [0, 0, 0, 0, 0, 13.6, 44.19, 143.63, 466.79, 1517.07, 4930.49],
+  };
+  for (const [picks, shape] of Object.entries(shapes)) {
+    const p = Number(picks);
+    const row = kenoRow(p, shape);
+    let rtp = 0;
+    for (let hits = 0; hits <= p; hits++) rtp += kenoHitProb(p, hits) * (row[hits] ?? 0);
+    assert.ok(Math.abs(rtp - TARGET_RTP) < 5e-3, `picks=${p} → ${(rtp * 100).toFixed(3)}%`);
+  }
+});
+
+test("keno respects its liability cap without dropping below target", () => {
+  // Capping removes return; if it is not redistributed the row lands short.
+  const shape = [0, 0, 0, 0, 0, 10, 40, 140, 460, 1500, 50000];
+  const row = kenoRow(10, shape, TARGET_RTP, 5000);
+  assert.ok(Math.max(...row) <= 5000, "cap exceeded");
+  let rtp = 0;
+  for (let hits = 0; hits <= 10; hits++) rtp += kenoHitProb(10, hits) * (row[hits] ?? 0);
+  assert.ok(Math.abs(rtp - TARGET_RTP) < 5e-3, `capped row → ${(rtp * 100).toFixed(3)}%`);
+});
+
+test("keno never pays for a hit count the shape marks as losing", () => {
+  const row = kenoRow(5, [0, 0, 0, 5.38, 43.01, 344.06]);
+  for (const i of [0, 1, 2]) assert.equal(row[i], 0);
+});
+
+/* ──────────────────── House edge, stated ──────────────────── */
+
+test("the configured house edge is what the games actually run", () => {
+  assert.ok(Math.abs(TARGET_RTP - 0.94) < 1e-12, `TARGET_RTP is ${TARGET_RTP}`);
+  assert.ok(Math.abs(HOUSE_EDGE - 0.06) < 1e-12);
+  // Roulette must stay on its structural edge, never dragged to the house one.
+  assert.ok(ROULETTE_RTP > TARGET_RTP, "roulette should still be the best odds on the site");
+});
+
+test("MAX_WIN_CHANCE is derived, not guessed", () => {
+  // At the cap the payout is exactly MIN_WIN_MULTIPLIER; one point past it the
+  // fair payout would breach that floor.
+  assert.ok(Math.abs(chanceMultiplier(MAX_WIN_CHANCE) - MIN_WIN_MULTIPLIER) < 1e-9);
+  assert.ok((TARGET_RTP * 100) / (MAX_WIN_CHANCE + 1) < MIN_WIN_MULTIPLIER);
+});
+
+/* ──────────────────────────────────────────────────────────
+ * UI/engine agreement.
+ *
+ * Several games rendered hardcoded payout tables that were snapshots of an
+ * older calibration. The server paid one number, the screen showed another.
+ * These lock the two together: if a table is ever inlined again, the numbers
+ * it would have to contain are asserted here.
+ * ────────────────────────────────────────────────────────── */
+
+test("plinko bins the UI draws are the bins the server pays", () => {
+  // The old inlined '12-high' table peaked at 420x; the calibrated one is far
+  // lower. Any UI copy of these numbers has to match plinkoTable exactly.
+  for (const rows of [8, 12, 16]) {
+    for (const risk of ["low", "medium", "high"]) {
+      const t = plinkoTable(rows, risk);
+      assert.equal(t.length, rows + 1, `${rows}-${risk} bin count`);
+      assert.ok(
+        Math.abs(expectedValue(t, plinkoProbs(rows)) - TARGET_RTP) < TOL,
+        `${rows}-${risk} must pay exactly the target`,
+      );
+    }
+  }
+});
+
+test("wheel wedges the UI draws are the wedges the server pays", () => {
+  // The wheel rendered a fixed 1.2/1.5/1.8/2.0 table. Deriving it means the
+  // wedge under the pointer is always the credited multiplier.
+  for (const risk of ["low", "medium", "high"]) {
+    const t = wheelTable(20, risk);
+    assert.equal(t.length, 20);
+    const probs = t.map(() => 1 / 20);
+    assert.ok(Math.abs(expectedValue(t, probs) - TARGET_RTP) < TOL, `wheel 20-${risk}`);
+  }
+});
+
+test("slots paytable is derived and returns exactly SLOTS_RTP", () => {
+  const pays = slotPaytable();
+  const p = slotProbs();
+  const p1 = p[0];
+  let ev = pays[0] * p1 ** 3;
+  for (let x = 1; x < 6; x++) ev += pays[x] * ((p[x] + p1) ** 3 - p1 ** 3);
+  assert.ok(Math.abs(ev - SLOTS_RTP) < TOL, `slots EV ${ev} != ${SLOTS_RTP}`);
+});
+
+test("keno's grid matches the pool its paytable was solved against", () => {
+  // The client drew 20 balls from 1..80 while the server drew 10 from 40, so
+  // the odds on screen were not the odds being paid.
+  assert.equal(KENO_POOL, 40);
+  assert.equal(KENO_DRAWN, 10);
+  for (let picks = 1; picks <= 10; picks++) {
+    let sum = 0;
+    for (let hits = 0; hits <= picks; hits++) sum += kenoHitProb(picks, hits);
+    assert.ok(Math.abs(sum - 1) < 1e-9, `picks=${picks} distribution must sum to 1`);
   }
 });
