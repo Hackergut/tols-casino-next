@@ -1,33 +1,33 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 /**
- * TOLS Governance Tower ↔ Casino Platform — Project-to-Project Bridge
+ * TOLS Casino ↔ Governance — Project-to-Project Bridge (hackguts-projects)
  *
- * ATTENZIONE: Questo ponte è tra DUE PROGETTI VERCEL SEPARATI con DUE REPO GIT DIVERSI.
- *   - Casino  → questo repo `tols-casino-next`  → dominio principale  https://tols.fun
- *   - Tower   → altro repo (governance tower)   → sottodominio        https://tower.tols.fun  (o governance.tols.fun)
+ *   - Casino      → Vercel hackguts-projects/tols-casino-next → https://vercel.com/hackguts-projects/tols-casino-next
+ *                   domini: prendi da Vercel → Settings → Domains (es. tols.fun o tols-casino-next.vercel.app)
+ *   - Governance  → Vercel hackguts-projects/tolsgovernz       → https://vercel.com/hackguts-projects/tolsgovernz
+ *                   domini: prendi da Vercel → Settings → Domains (es. tolsgovernz.vercel.app)
  *
- * Entrambi sono già connessi al dominio su Hostinger e deployati su Vercel come progetti distinti.
- * Il ponte NON è via admin panel — è un collegamento servizio→servizio (service-to-service) via HTTPS + HMAC.
+ * Il ponte NON è via admin panel — è service-to-service via HTTPS + HMAC/JWT tra i 2 progetti.
  *
  * Flusso:
- *   Casino → Tower: health, sync snapshot, bet/deposit/withdrawal events (POST /api/bridge/* su Tower)
- *   Tower  → Casino: governance commands (POST /api/bridge/webhook su Casino con X-Bridge-Signature)
- *   SSO bidirezionale: token HMAC 10m condiviso per login cross-domain
+ *   Casino → Governance: health, sync, deposits/withdrawals reali via /api/platform/* (JWT RS256)
+ *   Governance → Casino: commands via /api/bridge/webhook (HMAC)
+ *   SSO: token HMAC 10m
  *
- * Env su ENTRAMBI i progetti Vercel (stesso secret):
- *   GOVERNANCE_TOWER_URL  — origin della Tower, es. https://tower.tols.fun  (alias: TOWER_URL)
- *   APP_URL               — origin del Casino, es. https://tols.fun       (alias: CASINO_URL, NEXT_PUBLIC_APP_URL)
- *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — secret HMAC condiviso (openssl rand -hex 32)
- *   TOLS_BASE_URL         — legacy: base API della Tower (es. https://tower.tols.fun/api), se la Tower espone /api separato
- *   TOLS_API_KEY / TOLS_APP_KEY — chiavi Tower API se la Tower le richiede
+ * Env su ENTRAMBI i progetti (stesso secret):
+ *   GOVERNANCE_TOWER_URL  — origin Governance, es. https://tolsgovernz.vercel.app (alias: TOWER_URL) — copia da Vercel → tolsgovernz → Domains
+ *   APP_URL               — origin Casino, es. https://tols.fun (alias: CASINO_URL) — copia da Vercel → tols-casino-next → Domains
+ *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — HMAC condiviso (openssl rand -hex 32)
+ *   TOLS_BASE_URL         — legacy base API Governance (es. https://tolsgovernz.vercel.app/api)
+ *   PLATFORM_JWT_*        — JWT RS256: PRIVATE su tolsgovernz, PUBLIC su tols-casino-next (vedi .env.bridge-keys)
  */
 
 // ── Config ───────────────────────────────────────────────────────────────
 
 export interface BridgeConfig {
-  towerOrigin: string;        // es. https://tower.tols.fun
-  towerApiBase: string;       // es. https://tower.tols.fun/api
+  towerOrigin: string;        // es. https://tolsgovernz.vercel.app
+  towerApiBase: string;       // es. https://tolsgovernz.vercel.app/api
   casinoOrigin: string;       // es. https://tols.fun
   hasBridgeSecret: boolean;
   hasTowerKeys: boolean;
@@ -51,7 +51,7 @@ export function getBridgeConfig(): BridgeConfig {
   const towerApiBase = stripTrailingSlash(rawApiBase || "https://tolscrypto.base44.app/api");
   const towerOrigin = rawTowerOrigin
     ? stripTrailingSlash(rawTowerOrigin)
-    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://tower.tols.fun"; } })();
+    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://tolsgovernz.vercel.app"; } })();
 
   // Casino origin: prefer APP_URL, fallback CASINO_URL / NEXT_PUBLIC_APP_URL
   const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://tols.fun");

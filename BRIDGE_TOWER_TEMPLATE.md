@@ -1,86 +1,70 @@
-# Tower — cosa incollare nell'ALTRO repo (governance tower)
+# Governance — cosa incollare nel repo `tolsgovernz` (https://vercel.com/hackguts-projects/tolsgovernz)
 
-Questo repo è l'ALTRO progetto Vercel su sottodominio (es. `tower.tols.fun`).
-Copia i file qui sotto nel repo della Tower per completare il ponte Casino ↔ Tower.
+Questo è l'ALTRO progetto Vercel (Governance). Casino è `tols-casino-next`.
 
-## 1. Env su Vercel Tower (Settings → Environment Variables → Production)
+## 1. Env su Vercel Governance (Settings → Environment Variables → Production)
+
+Prendi domini REALI da Vercel → Settings → Domains (non inventare):
+- Governance: `https://tolsgovernz.vercel.app` (o custom se hai)
+- Casino: `https://tols-casino-next.vercel.app` o `https://tols.fun`
 
 ```
-GOVERNANCE_TOWER_URL=https://tower.tols.fun
-APP_URL=https://tols.fun
-GOVERNANCE_BRIDGE_SECRET=<stesso secret del Casino — openssl rand -hex 32>
-# opzionale se la Tower chiama il Casino via bridgeFetch:
-TOLS_API_KEY / TOLS_APP_KEY (se richieste)
+GOVERNANCE_TOWER_URL=https://tolsgovernz.vercel.app
+APP_URL=https://tols-casino-next.vercel.app
+GOVERNANCE_BRIDGE_SECRET=<stesso del Casino — openssl rand -hex 32>
+PLATFORM_JWT_PRIVATE_KEY=<base64 PEM privato — BLOCCO 1 di .env.bridge-keys su casino>
+PLATFORM_JWT_ISSUER=tols-governance
+PLATFORM_JWT_AUDIENCE=tols-casino
 ```
-
-Redeploy dopo aver salvato.
 
 ## 2. Copia `src/lib/governance-bridge.ts` dal Casino
 
-Prendi `src/lib/governance-bridge.ts` da `tols-casino-next` e incollalo in `src/lib/governance-bridge.ts` nella Tower.
-È già compatibile con entrambi i lati (usa `GOVERNANCE_TOWER_URL` / `APP_URL` / `GOVERNANCE_BRIDGE_SECRET`).
+Da `tols-casino-next` → `tolsgovernz`, stesso file (usa `GOVERNANCE_TOWER_URL` / `APP_URL`).
 
-## 3. Route Tower (Next.js — incolla in `src/app/api/bridge/`)
+## 3. Route Governance (Next.js)
 
-Crea 3 route speculari. Se la Tower non è Next.js, replica solo la logica HMAC.
-
-### `src/app/api/bridge/health/route.ts` (Tower)
-```ts
-import { NextResponse } from "next/server";
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "tower-bridge", tower: process.env.GOVERNANCE_TOWER_URL || process.env.TOWER_URL, casino: process.env.APP_URL, ts: new Date().toISOString() });
-}
-```
-
-### `src/app/api/bridge/events/route.ts` (Tower ← Casino)
+Crea `src/app/api/bridge/events/route.ts` ← Casino → Governance:
 ```ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyBridgeSignature } from "@/lib/governance-bridge";
-function getSig(req: NextRequest) { return req.headers.get("x-bridge-signature") || req.headers.get("x-webhook-signature") || null; }
+function getSig(req: NextRequest) { return req.headers.get("x-bridge-signature") || null; }
 export async function POST(req: NextRequest) {
   const raw = await req.text();
-  const sig = getSig(req);
-  // In prod richiedi HMAC; in dev puoi accettare ping senza firma se preferisci
-  if (!verifyBridgeSignature(raw, sig)) return NextResponse.json({ success: false, error: "Invalid bridge signature" }, { status: 401 });
-  const body = JSON.parse(raw);
-  console.log("[tower bridge/event]", body.type, body.payload);
-  // TODO: persisti evento, aggiorna dashboard Tower, ecc.
+  if (!verifyBridgeSignature(raw, getSig(req))) return NextResponse.json({ success: false, error: "Invalid signature" }, { status: 401 });
+  console.log("[governance event]", JSON.parse(raw));
   return NextResponse.json({ success: true, accepted: true });
 }
 ```
 
-### `src/app/api/bridge/webhook/route.ts` — per push Tower → Casino (Tower è client)
-Non serve route, è il Casino che espone `/api/bridge/webhook`. Dalla Tower invia:
+Push Governance → Casino:
 ```ts
 import { signBridgePayload } from "@/lib/governance-bridge";
-export async function pushToCasino(type: string, payload: Record<string, unknown>) {
-  const raw = JSON.stringify({ type, payload });
-  const sig = signBridgePayload(raw);
-  const res = await fetch(`${process.env.APP_URL || "https://tols.fun"}/api/bridge/webhook`, {
-    method: "POST", headers: { "Content-Type": "application/json", "X-Bridge-Signature": `sha256=${sig}` }, body: raw
-  });
-  return res.json();
-}
-// Esempio:
-await pushToCasino("ping", {});
-await pushToCasino("governance.player_block", { userId: "xxx", blocked: true });
+const raw = JSON.stringify({ type: "ping", payload: {} });
+const sig = signBridgePayload(raw);
+await fetch(`${process.env.APP_URL}/api/bridge/webhook`, {
+  method: "POST", headers: { "Content-Type": "application/json", "X-Bridge-Signature": `sha256=${sig}` }, body: raw
+});
 ```
 
-## 4. CSP / CORS sulla Tower (Next.js)
+## 4. JWT Governance → Casino (elimina mockup)
 
-In `next.config.ts` della Tower aggiungi l'origin del Casino:
+La Governance firma i JWT con `PLATFORM_JWT_PRIVATE_KEY` e chiama:
 ```ts
-const CASINO_ORIGIN = (process.env.APP_URL || process.env.CASINO_URL || "https://tols.fun").replace(/\/$/, "");
-// CSP: connect-src 'self' https://tols.fun https://*.vercel.app
-// CORS su /api/bridge/*: Access-Control-Allow-Origin: https://tols.fun
+import { createSign, createPrivateKey } from "node:crypto";
+function signJWT(payload: object) {
+  const header = { alg: "RS256", typ: "JWT" };
+  const h = Buffer.from(JSON.stringify(header)).toString("base64url");
+  const p = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const data = `${h}.${p}`;
+  const key = createPrivateKey(Buffer.from(process.env.PLATFORM_JWT_PRIVATE_KEY!, "base64").toString("utf8"));
+  const s = createSign("RSA-SHA256"); s.update(data); s.end();
+  return `${data}.${s.sign(key).toString("base64url")}`;
+}
+const now = Math.floor(Date.now()/1000);
+const jwt = signJWT({ iss: "tols-governance", aud: "tols-casino", sub: "tolsgovernz", iat: now, exp: now+600, scope: ["deposits:read","withdrawals:read"] });
+const res = await fetch(`${process.env.APP_URL}/api/platform/deposits?limit=5`, { headers: { Authorization: `Bearer ${jwt}` } });
 ```
 
-## 5. Vercel Domains — Tower sottodominio
+## 5. Domains
 
-Vercel Tower → Settings → Domains → Add `tower.tols.fun` (o `governance.tols.fun`)
-Hostinger DNS → CNAME `tower` → `cname.vercel-dns.com` (valore esatto mostrato da Vercel).
-Attendi TLS verde, poi verifica:
-```bash
-curl https://tower.tols.fun/api/bridge/health | jq .
-curl -X POST https://tower.tols.fun/api/bridge/events -H "Content-Type: application/json" -H "X-Bridge-Signature: sha256=..." -d '{"type":"ping","payload":{}}' | jq .
-```
+Non serve aggiungere `tolsgovernz.vercel.app` — è già il dominio Vercel. Se usi custom domain, aggiungilo in Vercel → Settings → Domains su `tolsgovernz` e usa quello come `GOVERNANCE_TOWER_URL` ovunque.

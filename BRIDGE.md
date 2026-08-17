@@ -1,171 +1,93 @@
-# TOLS — Ponte Governance Tower ↔ Casino Platform
+# TOLS — Ponte Casino ↔ Governance (hackguts-projects)
 
-> **2 progetti Vercel separati, 2 repo git diversi, 1 dominio.**
-> - **Casino** → questo repo `tols-casino-next` → `https://tols.fun` (dominio principale)
-> - **Tower**  → altro repo `tols-governance-tower` → `https://tower.tols.fun` (sottodominio)
+> **2 progetti Vercel REALI, team `hackguts-projects`**
+> - **Casino** → `tols-casino-next` → https://vercel.com/hackguts-projects/tols-casino-next
+> - **Governance** → `tolsgovernz` → https://vercel.com/hackguts-projects/tolsgovernz
 >
-> Entrambi già connessi al dominio su Hostinger e deployati su Vercel come **progetti distinti**.
-> Il ponte è **service-to-service via HTTPS + HMAC**, NON via admin panel.
+> Repo git separati, deploy separati. Il ponte è **service-to-service HTTPS** (HMAC + JWT RS256), NON via admin panel.
 
-## Architettura (progetto ↔ progetto)
+## Prendi i domini REALI da Vercel (non inventare)
+
+Vai su ogni progetto → **Settings → Domains** e copia il dominio mostrato da Vercel:
+
+- **Casino** → es. `https://tols.fun` se hai custom domain, altrimenti `https://tols-casino-next.vercel.app` (o `https://tols-casino-next-hackguts-projects.vercel.app`)
+- **Governance** → `https://tolsgovernz.vercel.app` (o `https://tolsgovernz-hackguts-projects.vercel.app`, o custom se configurato)
+
+Userai quei 2 URL come `APP_URL` (Casino) e `GOVERNANCE_TOWER_URL` (Governance). **Non usare `tower.dev.fun` / `tower.tols.fun` inventati.**
+
+## Architettura
 
 ```
-                    Vercel Project A                Vercel Project B
-                    tols-casino-next                tols-governance-tower
-                    tols.fun                        tower.tols.fun
-                    (sottodominio di tols.fun)
-                         │                                 │
-  Tower ──POST /api/bridge/webhook (HMAC)──────────────► Casino
-    │  governance.rtp_update → OperationControl
-    │  governance.session_invalidate → kill AuthSession
-    │  governance.wallet_adjust / player_block / limits
-    │
-  Casino ──bridgeFetch() / pushBridgeEvent()──────────► Tower
-       │  health, sync snapshot, bet/deposit events
-       │  POST https://tower.tols.fun/api/bridge/events
-       │  SSO token mint/verify (GOVERNANCE_BRIDGE_SECRET)
+  Vercel hackguts-projects/tols-casino-next        Vercel hackguts-projects/tolsgovernz
+  (Casino)                                          (Governance)
+       │                                                   │
+  Tower ──POST /api/bridge/webhook (HMAC)─────────────► Casino
+       │  governance.rtp_update → OperationControl
+  Casino ──POST /api/platform/* (JWT RS256)─────────► Tower mostra dati reali (no mockup)
+       │  GET /api/platform/deposits, /withdrawals, /payments, /stats
+       │  POST /api/platform/withdrawals/:id/approve|reject
 ```
 
-DNS (Hostinger): entrambi i domini puntano a Vercel. Vercel fa TLS automatico per root + wildcard/sottodominio.
+Il JWT RS256 è ciò che **elimina i mockup**: la Governance firma con `PLATFORM_JWT_PRIVATE_KEY`, il Casino verifica con `PLATFORM_JWT_PUBLIC_KEY`.
 
-## Env — identici su ENTRAMBI i progetti Vercel
+## Env — su ENTRAMBI i progetti Vercel (stesso secret, chiavi diverse)
 
-Genera il secret UNA volta e copialo su entrambi:
-
+Genera secret UNA volta:
 ```bash
 openssl rand -hex 32
-# → a1b2c3... (64 hex chars)
+# → a1b2c3... (64 hex)
+# Coppia RS256 già generata in .env.bridge-keys (PRIVATE su Governance, PUBLIC su Casino)
 ```
 
-| Var | Dove | Esempio | Note |
-|-----|------|---------|------|
-| `GOVERNANCE_TOWER_URL` | **entrambi** | `https://tower.tols.fun` | Origin Tower. Alias `TOWER_URL`. |
-| `APP_URL` | **entrambi** | `https://tols.fun` | Origin Casino. Alias `CASINO_URL`. Su Tower serve per CORS/redirect. |
-| `GOVERNANCE_BRIDGE_SECRET` | **entrambi** | `a1b2c3...` | **Deve coincidere** su Tower e Casino. Alias `GOVERNANCE_WEBHOOK_SECRET`. |
-| `TOLS_BASE_URL` | Casino | `https://tower.tols.fun/api` | Base API Tower se espone `/api` separato. Fallback a `towerOrigin/api`. |
-| `TOLS_API_KEY` / `TOLS_APP_KEY` | Casino | `...` | Se la Tower richiede chiavi API. |
-| `ADMIN_SESSION_SECRET` / `DATABASE_URL` / `DIRECT_URL` | Casino | `...` | Solo Casino (Supabase + admin). |
+| Var | Dove | Esempio reale | Note |
+|-----|------|---------------|------|
+| `GOVERNANCE_TOWER_URL` | **entrambi** | `https://tolsgovernz.vercel.app` | Copia da Vercel → tolsgovernz → Domains. Alias `TOWER_URL`. |
+| `APP_URL` | **entrambi** | `https://tols-casino-next.vercel.app` o `https://tols.fun` | Copia da Vercel → tols-casino-next → Domains. Su Governance serve per CORS. |
+| `GOVERNANCE_BRIDGE_SECRET` | **entrambi** | `a1b2c3...` | **Stesso valore** su entrambi. Alias `GOVERNANCE_WEBHOOK_SECRET`. |
+| `PLATFORM_JWT_PRIVATE_KEY` | **solo tolsgovernz** | `LS0t...` (base64 PEM) | Da `.env.bridge-keys` BLOCCO 1 — solo Governance firma. |
+| `PLATFORM_JWT_PUBLIC_KEY` | **solo tols-casino-next** | `LS0t...` (base64 PEM) | Da `.env.bridge-keys` BLOCCO 2 — solo Casino verifica. |
+| `PLATFORM_JWT_ISSUER` / `AUDIENCE` | entrambi | `tols-governance` / `tols-casino` | Default già ok. |
+| `DATABASE_URL` / `DIRECT_URL` | solo Casino | `...pooler.supabase.com...` | Supabase. |
 
-Su Vercel: `Project → Settings → Environment Variables → Production` (redeploy dopo).
+Su Vercel: **Project → Settings → Environment Variables → Production → Add → Save → Redeploy**.
 
-## Deployment Vercel — 2 progetti separati
+## Deploy — già creati, verifica solo
 
-### A) Casino (`tols-casino-next` → `tols.fun`) — questo repo
-1. Vercel → Add New → Project → Import `Hackergut/tols-casino-next` (preset Next.js).
-2. Env → incolla tabella sopra (Production).
-3. Deploy → `npm run build` (prisma generate + next build).
-4. Domains → Add `tols.fun` + `www.tols.fun` → Vercel mostra i record DNS → Hostinger → DNS → sostituisci:
-   ```
-   A     @    76.76.21.21
-   CNAME www  cname.vercel-dns.com
-   ```
-   (usa sempre i valori che mostra Vercel — sono autoritativi). Attendi TLS verde.
+1. **Casino** `tols-casino-next` → Vercel mostra già deploy. Se verde, ok. Se rosso, controlla `DATABASE_URL` e `PLATFORM_JWT_PUBLIC_KEY`.
+2. **Governance** `tolsgovernz` → stesso. Verifica che `PLATFORM_JWT_PRIVATE_KEY` sia base64 corretto (senza newline).
 
-### B) Tower (`tols-governance-tower` → sottodominio) — altro repo
-1. Vercel → Add New → Project → Import `TUO-ORG/tols-governance-tower` (altro git repo).
-2. Env → **stesso** `GOVERNANCE_TOWER_URL`, `APP_URL`, `GOVERNANCE_BRIDGE_SECRET` + env specifiche della Tower.
-3. Domains → Add `tower.tols.fun` (o `governance.tols.fun` — scegli 1 e usa lo stesso ovunque):
-   ```
-   CNAME tower  cname.vercel-dns.com
-   ```
-   Oppure se usi apex già su Casino, Vercel accetta il sottodominio automaticamente se il dominio root è già verificato. Attendi TLS verde.
-4. Sulla Tower, crea le stesse route del ponte (vedi sezione "Cosa copiare sulla Tower") oppure riusa lo stesso `GOVERNANCE_BRIDGE_SECRET` per validare `X-Bridge-Signature`.
-
-### Verifica che i 2 progetti si parlano
+### Verifica ponte (dopo aver messo env + mergiato PR)
 
 ```bash
-# 1. Health Casino (verifica DB + reachability Tower)
-curl https://tols.fun/api/bridge/health?probe=true | jq .
+# 1. Health Casino (pubblico)
+curl https://tols-casino-next.vercel.app/api/platform/health | jq .
+# o se hai tols.fun:
+curl https://tols.fun/api/platform/health | jq .
 
-# 2. Webhook Casino raggiungibile
-curl https://tols.fun/api/bridge/webhook | jq .
+# 2. Health con probe Governance
+curl "https://tols.fun/api/bridge/health?probe=true" | jq .
 
-# 3. Ping Tower → Casino (senza secret, solo ping è aperto)
-curl -X POST https://tols.fun/api/bridge/webhook \
-  -H "Content-Type: application/json" \
-  -d '{"type":"ping","payload":{}}' | jq .
-
-# 4. Ping firmato (con secret condiviso)
-BODY='{"type":"ping","payload":{}}'
-SIG=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "$GOVERNANCE_BRIDGE_SECRET" | awk '{print $2}')
-curl -X POST https://tols.fun/api/bridge/webhook \
-  -H "Content-Type: application/json" \
-  -H "X-Bridge-Signature: sha256=$SIG" \
-  -d "$BODY" | jq .
-
-# 5. Health Tower (se la Tower espone lo stesso endpoint)
-curl https://tower.tols.fun/api/bridge/health | jq .
-
-# 6. Sync snapshot Casino → Tower (richiede login admin → cookie tols_admin)
-curl -X POST https://tols.fun/api/bridge/sync \
-  -H "Content-Type: application/json" \
-  -b "tols_admin=..." \
-  -d '{"dryRun":true}' | jq .
+# 3. JWT whoami (con token firmato da tolsgovernz)
+# Genera token sulla Governance (node con PLATFORM_JWT_PRIVATE_KEY) poi:
+curl -H "Authorization: Bearer <jwt>" https://tols.fun/api/platform/whoami | jq .
+curl -H "Authorization: Bearer <jwt>" "https://tols.fun/api/platform/deposits?limit=5" | jq .
+curl -H "Authorization: Bearer <jwt>" "https://tols.fun/api/platform/withdrawals?status=pending" | jq .
 ```
-
-## Cosa copiare sulla Tower (altro git repo)
-
-La Tower deve implementare il lato speculare. Copia questi 2 file dal Casino (o riusa la logica):
-
-**1) `src/lib/governance-bridge.ts` → Tower: stesso file** (già compatibile con `TOWER_URL` / `GOVERNANCE_TOWER_URL`).
-**2) Endpoint Tower:**
-
-```ts
-// Tower: POST /api/bridge/events  ← Casino → Tower
-// Tower: POST /api/bridge/webhook → verifica X-Bridge-Signature con GOVERNANCE_BRIDGE_SECRET
-// Tower: GET  /api/bridge/health  ← health per monitoraggio
-// Opzionale: Tower → Casino push usa lo stesso signBridgePayload()
-```
-
-Firma speculare Tower → Casino:
-```ts
-const raw = JSON.stringify({ type, payload });
-const sig = createHmac('sha256', process.env.GOVERNANCE_BRIDGE_SECRET).update(raw).digest('hex');
-fetch('https://tols.fun/api/bridge/webhook', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', 'X-Bridge-Signature': `sha256=${sig}` },
-  body: raw
-});
-```
-
-Se la Tower è in altro stack (non Next.js), basta replicare la verifica HMAC:
-```
-expected = hex(hmac_sha256(rawBody, GOVERNANCE_BRIDGE_SECRET))
-confronta con header X-Bridge-Signature (togli prefisso sha256=)
-timingSafeEqual(expected, received)
-```
+Se tornano dati reali, mockup eliminati.
 
 ## Endpoint Casino (questo repo)
 
-| Method | Path | Auth | Descrizione |
-|--------|------|------|-------------|
-| `GET` | `/api/bridge/health?probe=true` | pubblico | Health DB + env + probe Tower. Cron Vercel ogni 15m. |
-| `GET` | `/api/bridge/config` | admin | Diagnostica senza secret. |
-| `GET` | `/api/bridge/sync` | admin | Anteprima snapshot. |
-| `POST` | `/api/bridge/sync` | admin | Push snapshot a Tower. |
-| `POST` | `/api/bridge/webhook` | HMAC | Tower → Casino. `ping` aperto anche senza HMAC. |
-| `GET` | `/api/bridge/webhook` | pubblico | Verifica raggiungibilità. |
-| `POST` | `/api/bridge/sso` | sessione | Minta token SSO 10m. |
-| `GET` | `/api/bridge/sso?token=…` | HMAC token | Verifica + login cross-domain. |
+**JWT RS256 (`Authorization: Bearer <jwt>`) — dati reali:**
+- `GET /api/platform/health` (pubblico)
+- `GET /api/platform/whoami`, `/deposits`, `/withdrawals`, `/payments`, `/stats`
+- `POST /api/platform/withdrawals/:id/approve`, `.../reject`
 
-### Eventi Tower → Casino
-`governance.rtp_update`, `governance.limits_update`, `governance.feature_flag`, `governance.session_invalidate`, `governance.wallet_adjust`, `governance.player_block`, `ping`.
-
-### Firma HMAC
-```
-sig = hex(hmac_sha256(rawBody, GOVERNANCE_BRIDGE_SECRET))
-header: X-Bridge-Signature: sha256=<sig>
-alias: X-Webhook-Signature, X-Tower-Signature, X-Governance-Signature
-```
-
-## CSP / CORS
-
-`next.config.ts` in questo repo aggiunge `GOVERNANCE_TOWER_URL` a `frame-ancestors`, `frame-src`, `connect-src` e serve CORS su `/api/bridge/*` verso il sottodominio. Sulla Tower aggiungi speculare `APP_URL` (`https://tols.fun`) alla tua CSP/CORS.
+**HMAC (`X-Bridge-Signature`) — bridge sottodominio:**
+- `POST /api/bridge/webhook`, `GET /api/bridge/health?probe=true`, `POST /api/bridge/sync`
 
 ## Troubleshooting
 
-- `Invalid bridge signature` → secret diverso tra i 2 progetti Vercel. Riallinea `GOVERNANCE_BRIDGE_SECRET` su entrambi, redeploy.
-- `Tower unreachable` in health → verifica `GOVERNANCE_TOWER_URL` (deve essere `https://tower.tols.fun`, non `https://tols.fun`) e che Tower abbia `GOVERNANCE_BRIDGE_SECRET`.
-- Sottodominio non risolve → Hostinger DNS: `CNAME tower → cname.vercel-dns.com` (o A record come mostra Vercel) + `tower.tols.fun` aggiunto in Vercel → Project → Domains della Tower.
-- `ADMIN_SESSION_SECRET missing` su `/api/bridge/sync` → imposta su Vercel Casino.
-- Build `prisma generate` fallisce → verifica `DATABASE_URL` Direct vs Pooler.
+- `PLATFORM_JWT_PUBLIC_KEY not configured` → incolla BLOCCO 2 su **tols-casino-next** (non su tolsgovernz).
+- `Invalid signature` → PRIVATE e PUBLIC non sono coppia: rigenera coppia RS256 e rimetti BLOCCO 1 (PRIVATE) su tolsgovernz e BLOCCO 2 (PUBLIC) su casino, stesso `GOVERNANCE_BRIDGE_SECRET`.
+- `Tower unreachable` → `GOVERNANCE_TOWER_URL` deve essere **l'URL reale di tolsgovernz** da Vercel Domains, non `tower.tols.fun` inventato.
+- `Invalid iss/aud` → controlla `PLATFORM_JWT_ISSUER=tols-governance` e `AUDIENCE=tols-casino` su entrambi.

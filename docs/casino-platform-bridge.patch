@@ -17,6 +17,6 @@ Files:
 
 Env (Vercel):
   Casino (tols.fun): PLATFORM_JWT_PUBLIC_KEY, GOVERNANCE_TOWER_URL, APP_URL, GOVERNANCE_BRIDGE_SECRET
-  Tower (tower.tols.fun): PLATFORM_JWT_PRIVATE_KEY, GOVERNANCE_TOWER_URL, APP_URL, GOVERNANCE_BRIDGE_SECRET
+  Tower (tolsgovernz.vercel.app): PLATFORM_JWT_PRIVATE_KEY, GOVERNANCE_TOWER_URL, APP_URL, GOVERNANCE_BRIDGE_SECRET
 
 Nota: patch già applicato — non serve riapplicare se sei su arena/01a00d5d-tols-casino-next

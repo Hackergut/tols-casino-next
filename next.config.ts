@@ -17,13 +17,13 @@ const TELEGRAM_FRAME_ANCESTORS = "'self' https://web.telegram.org https://*.tele
 
 // Governance Tower ↔ Casino: DUE PROGETTI VERCEL SEPARATI su sottodomini
 //   Casino = https://tols.fun  (questo repo)
-//   Tower  = https://tower.tols.fun / https://governance.tols.fun (altro repo, altro progetto Vercel)
+//   Tower  = https://tolsgovernz.vercel.app / https://tolsgovernz.vercel.app (altro repo, altro progetto Vercel)
 // Il ponte è service-to-service, non via admin panel. CSP/CORS devono permettere al sottodominio di chiamare il Casino.
 const TOWER_ORIGIN = (
   process.env.GOVERNANCE_TOWER_URL ||
   process.env.TOWER_URL ||
   process.env.TOLS_BASE_URL ||
-  "https://tower.tols.fun"
+  "https://tolsgovernz.vercel.app"
 ).replace(/\/api\/?$/, "");
 let TOWER_HOST: string | null = null;
 try { TOWER_HOST = new URL(TOWER_ORIGIN).origin; } catch { TOWER_HOST = null; }
