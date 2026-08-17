@@ -59,6 +59,8 @@ const securityHeaders = [
       `connect-src 'self' https://api.telegram.org${BRIDGE_CONNECT} https://*.vercel.app`,
       `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}`,
       `frame-src 'self' https://web.telegram.org https://*.telegram.org${TOWER_HOST ? ` ${TOWER_HOST}` : ""} https://*.vercel.app`,
+      "connect-src 'self' https://api.telegram.org",
+      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}`,
       "base-uri 'self'",
       "form-action 'self'",
     ].join("; "),
@@ -100,6 +102,7 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 

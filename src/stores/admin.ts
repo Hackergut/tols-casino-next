@@ -42,6 +42,7 @@ export type AdminPage =
   | 'deposit-addresses'
   | 'live-monitor'
   | 'bridge';
+  | 'live-monitor';
 
 export interface ActionLogEntry {
   id: string;
