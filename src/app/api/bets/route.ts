@@ -5,6 +5,12 @@ import { fairFloat, getActiveSeed, nextNonce } from "@/lib/provably-fair";
 import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import { syncTournamentProgress } from "@/lib/tournament-progress";
+import {
+  isPoolRushLevel,
+  poolRushOutcome,
+  POOL_RUSH_MAX_BET,
+  POOL_RUSH_MIN_BET,
+} from "@/lib/pool-rush";
 import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import {
@@ -31,6 +37,10 @@ type GameResult = { multiplier: number; payout: number; won: boolean; payload: R
 
 function rollDice(roll: number, target: number, isOver: boolean): boolean {
   return isOver ? roll > target : roll < target;
+}
+
+function poolRushError(code: "INVALID_BET" | "INVALID_LEVEL" | "INSUFFICIENT_BALANCE", message: string) {
+  return Response.json({ success: false, error: message, code }, { status: 400 });
 }
 
 function crashPoint(serverSeed: string, clientSeed: string, nonce: number): number {
@@ -216,6 +226,9 @@ export async function POST(req: NextRequest) {
   const stake = Math.round(amount * 100) / 100;
   if (stake < 0) return err("Invalid stake", 400);
   if (stake > MAX_STAKE) return err(`Maximum stake is ${MAX_STAKE}`, 400);
+  if (game === "poolrush" && stake !== 0 && (stake < POOL_RUSH_MIN_BET || stake > POOL_RUSH_MAX_BET)) {
+    return poolRushError("INVALID_BET", `Pool Rush stake must be between ${POOL_RUSH_MIN_BET} and ${POOL_RUSH_MAX_BET}`);
+  }
 
   // Reload the wallet before deciding whether this is a paid round or practice.
   // Practice is deliberately available only when the wallet is actually empty:
@@ -228,7 +241,9 @@ export async function POST(req: NextRequest) {
   // Compare in cents. A float compare rejects a legitimate all-in when the
   // balance is 0.9999999999999999 after repeated fractional credits.
   if (!practice && walletCents < Math.round(stake * 100)) {
-    return err("Insufficient balance", 400);
+    return game === "poolrush"
+      ? poolRushError("INSUFFICIENT_BALANCE", "Insufficient balance")
+      : err("Insufficient balance", 400);
   }
 
   // Seeds come from the player's committed pair: the server seed is a CSPRNG
@@ -363,6 +378,23 @@ export async function POST(req: NextRequest) {
       };
       break;
     }
+    case "poolrush": {
+      const requestedLevel = payload?.level;
+      if (!isPoolRushLevel(requestedLevel)) return poolRushError("INVALID_LEVEL", "Invalid Pool Rush level");
+      const band = poolRushOutcome(fairFloat(serverSeed, seed, nonce), requestedLevel);
+      const won = band.multiplier > 0;
+      result = {
+        multiplier: band.multiplier,
+        payout: stake * band.multiplier,
+        won,
+        payload: {
+          level: requestedLevel,
+          balls: band.balls,
+          shot: requestedLevel === "beginner" ? "centre" : requestedLevel === "intermediate" ? "full" : requestedLevel === "expert" ? "draw" : "jump",
+        },
+      };
+      break;
+    }
     case "roulette": {
       // European single-zero roulette (0..36). RTP is the real game math
       // (2.7% house edge) — 0 loses outside bets, straight pays 35:1 over 37
@@ -471,7 +503,7 @@ export async function POST(req: NextRequest) {
   if (controlDecision.override) {
     const defaultWin: Record<string, number> = {
       dice: 1.98, crash: 2, limbo: 2, coinflip: 1.98, wheel: 2,
-      mines: 2, plinko: 2, keno: 3, shoot: 2, slots: 6, roulette: 2,
+      mines: 2, plinko: 2, keno: 3, shoot: 2, poolrush: 3, slots: 6, roulette: 2,
     };
     const forcedMult = applyForcedMultiplier(controlDecision, result.multiplier, defaultWin[game] ?? 2);
     result = {
@@ -538,7 +570,11 @@ export async function POST(req: NextRequest) {
     return { insufficient: false, balance, betId: bet.id } as const;
   });
 
-  if ("insufficient" in final && final.insufficient) return err("Insufficient balance", 400);
+  if ("insufficient" in final && final.insufficient) {
+    return game === "poolrush"
+      ? poolRushError("INSUFFICIENT_BALANCE", "Insufficient balance")
+      : err("Insufficient balance", 400);
+  }
   const newBalance = final.balance;
   const betId = final.betId;
 

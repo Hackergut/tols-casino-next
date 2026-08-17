@@ -1455,3 +1455,199 @@
     bottom: calc(82dvh + env(safe-area-inset-bottom) - 3px);
   }
 }
+
+/* ── Pool Rush ─────────────────────────────────────────────────── */
+.pool-rush {
+  width: min(100%, 920px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pool-rush__hud {
+  display: grid;
+  grid-template-columns: 1fr minmax(150px, 1.5fr) 1fr;
+  gap: 8px;
+}
+.pool-rush__hud > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--bg) 72%, transparent);
+  border: 1px solid var(--border);
+}
+.pool-rush__hud span {
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  color: var(--muted-foreground);
+}
+.pool-rush__hud strong { font-size: .75rem; color: var(--foreground); }
+.pool-rush__power i {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--surface-raised);
+}
+.pool-rush__power b { display: block; height: 100%; border-radius: inherit; transition: width 260ms var(--ease-out); }
+
+.pool-table {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.82 / 1;
+  overflow: hidden;
+  border: clamp(10px, 2vw, 20px) solid #4a2b1a;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(255 255 255 / .07), transparent 42%),
+    linear-gradient(135deg, #12694f, #084735 70%);
+  box-shadow: inset 0 0 0 4px #1c1815, inset 0 0 36px rgb(0 0 0 / .45), 0 18px 48px rgb(0 0 0 / .35);
+  isolation: isolate;
+}
+.pool-table::before,
+.pool-table::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+.pool-table::before {
+  inset: 0;
+  opacity: .13;
+  background-image: repeating-linear-gradient(90deg, transparent 0 31px, rgb(255 255 255 / .08) 32px);
+}
+.pool-table::after {
+  top: 12%; bottom: 12%; left: 24%;
+  width: 1px;
+  background: rgb(255 255 255 / .16);
+}
+.pool-table[data-aimable] { cursor: ns-resize; touch-action: none; }
+.pool-table__rail { position: absolute; inset: 2.5%; border: 1px solid rgb(255 255 255 / .12); border-radius: 8px; }
+.pool-pocket {
+  position: absolute;
+  z-index: 8;
+  width: clamp(18px, 3.3vw, 34px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #060908;
+  box-shadow: inset 0 2px 6px #000, 0 0 0 3px rgb(18 18 15 / .65);
+  transform: translate(-50%, -50%);
+}
+.pool-ball {
+  position: absolute;
+  z-index: 6;
+  width: clamp(13px, 2.25vw, 25px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #111;
+  font: 800 clamp(6px, .75vw, 9px)/1 ui-monospace, monospace;
+  background: radial-gradient(circle at 34% 28%, #fff 0 9%, var(--ball-color, #fff) 24% 68%, color-mix(in oklab, var(--ball-color, #fff) 55%, #000));
+  box-shadow: 0 3px 7px rgb(0 0 0 / .5), inset -2px -3px 5px rgb(0 0 0 / .28);
+  transform: translate(-50%, -50%);
+}
+.pool-ball span { display: grid; place-items: center; width: 43%; aspect-ratio: 1; border-radius: 50%; background: rgb(255 255 255 / .86); }
+.pool-ball--cue { left: 23%; top: 50%; --ball-color: #f5f2dc; }
+.pool-ball--cue span { display: none; }
+.pool-cue {
+  position: absolute;
+  z-index: 7;
+  left: -25%; top: calc(50% - 3px);
+  width: 46%; height: 6px;
+  border-radius: 99px;
+  transform-origin: right center;
+  transform: rotate(var(--cue-angle, 0deg));
+  background: linear-gradient(90deg, #3b1d0c, #d6a15d 76%, #e9e1c8 77% 88%, #327bd8 89%);
+  box-shadow: 0 2px 5px rgb(0 0 0 / .55);
+}
+.pool-table__flash { position: absolute; inset: 0; z-index: 9; pointer-events: none; opacity: 0; background: radial-gradient(circle at 70% 50%, rgb(255 255 255 / .62), transparent 20%); }
+
+.pool-rush[data-phase="breaking"] .pool-cue { animation: pool-cue-break 520ms cubic-bezier(.7, 0, .2, 1) both; }
+.pool-rush[data-phase="breaking"] .pool-ball--cue { animation: pool-cue-ball 1.25s cubic-bezier(.2, .8, .3, 1) both; }
+.pool-rush[data-phase="breaking"] .pool-table__flash { animation: pool-flash 420ms 420ms ease-out both; }
+.pool-rush[data-phase="breaking"] .pool-ball:not(.pool-ball--cue) {
+  animation: pool-ball-travel .78s var(--ball-delay) cubic-bezier(.16,.72,.25,1) both;
+}
+.pool-rush[data-level="intermediate"][data-phase="breaking"] .pool-ball:not(.pool-ball--cue) { animation-duration: .9s; }
+.pool-rush[data-level="expert"][data-phase="breaking"] .pool-ball:not(.pool-ball--cue) { animation-duration: 1.05s; }
+.pool-rush[data-level="pro"][data-phase="breaking"] .pool-ball:not(.pool-ball--cue) { animation-duration: 1.2s; }
+.pool-rush[data-phase="breaking"] .pool-ball[data-pocketed] {
+  animation-timing-function: cubic-bezier(.18,.68,.2,1);
+}
+@keyframes pool-cue-break {
+  0% { translate: -9% 0; }
+  58% { translate: 23% 0; }
+  100% { translate: 4% 0; opacity: .55; }
+}
+@keyframes pool-cue-ball {
+  0%, 32% { left: 23%; top: 50%; }
+  62% { left: 69%; top: 50%; }
+  100% { left: 42%; top: 57%; }
+}
+@keyframes pool-ball-travel {
+  0%, 12% { transform: translate(-50%, -50%) scale(1); }
+  78% { opacity: 1; }
+  100% { left: var(--ball-x); top: var(--ball-y); transform: translate(-50%, -50%) scale(var(--ball-scale)); opacity: var(--ball-scale); }
+}
+@keyframes pool-flash { 0% { opacity: 0; } 35% { opacity: .85; } 100% { opacity: 0; } }
+
+.pool-rush__result {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: .78rem;
+}
+.pool-rush__result > div { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 2px 12px; animation: pool-result-in 260ms var(--ease-out) both; }
+.pool-rush__result strong { color: var(--foreground); font-size: 1rem; }
+.pool-rush__result b { color: var(--loss); font: 900 1.35rem/1 ui-monospace, monospace; }
+.pool-rush__result div[data-win] b { color: var(--lime-300); text-shadow: 0 0 16px color-mix(in oklab, var(--lime-300) 45%, transparent); }
+.pool-rush__result div span { grid-column: 1 / -1; color: var(--muted-foreground); font-size: .68rem; }
+.pool-rush__spinner { width: 13px; height: 13px; border: 2px solid var(--border); border-top-color: var(--lime-300); border-radius: 50%; animation: pool-spin .7s linear infinite; }
+@keyframes pool-result-in { from { opacity: 0; transform: translateY(8px) scale(.96); } }
+@keyframes pool-spin { to { transform: rotate(360deg); } }
+
+.pool-levels { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pool-levels button {
+  min-width: 0;
+  min-height: 47px;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px;
+  text-align: left;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted-foreground);
+}
+.pool-levels button[data-active] { border-color: color-mix(in oklab, var(--pool-accent) 65%, transparent); background: color-mix(in oklab, var(--pool-accent) 10%, var(--bg)); color: var(--foreground); }
+.pool-levels__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pool-accent); box-shadow: 0 0 8px color-mix(in oklab, var(--pool-accent) 65%, transparent); }
+.pool-levels strong, .pool-levels small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-levels strong { font-size: .68rem; }
+.pool-levels small { margin-top: 1px; font-size: .56rem; color: var(--muted-foreground); }
+.pool-levels b { color: var(--pool-accent); font: 800 .68rem/1 ui-monospace, monospace; }
+.pool-paytable { overflow-x: auto; white-space: nowrap; font-size: .58rem; line-height: 1.5; color: var(--muted-foreground); scrollbar-width: none; }
+
+@media (max-width: 767px) {
+  .pool-rush { gap: 6px; }
+  .pool-rush__hud { grid-template-columns: 1fr 1.35fr 1fr; gap: 4px; }
+  .pool-rush__hud > div { padding: 5px 7px; }
+  .pool-table { border-width: 9px; border-radius: 13px; }
+  .pool-rush__result { min-height: 48px; }
+  .pool-rush__result strong { font-size: .85rem; }
+  .pool-rush__result b { font-size: 1.1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pool-rush[data-phase="breaking"] .pool-cue,
+  .pool-rush[data-phase="breaking"] .pool-ball,
+  .pool-rush[data-phase="breaking"] .pool-table__flash { animation-duration: 180ms; animation-delay: 0ms; }
+}

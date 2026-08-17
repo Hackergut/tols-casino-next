@@ -13,6 +13,7 @@
  */
 
 import { TARGET_RTP, ROULETTE_RTP, SLOTS_RTP } from "@/lib/game-math";
+import { POOL_RUSH_RTP } from "@/lib/pool-rush";
 
 export type OriginalId =
   | "dice"
@@ -24,6 +25,7 @@ export type OriginalId =
   | "wheel"
   | "keno"
   | "shoot"
+  | "poolrush"
   | "slots"
   | "roulette";
 
@@ -134,6 +136,16 @@ export const ORIGINALS: OriginalMeta[] = [
     rtp: TARGET_RTP,
     image: "/games/originals/shoot.png",
     volatility: "high",
+  },
+  {
+    id: "poolrush",
+    name: "Pool Rush",
+    tagline: "Choose the break — sink up to seven balls",
+    description:
+      "Fast Break turns the opening pool shot into a three-second provably-fair game. Choose one of four difficulty profiles: hit frequency falls as the top multiplier rises from 10× to 500×, while every profile stays fixed at 96% RTP. The server commits the result before the cue moves; the client reveals it only after the table animation finishes.",
+    rtp: POOL_RUSH_RTP,
+    image: "/games/originals/poolrush.svg",
+    volatility: "variable",
   },
   {
     id: "slots",
