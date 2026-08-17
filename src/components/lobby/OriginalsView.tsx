@@ -7,9 +7,12 @@ import { Carousel } from "./Carousel";
 import { ORIGINAL_GAMES } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
 
-export function OriginalsView({ onGameSelect }: { onGameSelect: (gameId: string) => void }) {
+export function OriginalsView({ onGameSelect, query = "" }: { onGameSelect: (gameId: string) => void; query?: string }) {
   const [gridMode, setGridMode] = useState(false);
   const { t } = useLocale();
+  const games = query.trim()
+    ? ORIGINAL_GAMES.filter((game) => `${game.name} ${game.desc}`.toLowerCase().includes(query.trim().toLowerCase()))
+    : ORIGINAL_GAMES;
 
   const toggle = (
     <button
@@ -27,7 +30,9 @@ export function OriginalsView({ onGameSelect }: { onGameSelect: (gameId: string)
         <p className="mt-1 text-sm text-muted-foreground">Provably fair games with verifiable outcomes</p>
       </div>
 
-      {gridMode ? (
+      {games.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-white/40">{t("games.none")}</div>
+      ) : gridMode ? (
         <section>
           <header className="mb-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -37,7 +42,7 @@ export function OriginalsView({ onGameSelect }: { onGameSelect: (gameId: string)
             {toggle}
           </header>
           <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
-            {ORIGINAL_GAMES.map((game) => (
+            {games.map((game) => (
               <OriginalGameCard key={game.id} game={game} onClick={() => onGameSelect(game.id)} />
             ))}
           </div>
@@ -49,7 +54,7 @@ export function OriginalsView({ onGameSelect }: { onGameSelect: (gameId: string)
           icon={<Gamepad2 className="h-5 w-5 shrink-0 text-lime" />}
           action={toggle}
         >
-          {ORIGINAL_GAMES.map((game) => (
+          {games.map((game) => (
             <OriginalGameCard key={game.id} game={game} onClick={() => onGameSelect(game.id)} />
           ))}
         </Carousel>

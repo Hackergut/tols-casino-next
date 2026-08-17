@@ -436,10 +436,10 @@ function CasinoPage() {
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => navigateBack("lobby")} />
             ) : activeSection === "originals" ? (
-              <OriginalsView onGameSelect={handleOriginalSelect} />
+              <OriginalsView onGameSelect={handleOriginalSelect} query={searchQuery} />
             ) : activeSection === "lobby" ? (
               <HomeView
-                games={games}
+                games={displayedGames}
                 loading={loading}
                 onGameClick={handleGameClick}
                 onNavigate={(target) => ORIGINAL_IDS.has(target as OriginalId) ? handleOriginalSelect(target) : handleSectionChange(target)}

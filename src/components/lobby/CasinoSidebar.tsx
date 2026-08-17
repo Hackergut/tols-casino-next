@@ -27,6 +27,7 @@ export function CasinoSidebar({ active, onSelect, open, searchQuery, onSearchCha
               type="search"
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") onSelect(active); }}
               placeholder={t("search.placeholder")}
               className="h-10 w-full rounded-xl border border-white/8 bg-white/[.035] pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/28 focus:border-lime/35"
             />

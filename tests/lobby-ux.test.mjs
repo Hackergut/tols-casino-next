@@ -17,6 +17,9 @@ test("global search lives in the hamburger sidebar, not the top header", () => {
   assert.doesNotMatch(header, /id="global-search"/);
   assert.match(sidebar, /type="search"/);
   assert.match(sidebar, /searchQuery/);
+  const page = read("src/app/page.tsx");
+  assert.match(page, /games=\{displayedGames\}/);
+  assert.match(page, /<OriginalsView[\s\S]*?query=\{searchQuery\}/);
 });
 
 test("home hierarchy is hero then category tabs then Originals", () => {
