@@ -4,6 +4,7 @@
 import { Gamepad2 } from "lucide-react";
 import VideoLoader from "@/components/VideoLoader";
 import type { LobbyGame, OriginalGameDef } from "./lobby-types";
+import { useLocale } from "@/lib/use-locale";
 
 // Game-load fallback. Reuses the exact TOLS slot loader shown at app startup
 // (the SLOT→TOLS letter reels in VideoLoader) instead of a separate spinner, so
@@ -48,7 +49,8 @@ function rtpFor(g: LobbyGame): number {
 
 // TOLS lobby card — full-bleed art, badge, title + category + RTP%.
 export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () => void }) {
-  const badge = game.isLive ? "Live" : game.isNew ? "New" : game.popularity > 70 ? "Hot" : null;
+  const { t } = useLocale();
+  const badge = game.isLive ? t("common.live") : game.isNew ? t("common.new") : game.popularity > 70 ? t("common.hot") : null;
   return (
     <button
       type="button"
@@ -94,6 +96,7 @@ export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () 
 // so the UI adds only an interaction affordance instead of printing a second
 // title over the designed cover.
 export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onClick: () => void }) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -121,7 +124,7 @@ export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onC
         <div className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-all duration-700 group-hover:left-full" />
       </div>
       <span className="absolute right-2.5 top-2.5 shrink-0 translate-y-1 rounded-full border border-black/20 bg-lime px-2.5 py-1 text-[10px] font-black uppercase text-bg opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-        Play
+        {t("common.play")}
       </span>
     </button>
   );

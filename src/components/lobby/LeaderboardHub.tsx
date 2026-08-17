@@ -6,6 +6,7 @@ import {
   Sparkles, Target, Trophy, Users, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLocale } from "@/lib/use-locale";
 
 interface Entry {
   rank: number;
@@ -155,6 +156,7 @@ function timeLeft(iso: string): string {
 }
 
 export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack: () => void }) {
+  const { t } = useLocale();
   const [data, setData] = useState<Overview>(EMPTY);
   const [activeBoard, setActiveBoard] = useState("weekly-race");
   const [feed, setFeed] = useState<"live" | "high">("live");
@@ -200,7 +202,7 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
       const response = await fetch(`/api/tournaments/${id}`, { method: "POST" });
       const json = await response.json();
       if (!response.ok || !json.success) throw new Error(json.error || "Could not join tournament");
-      toast.success("Tournament joined — paid bets now update your score live");
+      toast.success(t("leader.joined"));
       await load(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not join tournament");
@@ -213,13 +215,13 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
     <div className="leaderboard-hub space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-start gap-3">
-          <button type="button" onClick={onBack} className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-surface text-white/55 transition-colors hover:border-lime/35 hover:text-lime" aria-label="Back"><ArrowLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={onBack} className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-surface text-white/55 transition-colors hover:border-lime/35 hover:text-lime" aria-label={t("common.back")}><ArrowLeft className="h-4 w-4" /></button>
           <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-lime/20 bg-lime/8 px-3 py-1 text-[11px] font-black uppercase tracking-[.16em] text-lime">
-            <Activity className="h-3.5 w-3.5" /> Live competition
+            <Activity className="h-3.5 w-3.5" /> {t("leader.liveCompetition")}
           </div>
-          <h1 className="font-display text-2xl uppercase text-white sm:text-3xl">Player Leaderboards</h1>
-          <p className="mt-1 max-w-2xl text-sm text-white/48">Real paid bets power every ranking, promotion and tournament score. Practice rounds never count.</p>
+          <h1 className="font-display text-2xl uppercase text-white sm:text-3xl">{t("leader.title")}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-white/48">{t("leader.subtitle")}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -227,7 +229,7 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
             <p className="text-[10px] font-bold uppercase tracking-wider text-white/35">Mega Drop</p>
             <p className="font-mono text-lg font-black text-lime">{money(data.jackpot)}</p>
           </div>
-          <button type="button" onClick={() => void load()} disabled={loading} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white/55 hover:text-lime" aria-label="Refresh leaderboards">
+          <button type="button" onClick={() => void load()} disabled={loading} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white/55 hover:text-lime" aria-label={t("leader.refresh")}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
@@ -237,7 +239,7 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
       <section>
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-lime" />
-          <h2 className="font-display text-sm uppercase text-white">Live promotions</h2>
+          <h2 className="font-display text-sm uppercase text-white">{t("leader.promotions")}</h2>
         </div>
         <div className="scrollbar-hide -mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
           {data.promotions.map((promotion) => {
@@ -253,7 +255,7 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
                 </div>
                 <div className="mt-4 flex items-center justify-between text-[11px]">
                   <span className="flex items-center gap-1 text-white/40"><CalendarClock className="h-3 w-3" /> {timeLeft(promotion.endsAt)}</span>
-                  <span className={promotion.playerRank ? "font-bold text-lime" : "text-white/35"}>{promotion.playerRank ? `Your rank #${promotion.playerRank}` : "Play to rank"}</span>
+                  <span className={promotion.playerRank ? "font-bold text-lime" : "text-white/35"}>{promotion.playerRank ? `${t("leader.yourRank")} #${promotion.playerRank}` : t("leader.playToRank")}</span>
                 </div>
               </button>
             );
@@ -283,9 +285,9 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
                 <p className="text-xs text-white/40">{board.subtitle} · {board.totalPlayers} ranked players</p>
               </div>
               <div className="flex gap-2">
-                <Stat label="Prize pool" value={money(board.prizePool)} accent />
-                <Stat label="Ends in" value={timeLeft(board.endsAt)} />
-                {board.viewer && <Stat label="Your rank" value={`#${board.viewer.rank}`} accent />}
+                <Stat label={t("leader.prizePool")} value={money(board.prizePool)} accent />
+                <Stat label={t("leader.endsIn")} value={timeLeft(board.endsAt)} />
+                {board.viewer && <Stat label={t("leader.yourRank")} value={`#${board.viewer.rank}`} accent />}
               </div>
             </div>
 
@@ -298,17 +300,17 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,.7fr)]">
         <section className="overflow-hidden rounded-2xl border border-white/7 bg-surface/65">
           <div className="flex items-center justify-between border-b border-white/6 p-4">
-            <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">Bet activity</h2></div>
+            <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">{t("leader.betActivity")}</h2></div>
             <div className="flex rounded-lg bg-white/4 p-1">
-              <button onClick={() => setFeed("live")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "live" ? "bg-lime text-bg" : "text-white/45"}`}>Live bets</button>
-              <button onClick={() => setFeed("high")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "high" ? "bg-lime text-bg" : "text-white/45"}`}>High rollers</button>
+              <button onClick={() => setFeed("live")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "live" ? "bg-lime text-bg" : "text-white/45"}`}>{t("leader.liveBets")}</button>
+              <button onClick={() => setFeed("high")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "high" ? "bg-lime text-bg" : "text-white/45"}`}>{t("leader.highRollers")}</button>
             </div>
           </div>
           <BetActivity bets={feed === "live" ? data.liveBets : data.highRollerBets} />
         </section>
 
         <section className="rounded-2xl border border-white/7 bg-surface/65 p-4">
-          <div className="mb-4 flex items-center gap-2"><Medal className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">Tournaments</h2></div>
+          <div className="mb-4 flex items-center gap-2"><Medal className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">{t("leader.tournaments")}</h2></div>
           <div className="space-y-3">
             {data.tournaments.map((tournament) => (
               <div key={tournament.id} className="rounded-xl border border-white/7 bg-white/[.025] p-3">
@@ -331,7 +333,7 @@ export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack:
 
       <div className="flex flex-col gap-3 rounded-2xl border border-lime/15 bg-lime/[.055] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div><p className="font-bold text-white">Every settled paid bet updates the rankings</p><p className="text-xs text-white/42">Choose an Original and climb the live promotion boards.</p></div>
-        <button onClick={onPlay} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lime px-5 text-sm font-black uppercase text-bg">Play Originals <ChevronRight className="h-4 w-4" /></button>
+        <button onClick={onPlay} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lime px-5 text-sm font-black uppercase text-bg">{t("leader.playOriginals")} <ChevronRight className="h-4 w-4" /></button>
       </div>
     </div>
   );

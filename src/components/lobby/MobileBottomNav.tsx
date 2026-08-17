@@ -7,6 +7,7 @@
 
 import { Home, Dices, Gift, MessageCircle, Menu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useLocale } from "@/lib/use-locale";
 
 interface Props {
   activeSection: string;
@@ -19,12 +20,13 @@ interface Props {
 }
 
 export function MobileBottomNav({ activeSection, chatOpen, onHome, onCasino, onRewards, onChat, onMenu }: Props) {
+  const { t } = useLocale();
   const items: { id: string; label: string; icon: LucideIcon; action: () => void; active: boolean }[] = [
-    { id: "home", label: "Home", icon: Home, action: onHome, active: activeSection === "lobby" },
-    { id: "casino", label: "Casino", icon: Dices, action: onCasino, active: activeSection === "originals" },
-    { id: "rewards", label: "Rewards", icon: Gift, action: onRewards, active: activeSection === "rewards" },
-    { id: "chat", label: "Chat", icon: MessageCircle, action: onChat, active: chatOpen },
-    { id: "menu", label: "Menu", icon: Menu, action: onMenu, active: false },
+    { id: "home", label: t("nav.home"), icon: Home, action: onHome, active: activeSection === "lobby" },
+    { id: "casino", label: t("nav.casino"), icon: Dices, action: onCasino, active: activeSection === "originals" },
+    { id: "rewards", label: t("nav.rewards"), icon: Gift, action: onRewards, active: activeSection === "rewards" },
+    { id: "chat", label: t("nav.chat"), icon: MessageCircle, action: onChat, active: chatOpen },
+    { id: "menu", label: t("nav.menu"), icon: Menu, action: onMenu, active: false },
   ];
 
   return (

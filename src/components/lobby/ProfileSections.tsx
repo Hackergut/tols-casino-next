@@ -55,6 +55,9 @@ function Shell({ title, subtitle, icon: Icon, onBack, children }: {
   title: string; subtitle: string; icon: React.ComponentType<{ className?: string }>;
   onBack: () => void; children: React.ReactNode;
 }) {
+  const { t } = useLocale();
+  const titleKeys: Record<string, string> = { Wallet: "nav.wallet", Cassaforte: "profile.vault", Token: "profile.token", "Affiliate Program": "profile.affiliate", Notifications: "header.notifications", Transactions: "profile.transactions", "Riscatta Codice": "profile.redeem", Settings: "nav.settings", "Play Responsibly": "profile.responsible", "Live Support": "profile.support", Rewards: "nav.rewards" };
+  const localizedTitle = titleKeys[title] ? t(titleKeys[title]) : title;
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -66,7 +69,7 @@ function Shell({ title, subtitle, icon: Icon, onBack, children }: {
             <Icon className="w-5 h-5 text-lime" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">{title}</h1>
+            <h1 className="text-xl font-bold text-white">{localizedTitle}</h1>
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{subtitle}</p>
           </div>
         </div>
@@ -409,12 +412,12 @@ function SettingsSection({ onBack }: { onBack: () => void }) {
   const setQuickPlay = useGameSettings((s) => s.setQuickPlay);
   const showProfit = useGameSettings((s) => s.showProfit);
   const setShowProfit = useGameSettings((s) => s.setShowProfit);
-  const { locale, setLocale } = useLocale();
+  const { locale, setLocale, t } = useLocale();
   return (
     <Shell title="Settings" subtitle="Account and preferences" icon={Settings} onBack={onBack}>
       {/* Language — auto-detected from region, overridable here */}
       <div className={CARD} style={CARD_STYLE}>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Lingua / Language</p>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>{t("profile.language")}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {LOCALES.map((l) => (
             <button
@@ -430,18 +433,18 @@ function SettingsSection({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
-          Rilevata automaticamente dalla tua zona. Puoi cambiarla qui.
+          {t("profile.languageHint")}
         </p>
       </div>
       <div className={CARD} style={CARD_STYLE}>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Account</p>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>{t("profile.account")}</p>
         <div className="space-y-2 text-sm">
           <Row left="Username" mid="" right="TOLSPlayer" />
           <Row left="Display currency" mid="" right={me.data?.currency ?? "USDT"} />
         </div>
       </div>
       <div className={CARD} style={CARD_STYLE}>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Preferences</p>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>{t("profile.preferences")}</p>
         <div className="space-y-2">
           <PreferenceToggle
             label="Game sounds"

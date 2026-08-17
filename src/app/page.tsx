@@ -30,8 +30,10 @@ import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
 import { useUIStore, useSessionStore } from "@/lib/store";
-import { casinoPath, parseCasinoRoute } from "@/lib/casino-routes";
+import { casinoPath, ORIGINAL_IDS, parseCasinoRoute } from "@/lib/casino-routes";
+import { useLocale } from "@/lib/use-locale";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
+import type { OriginalId } from "@/lib/originals-registry";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false } },
@@ -93,6 +95,7 @@ const RouletteGame = dynamic(
 
 /* ── Main Casino SPA ── */
 function CasinoPage() {
+  const { t } = useLocale();
   const [activeSection, setActiveSection] = useState("lobby");
   const [routeReady, setRouteReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -382,15 +385,15 @@ function CasinoPage() {
       case "blackjack": return <BlackjackGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
-      default: return <p className="text-muted-foreground">Game not found</p>;
+      default: return <p className="text-muted-foreground">{t("games.notFound")}</p>;
     }
   };
 
   const sectionTitle =
-    activeSection === "slots" ? "Slots" :
-    activeSection === "live" ? "Live Casino" :
-    activeSection === "table" ? "Table Games" :
-    activeSection === "recent" ? "Recently Played" :
+    activeSection === "slots" ? t("nav.slots") :
+    activeSection === "live" ? t("nav.liveCasino") :
+    activeSection === "table" ? t("nav.table") :
+    activeSection === "recent" ? t("nav.recent") :
     activeSection.charAt(0).toUpperCase() + activeSection.slice(1);
 
   return (
@@ -415,7 +418,7 @@ function CasinoPage() {
           <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
             {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && (
               <button type="button" onClick={() => navigateBack("lobby")} className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/8 bg-surface/60 px-3 text-xs font-bold text-white/60 transition-colors hover:border-lime/30 hover:text-lime">
-                <ArrowLeft className="h-4 w-4" /> Back
+                <ArrowLeft className="h-4 w-4" /> {t("common.back")}
               </button>
             )}
             {activeGame ? (
@@ -431,7 +434,7 @@ function CasinoPage() {
                 games={games}
                 loading={loading}
                 onGameClick={handleGameClick}
-                onNavigate={handleSectionChange}
+                onNavigate={(target) => ORIGINAL_IDS.has(target as OriginalId) ? handleOriginalSelect(target) : handleSectionChange(target)}
                 authenticated={authed === true}
               />
             ) : activeSection === "lobby-classic" ? (
@@ -448,7 +451,7 @@ function CasinoPage() {
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold uppercase tracking-wide text-lime">{sectionTitle}</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {activeSection === "recent" ? "Games you have played recently" : `${displayedGames.length} games available`}
+                    {activeSection === "recent" ? t("games.recentHelp") : t("games.available", { count: displayedGames.length })}
                   </p>
                 </div>
                 {loading ? (
@@ -460,7 +463,7 @@ function CasinoPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyGames label="No games available" />
+                  <EmptyGames label={t("games.none")} />
                 )}
               </div>
             )}

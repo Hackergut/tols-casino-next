@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HIT_TARGET, SPACE, cardWidth, type CardSize } from "./design-tokens";
+import { useLocale } from "@/lib/use-locale";
 
 interface CarouselProps {
   title?: string;
@@ -25,6 +26,7 @@ interface CarouselProps {
 
 export function Carousel({ title, icon, action, size = "medium", children }: CarouselProps) {
   const reduced = useReducedMotion();
+  const { t } = useLocale();
   const scroller = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -64,7 +66,7 @@ export function Carousel({ title, icon, action, size = "medium", children }: Car
     <button
       onClick={() => page(dir)}
       disabled={disabled}
-      aria-label={dir === -1 ? "Scorri a sinistra" : "Scorri a destra"}
+      aria-label={dir === -1 ? t("common.previous") : t("common.next")}
       className="carousel-arrow flex shrink-0 items-center justify-center rounded-full border border-white/10 text-white/70 transition-all hover:border-lime/40 hover:text-lime disabled:pointer-events-none disabled:opacity-25"
       style={{ width: HIT_TARGET, height: HIT_TARGET }}
     >

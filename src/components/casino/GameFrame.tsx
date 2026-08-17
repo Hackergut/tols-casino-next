@@ -42,6 +42,7 @@ import { setSoundEnabled } from "@/lib/game-audio";
 import { useGameSettings } from "@/lib/game-settings";
 import { getOriginal, type OriginalId } from "@/lib/originals-registry";
 import { GameInfoBlock, MoreOriginals, BetFeed } from "@/components/casino/GameInfo";
+import { useLocale } from "@/lib/use-locale";
 
 /* ─────────────────────────── Frame ─────────────────────────── */
 
@@ -84,6 +85,7 @@ export function GameFrame({
   fairness,
   rtp,
 }: GameFrameProps) {
+  const { t } = useLocale();
   const meta = getOriginal(gameId);
   const effectiveRtp = rtp ?? meta?.rtp ?? 1 - HOUSE_EDGE;
   const heading = title ?? meta?.name ?? gameId;
@@ -102,7 +104,7 @@ export function GameFrame({
   return (
     <div className="tols-game">
       <header className="tols-game__head">
-        <button onClick={onBack} className="tols-game__back" aria-label="Back to lobby">
+        <button onClick={onBack} className="tols-game__back" aria-label={t("game.back")}>
           <ArrowLeft className="size-4" />
         </button>
         <div className="tols-game__title">
@@ -128,7 +130,7 @@ export function GameFrame({
             onClick={toggleSound}
             data-active={soundEnabled || undefined}
             aria-pressed={soundEnabled}
-            title={soundEnabled ? "Mute" : "Unmute"}
+            title={soundEnabled ? t("game.soundOn") : t("game.soundOff")}
           >
             {soundEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
           </button>
@@ -138,7 +140,7 @@ export function GameFrame({
             onClick={() => setQuickPlay(!quickPlay)}
             data-active={quickPlay || undefined}
             aria-pressed={quickPlay}
-            title="Quick play — skip result animations"
+            title={t("game.quickPlay")}
           >
             <Zap className="size-3.5" />
           </button>
@@ -198,6 +200,7 @@ function FairnessBar({
   rtp: number;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useLocale();
 
   return (
     <div className="tols-fair">
@@ -207,7 +210,7 @@ function FairnessBar({
         aria-expanded={open}
       >
         <Shield className="size-3.5" />
-        <span>Provably Fair</span>
+        <span>{t("game.provablyFair")}</span>
         <span className="tols-fair__rtp">{(rtp * 100).toFixed(2)}% RTP</span>
         <ChevronDown
           className="size-3.5 tols-fair__chev"
@@ -228,7 +231,7 @@ function FairnessBar({
               </p>
             </>
           ) : (
-            <p className="tols-fair__note">Place a bet to see this round&apos;s commitment.</p>
+            <p className="tols-fair__note">{t("game.placeBet")}</p>
           )}
         </div>
       )}
