@@ -5,12 +5,12 @@ Questo è l'ALTRO progetto Vercel (Governance). Casino è `tols-casino-next`.
 ## 1. Env su Vercel Governance (Settings → Environment Variables → Production)
 
 Prendi domini REALI da Vercel → Settings → Domains (non inventare):
-- Governance: `https://tolsgovernz.vercel.app` (o custom se hai)
-- Casino: `https://tols-casino-next.vercel.app` o `https://tols.fun`
+- Governance: `https://gov.tols.fun` (o custom se hai)
+- Casino: `https://www.tols.fun` o `https://www.tols.fun`
 
 ```
-GOVERNANCE_TOWER_URL=https://tolsgovernz.vercel.app
-APP_URL=https://tols-casino-next.vercel.app
+GOVERNANCE_TOWER_URL=https://gov.tols.fun
+APP_URL=https://www.tols.fun
 GOVERNANCE_BRIDGE_SECRET=<stesso del Casino — openssl rand -hex 32>
 PLATFORM_JWT_PRIVATE_KEY=<base64 PEM privato — BLOCCO 1 di .env.bridge-keys su casino>
 PLATFORM_JWT_ISSUER=tols-governance

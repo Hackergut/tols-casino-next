@@ -16,19 +16,19 @@ import { createHmac, timingSafeEqual } from "crypto";
  *   SSO: token HMAC 10m
  *
  * Env su ENTRAMBI i progetti (stesso secret):
- *   GOVERNANCE_TOWER_URL  — origin Governance, es. https://tolsgovernz.vercel.app (alias: TOWER_URL) — copia da Vercel → tolsgovernz → Domains
- *   APP_URL               — origin Casino, es. https://tols.fun (alias: CASINO_URL) — copia da Vercel → tols-casino-next → Domains
+ *   GOVERNANCE_TOWER_URL  — origin Governance, es. https://gov.tols.fun (alias: TOWER_URL) — copia da Vercel → tolsgovernz → Domains
+ *   APP_URL               — origin Casino, es. https://www.tols.fun (alias: CASINO_URL) — copia da Vercel → tols-casino-next → Domains
  *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — HMAC condiviso (openssl rand -hex 32)
- *   TOLS_BASE_URL         — legacy base API Governance (es. https://tolsgovernz.vercel.app/api)
+ *   TOLS_BASE_URL         — legacy base API Governance (es. https://gov.tols.fun/api)
  *   PLATFORM_JWT_*        — JWT RS256: PRIVATE su tolsgovernz, PUBLIC su tols-casino-next (vedi .env.bridge-keys)
  */
 
 // ── Config ───────────────────────────────────────────────────────────────
 
 export interface BridgeConfig {
-  towerOrigin: string;        // es. https://tolsgovernz.vercel.app
-  towerApiBase: string;       // es. https://tolsgovernz.vercel.app/api
-  casinoOrigin: string;       // es. https://tols.fun
+  towerOrigin: string;        // es. https://gov.tols.fun
+  towerApiBase: string;       // es. https://gov.tols.fun/api
+  casinoOrigin: string;       // es. https://www.tols.fun
   hasBridgeSecret: boolean;
   hasTowerKeys: boolean;
   hasDb: boolean;
@@ -48,13 +48,13 @@ export function getBridgeConfig(): BridgeConfig {
   // Tower origin: prefer GOVERNANCE_TOWER_URL / TOWER_URL, fallback to origin di TOLS_BASE_URL
   const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
   const rawApiBase = pickEnv("TOLS_BASE_URL", "TOWER_API_BASE");
-  const towerApiBase = stripTrailingSlash(rawApiBase || "https://tolscrypto.base44.app/api");
+  const towerApiBase = stripTrailingSlash(rawApiBase || "https://gov.tols.fun/api");
   const towerOrigin = rawTowerOrigin
     ? stripTrailingSlash(rawTowerOrigin)
-    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://tolsgovernz.vercel.app"; } })();
+    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://gov.tols.fun"; } })();
 
   // Casino origin: prefer APP_URL, fallback CASINO_URL / NEXT_PUBLIC_APP_URL
-  const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://tols.fun");
+  const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://www.tols.fun");
   const bridgeSecret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
   const hasTowerKeys = Boolean(process.env.TOLS_API_KEY && process.env.TOLS_APP_KEY);
 

@@ -10,8 +10,8 @@
 
 Vai su ogni progetto → **Settings → Domains** e copia il dominio mostrato da Vercel:
 
-- **Casino** → es. `https://tols.fun` se hai custom domain, altrimenti `https://tols-casino-next.vercel.app` (o `https://tols-casino-next-hackguts-projects.vercel.app`)
-- **Governance** → `https://tolsgovernz.vercel.app` (o `https://tolsgovernz-hackguts-projects.vercel.app`, o custom se configurato)
+- **Casino** → es. `https://www.tols.fun` (ufficiale) 
+- **Governance** → `https://gov.tols.fun` (o `https://tolsgovernz-hackguts-projects.vercel.app`, o custom se configurato)
 
 Userai quei 2 URL come `APP_URL` (Casino) e `GOVERNANCE_TOWER_URL` (Governance). **Non usare `tower.dev.fun` / `tower.tols.fun` inventati.**
 
@@ -41,8 +41,8 @@ openssl rand -hex 32
 
 | Var | Dove | Esempio reale | Note |
 |-----|------|---------------|------|
-| `GOVERNANCE_TOWER_URL` | **entrambi** | `https://tolsgovernz.vercel.app` | Copia da Vercel → tolsgovernz → Domains. Alias `TOWER_URL`. |
-| `APP_URL` | **entrambi** | `https://tols-casino-next.vercel.app` o `https://tols.fun` | Copia da Vercel → tols-casino-next → Domains. Su Governance serve per CORS. |
+| `GOVERNANCE_TOWER_URL` | **entrambi** | `https://gov.tols.fun` | Copia da Vercel → tolsgovernz → Domains. Alias `TOWER_URL`. |
+| `APP_URL` | **entrambi** | `https://www.tols.fun` o `https://www.tols.fun` | Copia da Vercel → tols-casino-next → Domains. Su Governance serve per CORS. |
 | `GOVERNANCE_BRIDGE_SECRET` | **entrambi** | `a1b2c3...` | **Stesso valore** su entrambi. Alias `GOVERNANCE_WEBHOOK_SECRET`. |
 | `PLATFORM_JWT_PRIVATE_KEY` | **solo tolsgovernz** | `LS0t...` (base64 PEM) | Da `.env.bridge-keys` BLOCCO 1 — solo Governance firma. |
 | `PLATFORM_JWT_PUBLIC_KEY` | **solo tols-casino-next** | `LS0t...` (base64 PEM) | Da `.env.bridge-keys` BLOCCO 2 — solo Casino verifica. |
@@ -60,18 +60,18 @@ Su Vercel: **Project → Settings → Environment Variables → Production → A
 
 ```bash
 # 1. Health Casino (pubblico)
-curl https://tols-casino-next.vercel.app/api/platform/health | jq .
+curl https://www.tols.fun/api/platform/health | jq .
 # o se hai tols.fun:
-curl https://tols.fun/api/platform/health | jq .
+curl https://www.tols.fun/api/platform/health | jq .
 
 # 2. Health con probe Governance
-curl "https://tols.fun/api/bridge/health?probe=true" | jq .
+curl "https://www.tols.fun/api/bridge/health?probe=true" | jq .
 
 # 3. JWT whoami (con token firmato da tolsgovernz)
 # Genera token sulla Governance (node con PLATFORM_JWT_PRIVATE_KEY) poi:
-curl -H "Authorization: Bearer <jwt>" https://tols.fun/api/platform/whoami | jq .
-curl -H "Authorization: Bearer <jwt>" "https://tols.fun/api/platform/deposits?limit=5" | jq .
-curl -H "Authorization: Bearer <jwt>" "https://tols.fun/api/platform/withdrawals?status=pending" | jq .
+curl -H "Authorization: Bearer <jwt>" https://www.tols.fun/api/platform/whoami | jq .
+curl -H "Authorization: Bearer <jwt>" "https://www.tols.fun/api/platform/deposits?limit=5" | jq .
+curl -H "Authorization: Bearer <jwt>" "https://www.tols.fun/api/platform/withdrawals?status=pending" | jq .
 ```
 Se tornano dati reali, mockup eliminati.
 

@@ -35,7 +35,7 @@ export async function GET() {
     status: dbOk ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
     latencyMs: Date.now() - started,
-    casino: { origin: process.env.APP_URL || "https://tols.fun" },
+    casino: { origin: process.env.APP_URL || "https://www.tols.fun" },
     db: { ok: dbOk, latencyMs: dbLatency, error: dbError },
     bridge: {
       jwtConfigured: bridgeEnv.PLATFORM_JWT_PUBLIC_KEY,

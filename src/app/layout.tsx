@@ -36,7 +36,7 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-const SITE_URL = process.env.APP_URL || "https://tols.fun";
+const SITE_URL = process.env.APP_URL || "https://www.tols.fun";
 const TITLE = "TOLS Casino — Play & Win";
 const DESCRIPTION =
   "Provably-fair crypto casino: Originals, slots, live dealers and instant withdrawals. Play Dice, Mines, Crash, Plinko and more on TOLS.";

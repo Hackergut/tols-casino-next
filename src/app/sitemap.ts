@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 // under "/", not separate routes, so the sitemap lists the public entry point.
 // Operator console and auth pages are intentionally excluded (they are noindex).
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.APP_URL || "https://tols.fun";
+  const base = process.env.APP_URL || "https://www.tols.fun";
   return [
     {
       url: base,
