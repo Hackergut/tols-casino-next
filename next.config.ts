@@ -78,14 +78,23 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      // Bridge APIs must be callable cross-origin from the Tower. Narrow CORS to
-      // the Tower origin (and preview Vercel hosts) rather than star.
+      // Bridge + Platform APIs must be callable cross-origin from the Tower sottodominio
       {
         source: "/api/bridge/:path*",
         headers: [
           { key: "Access-Control-Allow-Origin", value: TOWER_HOST || "*" },
           { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS,HEAD" },
           { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization, X-Bridge-Signature, X-Webhook-Signature, X-Tower-Signature, X-Governance-Signature, X-Cron-Secret, X-Api-Key, X-App-Key" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+          { key: "Vary", value: "Origin" },
+        ],
+      },
+      {
+        source: "/api/platform/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TOWER_HOST || "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS,HEAD" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
           { key: "Access-Control-Max-Age", value: "86400" },
           { key: "Vary", value: "Origin" },
         ],
