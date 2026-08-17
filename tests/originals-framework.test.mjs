@@ -140,3 +140,18 @@ test("every registry artwork file actually exists", () => {
     assert.ok(existsSync(file), `registry references ${rel} but that file does not exist`);
   }
 });
+
+test("the public lobby overlays and backfills the canonical Originals registry", () => {
+  const route = readFileSync(join(root, "src/app/api/games-lobby/route.ts"), "utf8");
+
+  assert.match(route, /import\s*\{\s*ORIGINALS/, "lobby route must consume the canonical registry");
+  assert.match(route, /ORIGINALS\.find/, "DB Originals must receive canonical metadata");
+  assert.match(route, /for\s*\(const original of ORIGINALS\)/, "missing DB rows must be backfilled from the registry");
+  assert.match(route, /catalog\.push\(/, "a registered Original missing from the DB must still enter the response");
+
+  // Pool Rush is the regression case: its first deploy had game code and art,
+  // but no CasinoGame row, so it disappeared from Home.
+  assert.match(registry, /id:\s*"poolrush"[\s\S]*?image:\s*"\/games\/originals\/poolrush\.jpg"/);
+  assert.match(registry, /id:\s*"poolrush"[\s\S]*?featured:\s*true[\s\S]*?isNew:\s*true/);
+  assert.match(registry, /id:\s*"roulette"[\s\S]*?image:\s*"\/games\/originals\/roulette\.jpg"/);
+});

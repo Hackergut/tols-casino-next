@@ -21,6 +21,8 @@ export interface LobbyGame {
   description: string | null;
   gameType: string;
   popularity: number;
+  minBet?: number;
+  maxBet?: number;
 }
 
 export interface LiveBet {

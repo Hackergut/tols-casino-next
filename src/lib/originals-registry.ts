@@ -13,7 +13,11 @@
  */
 
 import { TARGET_RTP, ROULETTE_RTP, SLOTS_RTP } from "@/lib/game-math";
-import { POOL_RUSH_RTP } from "@/lib/pool-rush";
+import {
+  POOL_RUSH_MAX_BET,
+  POOL_RUSH_MIN_BET,
+  POOL_RUSH_RTP,
+} from "@/lib/pool-rush";
 
 export type OriginalId =
   | "dice"
@@ -43,6 +47,11 @@ export interface OriginalMeta {
   image: string;
   /** Rough volatility, for the info block. */
   volatility: "low" | "medium" | "high" | "variable";
+  /** Public lobby overrides. When present these are authoritative over DB data. */
+  minBet?: number;
+  maxBet?: number;
+  featured?: boolean;
+  isNew?: boolean;
 }
 
 /** Every Original, in lobby order. */
@@ -146,6 +155,10 @@ export const ORIGINALS: OriginalMeta[] = [
     rtp: POOL_RUSH_RTP,
     image: "/games/originals/poolrush.jpg",
     volatility: "variable",
+    minBet: POOL_RUSH_MIN_BET,
+    maxBet: POOL_RUSH_MAX_BET,
+    featured: true,
+    isNew: true,
   },
   {
     id: "slots",

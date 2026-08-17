@@ -18,6 +18,7 @@ const ORIGINAL_GAMES = [
   { id: "plinko", name: "Plinko", baseRtp: 0.99 },
   { id: "coinflip", name: "Coinflip", baseRtp: 0.98 },
   { id: "shoot", name: "Shoot", baseRtp: 0.99 },
+  { id: "poolrush", name: "Pool Rush", baseRtp: 0.96 },
   { id: "roulette", name: "Roulette", baseRtp: 0.973 },
   { id: "slots", name: "Slots", baseRtp: 0.97 },
 ];
