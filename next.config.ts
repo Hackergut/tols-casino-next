@@ -15,6 +15,22 @@ import type { NextConfig } from "next";
 // against every other site intact.
 const TELEGRAM_FRAME_ANCESTORS = "'self' https://web.telegram.org https://*.telegram.org";
 
+// Governance Tower ↔ Casino: DUE PROGETTI VERCEL SEPARATI su sottodomini
+//   Casino = https://www.tols.fun  (questo repo)
+//   Governance = https://gov.tols.fun (altro repo, altro progetto Vercel)
+// Il ponte è service-to-service, non via admin panel. CSP/CORS devono permettere al sottodominio di chiamare il Casino.
+const TOWER_ORIGIN = (
+  process.env.GOVERNANCE_TOWER_URL ||
+  process.env.TOWER_URL ||
+  process.env.TOLS_BASE_URL ||
+  "https://gov.tols.fun"
+).replace(/\/api\/?$/, "");
+let TOWER_HOST: string | null = null;
+try { TOWER_HOST = new URL(TOWER_ORIGIN).origin; } catch { TOWER_HOST = null; }
+const BRIDGE_ANCESTORS = TOWER_HOST ? ` ${TOWER_HOST}` : "";
+const BRIDGE_CONNECT = TOWER_HOST ? ` ${TOWER_HOST}` : "";
+// Sottodomini .tols.fun: aggiungi wildcard per preview Vercel (*.vercel.app) se necessario
+
 const securityHeaders = [
   // NOTE: X-Frame-Options is deliberately omitted. It is all-or-nothing
   // (ALLOW-FROM is dead in modern browsers) so it cannot express "Telegram
@@ -39,6 +55,10 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
+      // Sottodominio Tower + preview Vercel
+      `connect-src 'self' https://api.telegram.org${BRIDGE_CONNECT} https://*.vercel.app`,
+      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}`,
+      `frame-src 'self' https://web.telegram.org https://*.telegram.org${TOWER_HOST ? ` ${TOWER_HOST}` : ""} https://*.vercel.app`,
       "connect-src 'self' https://api.telegram.org",
       // EuroVirtuals is a multi-provider aggregator (Vimplay, VA Gaming,
       // aviator.studio, and others it can add without notice) — each game runs
@@ -65,6 +85,30 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   turbopack: {},
   async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Bridge + Platform APIs must be callable cross-origin from the Tower sottodominio
+      {
+        source: "/api/bridge/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TOWER_HOST || "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS,HEAD" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization, X-Bridge-Signature, X-Webhook-Signature, X-Tower-Signature, X-Governance-Signature, X-Cron-Secret, X-Api-Key, X-App-Key" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+          { key: "Vary", value: "Origin" },
+        ],
+      },
+      {
+        source: "/api/platform/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TOWER_HOST || "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS,HEAD" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+          { key: "Vary", value: "Origin" },
+        ],
+      },
+    ];
     return [{ source: "/:path*", headers: securityHeaders }];
   },
 };

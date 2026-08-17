@@ -64,7 +64,4 @@ prisma/db/
 # Binaries / executables (dev tooling, not app code)
 *.exe
 cloudflared.exe
-.sb_urls
-
-.vercel
-.env*
+.env.bridge-keys

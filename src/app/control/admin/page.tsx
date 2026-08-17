@@ -165,6 +165,14 @@ const RtpControlPage = dynamic(
   () => import('@/components/admin/modules/ops/rtp-control-page').then((m) => ({ default: m.RtpControlPage })),
   { loading: () => <PageLoader /> },
 );
+const LiveMonitorPage = dynamic(
+  () => import('@/components/admin/modules/ops/live-monitor-page').then((m) => ({ default: m.LiveMonitorPage })),
+  { loading: () => <PageLoader /> },
+);
+const BridgePage = dynamic(
+  () => import('@/components/admin/modules/bridge-page').then((m) => ({ default: m.BridgePage })),
+  { loading: () => <PageLoader /> },
+);
 
 /* ------------------------------------------------------------------ */
 /*  Page Router                                                        */
@@ -245,6 +253,10 @@ function PageRouter() {
       return <TelegramAlertsPage />;
     case 'rtp-control':
       return <RtpControlPage />;
+    case 'live-monitor':
+      return <LiveMonitorPage />;
+    case 'bridge':
+      return <BridgePage />;
     default:
       return <DashboardPage />;
   }
@@ -474,10 +486,6 @@ function PageHeader() {
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
 
-  // Check localStorage AFTER mount to avoid SSR/CSR hydration mismatch.
-  // Server renders PasswordGate (authenticated=false); client's first
-  // render also has authenticated=false (matching the server), then
-  // useEffect updates to the real value.
   useEffect(() => {
     try {
       if (localStorage.getItem('tols_admin_auth') === 'true') {

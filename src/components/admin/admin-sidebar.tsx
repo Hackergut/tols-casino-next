@@ -41,6 +41,8 @@ import {
   Percent,
   Search,
   X,
+  Activity,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminStore, type AdminPage } from '@/stores/admin';
@@ -59,7 +61,7 @@ const NAV_DESCRIPTIONS: Record<AdminPage, string> = {
   'house-earnings': 'Platform revenue analytics',
   'slot-games': 'Manage slot game library',
   'games-catalog': 'Full game catalog with 375+ slots & original games',
-  'casino-lobby': 'Full casino frontend — lobby, games, betting, wallet',
+  'casino-lobby': 'Full casino frontend \u2014 lobby, games, betting, wallet',
   bets: 'View betting history and details',
   'demo-sessions': 'Track demo play sessions',
   jackpot: 'Global jackpot configuration',
@@ -84,9 +86,11 @@ const NAV_DESCRIPTIONS: Record<AdminPage, string> = {
   'game-controls': 'Force wins/losses, streaks, RTP per user & game',
   'deposit-tracker': 'Deposit tracking by registration',
   'telegram-alerts': 'Telegram notification alerts',
+  'live-monitor': 'Real-time game and player monitoring',
   'rtp-control': 'RTP control panel',
   'virtual-games': 'EuroVirtuals integration: config, transactions, test launch',
   'deposit-addresses': 'Set the public receive address per chain for player deposit QR codes',
+  bridge: 'Governance Tower ↔ Casino bridge — health, sync, SSO, webhooks',
 };
 
 interface NavGroup {
@@ -177,6 +181,8 @@ const navGroups: NavGroup[] = [
       { page: 'rtp-control', label: 'RTP Control', icon: <Percent className="h-4 w-4" /> },
       { page: 'deposit-tracker', label: 'Deposit Tracker', icon: <TrendingUp className="h-4 w-4" /> },
       { page: 'telegram-alerts', label: 'Telegram Alerts', icon: <Bell className="h-4 w-4" />, badge: true },
+      { page: 'live-monitor', label: 'Live Monitor', icon: <Activity className="h-4 w-4" />, badge: true },
+      { page: 'bridge', label: 'Bridge — Governance ↔ Casino', icon: <Link2 className="h-4 w-4" />, badge: true },
     ],
   },
 ];
@@ -227,7 +233,7 @@ function NavSearchInput({
           <TooltipTrigger asChild>
             <button
               onClick={() => {
-                // Trigger sidebar expand via store — handled by parent
+                // Trigger sidebar expand via store \u2014 handled by parent
                 onChange('');
               }}
               className="w-full flex justify-center px-2 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
@@ -388,7 +394,7 @@ function MobileSidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         {filteredGroups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center px-4">
             <Search className="h-6 w-6 text-muted-foreground/40 mb-2" />
-            <p className="text-xs text-muted-foreground">No pages found for "{search}"</p>
+            <p className="text-xs text-muted-foreground">No pages found for \"{search}\"</p>
           </div>
         ) : (
           <nav className="space-y-0.5">
