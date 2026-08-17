@@ -16,6 +16,7 @@ interface Entry {
   wagered: number;
   wins: number;
   losses: number;
+  pushes: number;
   biggestWin: number;
   biggestBet: number;
   bestMultiplier: number;
@@ -23,6 +24,7 @@ interface Entry {
   netProfit: number;
   betCount: number;
   winRate: number;
+  favoriteGame: string | null;
 }
 
 interface Board {
@@ -96,6 +98,28 @@ const EMPTY: Overview = {
   generatedAt: "", refreshAfterMs: 15_000, jackpot: 0,
   promotions: [], boards: [], liveBets: [], highRollerBets: [], tournaments: [],
 };
+
+const PLAYER_CARD_ART: Record<string, string> = {
+  blackjack: "/games/originals/blackjack.jpg",
+  poolrush: "/games/originals/poolrush.jpg",
+  roulette: "/games/originals/roulette.jpg",
+  slots: "/games/originals/slots.jpg",
+  crash: "/games/originals/crash.jpg",
+  dice: "/games/originals/dice.jpg",
+  mines: "/games/originals/mines.jpg",
+  wheel: "/games/originals/wheel.jpg",
+  keno: "/games/originals/keno.jpg",
+  limbo: "/games/originals/limbo.jpg",
+  plinko: "/games/originals/plinko.jpg",
+  coinflip: "/games/originals/coinflip.jpg",
+  shoot: "/games/originals/shoot.jpg",
+};
+const PLAYER_CARD_FALLBACKS = Object.values(PLAYER_CARD_ART);
+function playerCardArt(entry: Entry): string {
+  if (entry.favoriteGame && PLAYER_CARD_ART[entry.favoriteGame]) return PLAYER_CARD_ART[entry.favoriteGame];
+  const hash = [...entry.userId].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
+  return PLAYER_CARD_FALLBACKS[hash % PLAYER_CARD_FALLBACKS.length];
+}
 
 const BOARD_ICON: Record<string, typeof Trophy> = {
   "weekly-race": Trophy,
@@ -323,14 +347,17 @@ function Podium({ board }: { board: Board }) {
       {order.map((entry) => {
         const first = entry.rank === 1;
         return (
-          <div key={entry.userId} className={`relative rounded-xl border p-3 ${first ? "border-lime/35 bg-lime/8 sm:min-h-[138px]" : "border-white/8 bg-white/[.025] sm:min-h-[124px]"}`}>
-            <span className="absolute right-3 top-2 text-xl">{entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}</span>
+          <div key={entry.userId} className={`group relative isolate overflow-hidden rounded-xl border p-3 ${first ? "border-lime/40 sm:min-h-[148px]" : "border-white/10 sm:min-h-[132px]"}`}>
+            <img src={playerCardArt(entry)} alt="" aria-hidden="true" className="pointer-events-none absolute inset-[-12px] -z-20 h-[calc(100%+24px)] w-[calc(100%+24px)] scale-110 object-cover opacity-35 blur-md saturate-125 transition duration-500 group-hover:scale-[1.16] group-hover:opacity-45" />
+            <div className={`pointer-events-none absolute inset-0 -z-10 ${first ? "bg-[linear-gradient(135deg,rgba(5,10,14,.78),rgba(11,20,18,.70),rgba(205,243,43,.12))]" : "bg-[linear-gradient(135deg,rgba(5,9,14,.84),rgba(9,14,20,.72))]"}`} />
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-t from-black/55 via-transparent to-white/[.035]" />
+            <span className="absolute right-3 top-2 text-xl drop-shadow-lg">{entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}</span>
             <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-black text-bg" style={{ background: entry.avatarColor }}>{entry.username.slice(0, 2).toUpperCase()}</span>
-              <div className="min-w-0"><p className="truncate text-sm font-bold text-white">{entry.username}</p><p className="text-[10px] text-white/35">Level {entry.level} · {entry.betCount} bets</p></div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-xs font-black text-bg shadow-lg" style={{ background: entry.avatarColor }}>{entry.username.slice(0, 2).toUpperCase()}</span>
+              <div className="min-w-0 pr-7"><p className="truncate text-sm font-bold text-white drop-shadow-md">{entry.username}</p><p className="text-[10px] text-white/55">Level {entry.level} · {entry.betCount} bets{entry.pushes ? ` · ${entry.pushes} pushes` : ""}</p></div>
             </div>
-            <p className={`mt-4 font-mono text-xl font-black ${first ? "text-lime" : "text-white"}`}>{score(board, entry)}</p>
-            <p className="text-[10px] text-white/30">{entry.winRate.toFixed(1)}% win rate</p>
+            <p className={`mt-4 font-mono text-xl font-black drop-shadow-lg ${first ? "text-lime" : "text-white"}`}>{score(board, entry)}</p>
+            <div className="flex items-center justify-between gap-2 text-[10px] text-white/45"><span>{entry.winRate.toFixed(1)}% decisive win rate</span>{entry.favoriteGame && <span className="rounded-full border border-white/10 bg-black/25 px-2 py-0.5 capitalize text-white/55 backdrop-blur-sm">{entry.favoriteGame}</span>}</div>
           </div>
         );
       })}

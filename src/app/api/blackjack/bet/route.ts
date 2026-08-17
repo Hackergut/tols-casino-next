@@ -1,5 +1,7 @@
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { syncPlayerProfile } from "@/lib/player-sync";
+import { syncTournamentProgress } from "@/lib/tournament-progress";
 import { err, getSession, ok } from "@/lib/session";
 import { getActiveSeed, nextNonce } from "@/lib/provably-fair";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
@@ -47,6 +49,7 @@ export async function POST(req: NextRequest) {
     const debited = await tx.casinoWallet.updateMany({ where: { userId: user.id, balance: { gte: amount } }, data: { balance: { decrement: amount }, totalWagered: { increment: amount } } });
     if (debited.count !== 1) throw new Error("INSUFFICIENT_BALANCE");
     if (settlement?.payout) await tx.casinoWallet.update({ where: { userId: user.id }, data: { balance: { increment: settlement.payout }, totalWon: { increment: settlement.payout } } });
+    await tx.globalJackpot.upsert({ where: { id: "global" }, update: { amount: { increment: amount * 0.005 }, contributionsCount: { increment: 1 } }, create: { id: "global", amount: 50000 + amount * 0.005, contributionsCount: 1 } });
     const bet = await tx.casinoBet.create({ data: {
       userId: user.id, gameId: "blackjack", gameName: "Blackjack 1V1", amount,
       multiplier: settlement ? settlement.payout / amount : 0, payout: settlement?.payout ?? 0,
@@ -57,6 +60,17 @@ export async function POST(req: NextRequest) {
     return { bet, balance: finalWallet?.balance ?? wallet.balance - amount + (settlement?.payout ?? 0) };
   }).catch((error) => error instanceof Error && error.message === "INSUFFICIENT_BALANCE" ? null : Promise.reject(error));
   if (!created) return err("Insufficient balance", 400);
+  if (settlement) {
+    after(async () => {
+      await Promise.all([
+        syncPlayerProfile(user.id).catch(() => {}),
+        syncTournamentProgress(user.id, "blackjack", amount, {
+          won: settlement.result === "win",
+          payout: settlement.payout,
+        }).catch(() => {}),
+      ]);
+    });
+  }
 
   return ok({ ...publicState(state, created.bet.id, created.balance), outcome: settlement?.summary ?? null, payout: settlement?.payout ?? 0 });
 }

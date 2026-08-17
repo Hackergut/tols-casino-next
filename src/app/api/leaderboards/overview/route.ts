@@ -35,7 +35,7 @@ export async function GET() {
     const monthStart = periodStart("monthly", now)!;
     const [bets, recentBets, tournaments, jackpot, viewer] = await Promise.all([
       db.casinoBet.findMany({
-        where: { createdAt: { gte: monthStart }, amount: { gt: 0 } },
+        where: { createdAt: { gte: monthStart }, amount: { gt: 0 }, result: { in: ["win", "lose", "push"] } },
         select: {
           userId: true, amount: true, multiplier: true, payout: true, result: true,
           createdAt: true, gameId: true,
@@ -43,7 +43,7 @@ export async function GET() {
         },
       }),
       db.casinoBet.findMany({
-        where: { amount: { gt: 0 } },
+        where: { amount: { gt: 0 }, result: { in: ["win", "lose", "push"] } },
         orderBy: { createdAt: "desc" },
         take: 100,
         select: {

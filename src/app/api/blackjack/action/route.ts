@@ -1,5 +1,7 @@
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { syncPlayerProfile } from "@/lib/player-sync";
+import { syncTournamentProgress } from "@/lib/tournament-progress";
 import { err, getSession, ok } from "@/lib/session";
 import {
   availableActions, canSplit, draw, handValue, isBlackjack, playDealer, publicState, settle,
@@ -85,6 +87,7 @@ export async function POST(req: NextRequest) {
     if (extraDebit > 0) {
       const debit = await tx.casinoWallet.updateMany({ where: { userId: user.id, balance: { gte: extraDebit } }, data: { balance: { decrement: extraDebit }, totalWagered: { increment: extraDebit } } });
       if (debit.count !== 1) throw new Error("INSUFFICIENT_BALANCE");
+      await tx.globalJackpot.upsert({ where: { id: "global" }, update: { amount: { increment: extraDebit * 0.005 }, contributionsCount: { increment: 1 } }, create: { id: "global", amount: 50000 + extraDebit * 0.005, contributionsCount: 1 } });
     }
     if (settlement?.payout) await tx.casinoWallet.update({ where: { userId: user.id }, data: { balance: { increment: settlement.payout }, totalWon: { increment: settlement.payout } } });
     if (settlement) await tx.houseEarning.create({ data: { gameId: "blackjack", gameName: "Blackjack 1V1", betId: bet.id, wager: totalAmount, payout: settlement.payout, houseProfit: totalAmount - settlement.payout } });
@@ -95,6 +98,17 @@ export async function POST(req: NextRequest) {
     if (saved.message === "INSUFFICIENT_BALANCE") return err("Insufficient balance", 400);
     if (saved.message === "STALE_HAND") return err("Hand changed; refresh state", 409);
     throw saved;
+  }
+  if (settlement) {
+    after(async () => {
+      await Promise.all([
+        syncPlayerProfile(user.id).catch(() => {}),
+        syncTournamentProgress(user.id, "blackjack", totalAmount, {
+          won: settlement.result === "win",
+          payout: settlement.payout,
+        }).catch(() => {}),
+      ]);
+    });
   }
   return ok({ ...publicState(state, bet.id, saved?.balance ?? wallet.balance, Boolean(settlement)), payout: settlement?.payout ?? 0, outcome: settlement?.summary ?? null });
 }
