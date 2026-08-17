@@ -6,6 +6,20 @@ import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import {
+  plinkoTable,
+  SLOTS_RTP,
+  wheelTable,
+  shootBands,
+  minesMultiplier,
+  chanceMultiplier,
+  crashPointFrom,
+  limboRollFrom,
+  TARGET_RTP,
+  type Risk,
+  type PlinkoRows,
+  type WheelSegments,
+} from "@/lib/game-math";
 
 // Game engines — provably fair, 99% RTP-ish
 type GameResult = { multiplier: number; payout: number; won: boolean; payload: Record<string, unknown> };
@@ -15,29 +29,24 @@ function rollDice(roll: number, target: number, isOver: boolean): boolean {
 }
 
 function crashPoint(serverSeed: string, clientSeed: string, nonce: number): number {
-  // 99% RTP crash — instant crash ~2% of the time
-  const r = fairFloat(serverSeed, clientSeed, nonce);
-  if (r < 0.02) return 1.0; // instant crash
-  const point = Math.max(1.0, 0.99 / (1 - r));
-  return Math.floor(point * 100) / 100;
+  // Curve lives in game-math so the bust band and the tail are derived from a
+  // single HOUSE_EDGE. The previous version paired a hardcoded 2% bust with a
+  // separate 0.99 factor, which double-counted the edge and made the real RTP
+  // drift with the cash-out target instead of staying flat.
+  return crashPointFrom(fairFloat(serverSeed, clientSeed, nonce));
 }
 
-function plinkoMultiplier(slot: number, risk: "low" | "medium" | "high", rows: number): number {
-  // Simplified plinko payout tables
-  const tables: Record<string, number[]> = {
-    "16-low": [16, 9, 2, 1.4, 1.4, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.4, 1.4, 2, 9, 16],
-    "16-medium": [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110],
-    "16-high": [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000],
-    "12-low": [10, 3, 1.3, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.3, 3, 10],
-    "12-medium": [58, 15, 7, 3, 1.5, 1, 0.5, 1, 1.5, 3, 7, 15, 58],
-    "12-high": [420, 70, 14, 5, 2, 1, 0.2, 1, 2, 5, 14, 70, 420],
-    "8-low": [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
-    "8-medium": [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13],
-    "8-high": [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29],
-  };
-  const key = `${rows}-${risk}`;
-  const table = tables[key] ?? tables["12-medium"];
-  return table[Math.min(slot, table.length - 1)];
+/*
+ * Plinko payouts are generated to an exact RTP, not typed by hand.
+ *
+ * The old hardcoded tables were badly wrong: 12-row medium returned 152.6% and
+ * 12-row high returned 251.9% — the house paid out roughly 1.5x and 2.5x what
+ * it took on every ball. Generating from a shape + a normaliser makes an
+ * over-paying table impossible to express.
+ */
+function plinkoMultiplier(slot: number, risk: Risk, rows: number): number {
+  const table = plinkoTable(rows as PlinkoRows, risk);
+  return table[Math.max(0, Math.min(slot, table.length - 1))];
 }
 
 function plinkoSlot(serverSeed: string, clientSeed: string, nonce: number, rows: number): number {
@@ -61,13 +70,10 @@ function minesLayout(serverSeed: string, clientSeed: string, nonce: number, mine
   return arr;
 }
 
+// Derived in game-math from the survival probability, so it is correct for
+// every mines/picks pair rather than only the common ones.
 function nextMineMultiplier(picks: number, mines: number, tiles = 25): number {
-  // house edge 1%
-  let m = 1;
-  for (let i = 0; i < picks; i++) {
-    m *= (tiles - i) / (tiles - mines - i);
-  }
-  return Math.max(1, m * 0.99);
+  return minesMultiplier(picks, mines, tiles);
 }
 
 // ── Slots (3 reels × 3 rows; centre row is the single payline) ──
@@ -76,7 +82,7 @@ function nextMineMultiplier(picks: number, mines: number, tiles = 25): number {
 // equals SLOTS_RTP exactly. Symbols are ids 1..6 (SYM1..SYM6).
 const SLOT_W = [3, 13, 11, 9, 7, 5]; // weights for SYM1(wild)..SYM6
 const SLOT_BASE_PAY = [60, 4, 6, 9, 14, 22]; // base 3-of-a-kind multiplier, SYM1..SYM6
-const SLOTS_RTP = 0.97;
+// SLOTS_RTP is imported from game-math so every RTP constant lives in one file.
 // Normalise pays so E[multiplier] === SLOTS_RTP for the wild-completed centre line.
 const { SLOT_PAY, SLOT_P } = (() => {
   const W = SLOT_W.reduce((a, b) => a + b, 0);
@@ -204,7 +210,10 @@ export async function POST(req: NextRequest) {
       const roll = Math.floor(fairFloat(serverSeed, seed, nonce) * 10000) / 100; // 0..100 (2dp)
       const won = rollDice(roll, target, isOver);
       const winChance = isOver ? 100 - target : target;
-      const mult = won ? Math.max(1.01, (99 / winChance)) : 0;
+      // chanceMultiplier clamps the win chance itself rather than the payout.
+      // The old Math.max(1.01, ...) floor silently pushed RTP above 100% at
+      // extreme targets (target=99 under returned 99.99%).
+      const mult = won ? chanceMultiplier(winChance) : 0;
       result = { multiplier: mult, payout: amount * mult, won, payload: { roll, target, isOver } };
       break;
     }
@@ -218,7 +227,8 @@ export async function POST(req: NextRequest) {
     }
     case "limbo": {
       const target = Number(payload?.target ?? 2);
-      const roll = Math.floor((0.99 / (1 - fairFloat(serverSeed, seed, nonce))) * 100) / 100;
+      // Same curve as crash, so both games share one derivation of the edge.
+      const roll = limboRollFrom(fairFloat(serverSeed, seed, nonce));
       const won = roll >= target;
       result = { multiplier: won ? target : 0, payout: amount * (won ? target : 0), won, payload: { roll, target } };
       break;
@@ -228,7 +238,10 @@ export async function POST(req: NextRequest) {
       const r = fairFloat(serverSeed, seed, nonce);
       const flip = r < 0.5 ? "heads" : "tails";
       const won = flip === choice;
-      result = { multiplier: won ? 1.98 : 0, payout: amount * (won ? 1.98 : 0), won, payload: { flip, choice } };
+      // 2 * TARGET_RTP — derived, so a change to HOUSE_EDGE moves every game
+      // together instead of leaving a stray 1.98 behind.
+      const cfMult = won ? 2 * TARGET_RTP : 0;
+      result = { multiplier: cfMult, payout: amount * cfMult, won, payload: { flip, choice } };
       break;
     }
     case "plinko": {
@@ -252,16 +265,14 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "wheel": {
-      const segments = Number(payload?.segments ?? 20);
-      const risk = (payload?.risk as "low" | "medium" | "high") || "medium";
-      const wheelMults: Record<string, number[]> = {
-        "20-low": [0, 0, 1.5, 0, 1.2, 0, 1.2, 0, 1.5, 0, 2, 0, 1.2, 0, 1.5, 0, 1.2, 0, 1.5, 0],
-        "20-medium": [0, 2, 0, 1.5, 0, 3, 0, 1.5, 0, 2, 0, 1.5, 0, 3, 0, 1.5, 0, 2, 0, 1.5],
-        "20-high": [0, 0, 0, 0, 9.9, 0, 0, 0, 0, 0, 0, 0, 4.5, 0, 0, 0, 0, 0, 0, 2],
-      };
-      const table = wheelMults[`${segments}-${risk}`] ?? wheelMults["20-medium"];
-      const idx = Math.floor(fairFloat(serverSeed, seed, nonce) * segments);
-      const mult = table[idx % table.length] || 0;
+      // Generated per (segments, risk) at an exact 99% RTP. The old hardcoded
+      // tables returned 64% on low and 82% on high — risk was silently
+      // changing the house edge instead of only the volatility.
+      const segments = Number(payload?.segments ?? 20) as WheelSegments;
+      const risk = (payload?.risk as Risk) || "medium";
+      const table = wheelTable(segments, risk);
+      const idx = Math.floor(fairFloat(serverSeed, seed, nonce) * table.length);
+      const mult = table[idx % table.length] ?? 0;
       result = { multiplier: mult, payout: amount * mult, won: mult > 0, payload: { segment: idx, mult, risk, segments } };
       break;
     }
@@ -296,16 +307,13 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "shoot": {
-      // Single shot at a target; the fair stream resolves the multiplier band.
+      // Band multipliers are normalised to 99% in game-math. The old bands
+      // were hand-picked and summed to 141% RTP — every shot lost the house
+      // money in expectation.
       const r = fairFloat(serverSeed, seed, nonce);
-      // Weighted bands: mostly small, rare big. ~99% RTP.
-      let mult: number;
-      if (r < 0.45) mult = 0; // miss
-      else if (r < 0.75) mult = 1.5;
-      else if (r < 0.9) mult = 2.2;
-      else if (r < 0.97) mult = 4;
-      else if (r < 0.995) mult = 9;
-      else mult = 25;
+      const bands = shootBands();
+      const band = bands.find((b) => r < b.cumulative) ?? bands[bands.length - 1];
+      const mult = band.multiplier;
       result = {
         multiplier: mult,
         payout: amount * mult,
@@ -379,7 +387,9 @@ export async function POST(req: NextRequest) {
         winSym = nonWild[0];
         mult = SLOT_PAY[winSym - 1];
       }
-      mult = Math.round(mult * 100) / 100;
+      // Rounded to 4dp, not 2: at 2dp the paytable lost ~0.02% of RTP because
+      // every symbol's pay was truncated in the same direction.
+      mult = Math.round(mult * 10000) / 10000;
       result = { multiplier: mult, payout: amount * mult, won: mult > 0, payload: { grid, line, winSym } };
       break;
     }

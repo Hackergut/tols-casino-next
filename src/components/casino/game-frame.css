@@ -1,0 +1,534 @@
+/*
+ * TOLS Originals — one shell, one look.
+ *
+ * Colour comes from the tokens in globals.css (lime #cdf32b on the matte
+ * elevation ramp), motion from the design-engineering pass: transform and
+ * opacity only, strong ease-out, everything under 300ms.
+ */
+
+.tols-game {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ── Header ── */
+
+.tols-game__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tols-game__back {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  color: color-mix(in oklab, var(--foreground) 70%, transparent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+.tols-game__back:hover {
+  background: var(--surface-raised);
+  color: var(--foreground);
+}
+
+.tols-game__title {
+  min-width: 0;
+}
+.tols-game__title h1 {
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--foreground);
+  margin: 0;
+}
+.tols-game__title p {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  margin: 2px 0 0;
+}
+
+.tols-game__edge {
+  flex: none;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lime-300);
+  background: color-mix(in oklab, var(--lime-300) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--lime-300) 26%, transparent);
+}
+
+/* Recent results. Horizontally scrollable rather than wrapping, so the header
+   height never changes as results come in — a header that grows by a row on
+   the 11th bet is a layout shift the player feels. */
+.tols-game__history {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+.tols-game__history::-webkit-scrollbar {
+  display: none;
+}
+
+.tols-chip {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+.tols-chip[data-tone="loss"] {
+  color: color-mix(in oklab, var(--foreground) 45%, transparent);
+  background: var(--surface);
+}
+.tols-chip[data-tone="win"] {
+  color: var(--lime-300);
+  background: color-mix(in oklab, var(--lime-300) 9%, transparent);
+  border-color: color-mix(in oklab, var(--lime-300) 22%, transparent);
+}
+.tols-chip[data-tone="big"] {
+  color: var(--bg);
+  background: var(--lime-300);
+}
+
+/* ── Body: controls + canvas ── */
+
+.tols-game__body {
+  display: grid;
+  gap: 12px;
+  /* Mobile: canvas first, controls under it — the canvas is what you watch,
+     the controls are what you reach for, and thumbs live at the bottom. */
+  grid-template-areas:
+    "canvas"
+    "controls";
+}
+.tols-game__controls {
+  grid-area: controls;
+  min-width: 0;
+}
+.tols-game__canvas {
+  grid-area: canvas;
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (min-width: 860px) {
+  .tols-game__body {
+    /* Desktop: controls left, matching the Goated layout — the bet button
+       sits under the cursor's resting position rather than across the page. */
+    grid-template-areas: "controls canvas";
+    grid-template-columns: 280px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* ── Bet panel ── */
+
+.tols-bet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.tols-bet__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.tols-bet__balance {
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.tols-bet__row {
+  display: flex;
+  gap: 6px;
+}
+
+.tols-bet__input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 150ms var(--ease-out);
+}
+.tols-bet__input:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--lime-300) 55%, transparent);
+}
+/* Spinners steal width and nobody uses them on a bet field. */
+.tols-bet__input::-webkit-outer-spin-button,
+.tols-bet__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.tols-bet__input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.tols-bet__mult {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: background-color 150ms var(--ease-out);
+}
+.tols-bet__mult:hover:not(:disabled) {
+  background: var(--overlay);
+}
+
+.tols-bet__chips {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+.tols-bet__chip {
+  height: 30px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out);
+}
+.tols-bet__chip:hover:not(:disabled) {
+  color: var(--foreground);
+}
+.tols-bet__chip[data-active] {
+  color: var(--lime-300);
+  border-color: color-mix(in oklab, var(--lime-300) 45%, transparent);
+  background: color-mix(in oklab, var(--lime-300) 10%, transparent);
+}
+.tols-bet__chip:disabled {
+  opacity: 0.4;
+}
+
+.tols-bet__action {
+  margin-top: 2px;
+}
+
+/* ── Action button ── */
+
+.tols-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  transition: background-color 160ms var(--ease-out), opacity 160ms var(--ease-out);
+}
+.tols-btn[data-tone="primary"] {
+  background: var(--lime-300);
+  color: var(--bg);
+}
+.tols-btn[data-tone="primary"]:hover:not(:disabled) {
+  background: var(--lime-200);
+}
+.tols-btn[data-tone="danger"] {
+  background: var(--loss);
+  color: #fff;
+}
+.tols-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* A busy button must not look pressable; the global :active scale still
+   applies to enabled buttons only, so nothing extra is needed there. */
+.tols-btn[data-busy] {
+  cursor: progress;
+}
+
+/* ── Stat rows ── */
+
+.tols-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.7rem;
+  padding: 5px 0;
+}
+.tols-stat > span:first-child {
+  color: var(--muted-foreground);
+}
+.tols-stat > span:last-child {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+.tols-stat > span[data-tone="lime"] {
+  color: var(--lime-300);
+}
+.tols-stat > span[data-tone="muted"] {
+  color: var(--muted-foreground);
+}
+
+/* ── Segmented control ── */
+
+.tols-seg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tols-seg-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.tols-seg {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.tols-seg button {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border-radius: 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+.tols-seg button:hover:not(:disabled) {
+  color: var(--foreground);
+}
+.tols-seg button[data-active] {
+  background: var(--lime-300);
+  color: var(--bg);
+}
+
+/* ── Fairness bar ── */
+
+.tols-fair {
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.tols-fair__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  transition: color 150ms var(--ease-out);
+}
+.tols-fair__toggle:hover {
+  color: var(--foreground);
+}
+.tols-fair__rtp {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--lime-300);
+  font-weight: 700;
+}
+.tols-fair__chev {
+  transition: transform 200ms var(--ease-out);
+}
+
+.tols-fair__body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tols-fair__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.68rem;
+}
+.tols-fair__label {
+  flex: none;
+  width: 140px;
+  color: var(--muted-foreground);
+}
+.tols-fair__value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.65rem;
+  text-align: left;
+  transition: border-color 150ms var(--ease-out);
+}
+.tols-fair__value:hover {
+  border-color: color-mix(in oklab, var(--lime-300) 40%, transparent);
+}
+.tols-fair__note {
+  font-size: 0.65rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  margin: 2px 0 0;
+}
+
+/* The frame's own surfaces animate on state, not on load; games that need
+   entrance motion opt in per element rather than the shell animating itself
+   on every navigation. */
+
+/* ══════════════════════ Dice ══════════════════════ */
+
+.dice {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 4px;
+}
+
+.dice__readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 72px;
+  justify-content: center;
+}
+
+.dice__value {
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 160ms var(--ease-out);
+}
+.dice__value[data-state="idle"] { color: var(--foreground); }
+.dice__value[data-state="win"]  { color: var(--lime-300); }
+.dice__value[data-state="loss"] { color: var(--loss); }
+
+.dice__verdict {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--loss);
+}
+.dice__verdict[data-won] { color: var(--lime-300); }
+
+.dice__track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.dice__win {
+  position: absolute;
+  inset-block: 0;
+  background: color-mix(in oklab, var(--lime-300) 30%, transparent);
+  /* Only the geometry animates, and only while the player drags the target. */
+  transition: left 120ms var(--ease-out), width 120ms var(--ease-out);
+}
+.dice__marker {
+  position: absolute;
+  inset-block: -3px;
+  width: 3px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: var(--loss);
+  transition: left 200ms var(--ease-out);
+}
+.dice__marker[data-won] { background: var(--lime-300); }
+
+.dice__slider {
+  width: 100%;
+  height: 22px;
+  appearance: none;
+  background: transparent;
+  cursor: grab;
+}
+.dice__slider:active { cursor: grabbing; }
+.dice__slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+}
+.dice__slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+}
+.dice__slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--lime-300);
+  border: 2px solid var(--bg);
+  transition: transform 140ms var(--ease-out);
+}
+.dice__slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--lime-300);
+  border: 2px solid var(--bg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dice__slider:hover::-webkit-slider-thumb { transform: scale(1.12); }
+}
+.dice__slider:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dice__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: var(--muted-foreground);
+}

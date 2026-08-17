@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Shared shell for the Originals. Imported here rather than per-component so
+   the frame's tokens resolve in the same cascade layer as the theme. */
+@import "../components/casino/game-frame.css";
 
 @custom-variant dark (&:is(.dark *));
 
