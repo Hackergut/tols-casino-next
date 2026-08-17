@@ -96,6 +96,21 @@
   --dur-base: 240ms;
   --dur-slow: 480ms;
 
+  /* Easing curves. Declared here in :root — not in `@theme inline`, whose
+     values are inlined at build time and so have no runtime value for plain
+     CSS to read (same reason --font-sans is avoided in the body rule below).
+     The built-in CSS easings are too weak to read as intentional; these are
+     the standard strong variants, not hand-rolled approximations.
+
+     These intentionally override Tailwind's own --ease-out/--ease-in-out,
+     which it defines in `@layer theme`: unlayered declarations outrank layered
+     ones, so this :root block wins. That means the `ease-out` utility class
+     also picks up the stronger curve — one motion vocabulary across handwritten
+     CSS and utilities, rather than two that quietly disagree. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);        /* entering / exiting */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);    /* on-screen movement */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);     /* iOS-like drawer curve */
+
   /* shadcn slot values */
   --background: var(--bg);
   --foreground: #e9e9ed;
@@ -179,6 +194,40 @@ h1, h2, h3, .font-black, .font-extrabold {
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Press feedback. Every pressable element confirms it heard the user —
+     the interaction users perform most, so it stays fast (140ms) and subtle.
+     Only `transform` transitions: naming the property avoids `transition: all`
+     clobbering colour/background transitions declared by the components. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href] {
+    transition: transform 140ms var(--ease-out);
+  }
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.97);
+  }
+}
+
+/* Reduced motion means fewer and gentler animations, not zero. Opacity and
+   colour transitions still carry meaning (what appeared, what changed), so
+   they survive; movement and position changes are what get dropped. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: none;
+  }
+  /* Keep looping/decorative animation from running indefinitely, but leave
+     one-shot fades intact. */
+  *,
+  *::before,
+  *::after {
+    animation-iteration-count: 1 !important;
   }
 }
 

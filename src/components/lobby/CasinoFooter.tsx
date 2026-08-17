@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import { CookieSettingsLink } from "@/components/compliance/CookieSettingsLink";
 
 const SECT: Record<string, React.CSSProperties> = {};
 
@@ -36,6 +38,7 @@ export function CasinoFooter({ onNavigate }: { onNavigate?: (section: string) =>
               <a href="/privacy" className={link}>Privacy Policy</a>
               <a href="/responsible-gaming" className={link}>Responsible Gambling</a>
               <a href="/aml" className={link}>AML Policy</a>
+              <CookieSettingsLink className={link + " text-left"} />
             </div>
           </div>
           {/* Community */}
