@@ -309,3 +309,24 @@ test("setWallet leaves an existing balance untouched when none is supplied", () 
     "an omitted balance must not blank the store to undefined",
   );
 });
+
+/* ------------------------------------------------------------------ *
+ * Deployment config.
+ *
+ * Vercel Hobby rejects any cron that would run more than once a day, and
+ * it fails the whole DEPLOYMENT, not just the cron. A quarter-hourly
+ * probe therefore blocked every preview build on the PR while the app
+ * itself was fine — the failure looked like a code problem and was not.
+ * ------------------------------------------------------------------ */
+
+test("no cron runs more than once per day", () => {
+  const cfg = JSON.parse(read("vercel.json"));
+  for (const cron of cfg.crons ?? []) {
+    const [minute, hour] = cron.schedule.split(/\s+/);
+    const subDaily = (f) => f.includes("*") || f.includes("/") || f.includes(",") || f.includes("-");
+    assert.ok(
+      !subDaily(minute) && !subDaily(hour),
+      `${cron.path} runs "${cron.schedule}" — sub-daily crons fail deployment on Hobby`,
+    );
+  }
+});
