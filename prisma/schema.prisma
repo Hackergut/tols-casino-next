@@ -390,7 +390,13 @@ model CasinoDeposit {
   user         CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   chain        String
   txHash       String
+  // `amount` is in the CHAIN'S NATIVE UNIT (BTC, ETH, SOL, ...) — what the
+  // on-chain verifier matches against the real transferred value. `amountUsd`
+  // is what actually gets credited to the (USDT-denominated) wallet. These
+  // used to be the same field holding a USD figure, which meant the on-chain
+  // amount check could never match for any non-stablecoin chain.
   amount       Float      @default(0)
+  amountUsd    Float      @default(0)
   currency     String     @default("USDT")
   fromAddress  String     @default("")
   toAddress    String     @default("")

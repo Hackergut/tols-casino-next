@@ -21,6 +21,7 @@ import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
 import { motion, useReducedMotion } from "framer-motion";
 import { LobbyGameCard } from "./GameCards";
+import { EurovirtualsRow } from "./EurovirtualsRow";
 import type { LobbyGame } from "./lobby-types";
 
 interface Props {
@@ -335,6 +336,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
           {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
           {row("Slots", <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, "slots", "slots")}
           {row("Live Casino", <Radio className="h-5 w-5 shrink-0 text-lime" />, live, "live tables", "live")}
+          <EurovirtualsRow onSelect={onGameClick} />
 
           <WeeklyRace />
 

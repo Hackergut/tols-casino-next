@@ -19,6 +19,7 @@ import { formatCurrency, shortAddress } from "@/lib/types";
 import { toast } from "sonner";
 import DepositPanel from "@/components/casino/DepositPanel";
 import BuyCrypto from "@/components/casino/BuyCrypto";
+import CoinIcon from "@/components/casino/CoinIcon";
 
 // Chains offered for deposit. Addresses/QRs come from the server (set by an
 // admin from Trust Wallet) — none are hardcoded here.
@@ -92,7 +93,7 @@ export function DepositModal() {
 
   const withdraw = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/withdrawals", {
+      const r = await fetch("/api/casino-withdrawals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: Number(withdrawAmount), walletAddress: withdrawAddress, chain: withdrawChain }),
@@ -180,7 +181,7 @@ export function DepositModal() {
                   }`}
                   style={withdrawChain === c.id ? { background: "color-mix(in oklab, var(--color-lime) 8%, transparent)" } : undefined}
                 >
-                  <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+                  <CoinIcon chain={c.id} size={20} />
                   {c.symbol}
                 </button>
               ))}

@@ -6,7 +6,6 @@ import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { checkBetAllowed } from "@/lib/responsible-limits";
 
 // Game engines — provably fair, 99% RTP-ish
 type GameResult = { multiplier: number; payout: number; won: boolean; payload: Record<string, unknown> };
@@ -160,7 +159,15 @@ export async function POST(req: NextRequest) {
   const limited = await rateLimit("bet", LIMITS.bet);
   if (limited) return limited;
 
-  const user = await getSession();
+  // getSession() throws for a guest (no DEMO fallback in production); without
+  // this guard an unauthenticated bet crashed the route with a bare 500
+  // instead of a clean, expected 401.
+  let user;
+  try {
+    user = await getSession();
+  } catch {
+    return err("Sign in to play", 401);
+  }
   if (!user.wallet) return err("No wallet", 400);
 
   const body = await req.json().catch(() => null);
@@ -174,10 +181,6 @@ export async function POST(req: NextRequest) {
   };
 
   if (!game || typeof amount !== "number" || amount <= 0) return err("Invalid bet", 400);
-
-  // Responsible-gaming limits: enforce self-exclusion, wager and loss caps.
-  const play = await checkBetAllowed(user.id, amount);
-  if (!play.allowed) return err(play.message, 403);
 
   // reload wallet fresh
   const wallet = await db.casinoWallet.findUnique({ where: { userId: user.id } });

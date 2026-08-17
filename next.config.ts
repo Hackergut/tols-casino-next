@@ -60,6 +60,13 @@ const securityHeaders = [
       `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}`,
       `frame-src 'self' https://web.telegram.org https://*.telegram.org${TOWER_HOST ? ` ${TOWER_HOST}` : ""} https://*.vercel.app`,
       "connect-src 'self' https://api.telegram.org",
+      // EuroVirtuals is a multi-provider aggregator (Vimplay, VA Gaming,
+      // aviator.studio, and others it can add without notice) — each game runs
+      // on its own studio's domain. Without an explicit frame-src, CSP falls
+      // back to default-src 'self' and silently blanks the game iframe (no
+      // console output beyond a CSP violation log): reproduced live, this was
+      // the actual cause of "blank page" reports on vendor games.
+      "frame-src https:",
       `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}`,
       "base-uri 'self'",
       "form-action 'self'",

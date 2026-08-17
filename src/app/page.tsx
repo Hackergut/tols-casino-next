@@ -15,6 +15,7 @@ import { CasinoFooter } from "@/components/lobby/CasinoFooter";
 import { GameLoading, LobbyGameCard } from "@/components/lobby/GameCards";
 import { GameDetailModal } from "@/components/lobby/GameDetailModal";
 import { VirtualGameModal } from "@/components/lobby/VirtualGameModal";
+import { SignupPromptModal } from "@/components/lobby/SignupPromptModal";
 import { LobbyView, GamesGridSkeleton, EmptyGames } from "@/components/lobby/LobbyView";
 import { HomeView } from "@/components/lobby/HomeView";
 import { AuthGate } from "@/components/lobby/AuthGate";
@@ -26,7 +27,7 @@ import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
-import { useUIStore } from "@/lib/store";
+import { useUIStore, useSessionStore } from "@/lib/store";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
 
 const queryClient = new QueryClient({
@@ -96,24 +97,48 @@ function CasinoPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [gateDismissed, setGateDismissed] = useState(true);
   const [gateMode, setGateMode] = useState<"login" | "register">("login");
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const { setDepositOpen } = useUIStore();
+  const setSessionUser = useSessionStore((s) => s.setUser);
+  const setSessionWallet = useSessionStore((s) => s.setWallet);
 
   // Resolve session + balance. Logged-in users get THEIR wallet balance (real,
   // per-user). Guests get a fun balance that is never shown as real money.
+  //
+  // Also mirrors into useSessionStore: DepositModal reads `user` from that
+  // store (not this component's `authed`) to decide whether to show deposit
+  // options or a "sign in" prompt. Nothing ever called its setUser() on the
+  // real login path (AuthGate) — only a legacy, unused AuthModal did — so a
+  // signed-in player always hit "sign in to deposit" when opening the wallet.
   const refreshBalance = useCallback(async () => {
     try {
       const me = await (await fetch("/api/auth/me")).json();
-      if (me?.data) { setAuthed(true); setBalance(Number(me.data.balance ?? 0)); return; }
+      if (me?.data) {
+        setAuthed(true);
+        setBalance(Number(me.data.balance ?? 0));
+        setSessionUser({
+          id: me.data.id, username: me.data.username, email: me.data.email,
+          avatarColor: me.data.avatarColor, level: me.data.level ?? 1,
+        });
+        setSessionWallet({
+          balance: Number(me.data.balance ?? 0),
+          currency: me.data.currency,
+          vipLevel: me.data.vipLevel,
+          totalWagered: me.data.totalWagered,
+        });
+        return;
+      }
     } catch { /* fall through */ }
     setAuthed(false);
+    setSessionUser(null);
     try {
       const w = await (await fetch("/api/wallet")).json();
       if (w?.success) setBalance(Number(w.data.balance ?? 0));
     } catch { /* ignore */ }
-  }, []);
+  }, [setSessionUser, setSessionWallet]);
 
   useEffect(() => {
     refreshBalance();
@@ -219,6 +244,9 @@ function CasinoPage() {
   }, [handleSectionChange]);
 
   const handleGameClick = useCallback((game: LobbyGame) => {
+    // Guests never had a wallet to bet from — the game opened anyway and the
+    // first bet silently failed. Intercept here with the real next step.
+    if (authed !== true) { setShowSignupPrompt(true); return; }
     if (game.gameType === "original") {
       setActiveGame(game.slug);
       setActiveSection("originals");
@@ -227,11 +255,12 @@ function CasinoPage() {
     } else {
       setDetailGame(game);
     }
-  }, []);
+  }, [authed]);
 
   const handleOriginalSelect = useCallback((gameId: string) => {
+    if (authed !== true) { setShowSignupPrompt(true); return; }
     setActiveGame(gameId);
-  }, []);
+  }, [authed]);
 
   const handleBackFromGame = useCallback(() => {
     setActiveGame(null);
@@ -345,15 +374,11 @@ function CasinoPage() {
       <MobileBottomNav
         activeSection={activeSection}
         chatOpen={chatOpen}
-        onMenu={() => setMenuOpen(true)}
-        onSearch={() => {
-          const el = document.getElementById("global-search");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          (el as HTMLInputElement | null)?.focus();
-        }}
-        onChat={() => setChatOpen(true)}
-        onRewards={() => handleSectionChange("rewards")}
+        onHome={() => handleSectionChange("lobby")}
         onCasino={() => handleSectionChange("originals")}
+        onRewards={() => handleSectionChange("rewards")}
+        onChat={() => setChatOpen(true)}
+        onMenu={() => setMenuOpen(true)}
       />
 
       {authed === false && !gateDismissed && (
@@ -361,6 +386,14 @@ function CasinoPage() {
           initialMode={gateMode}
           onAuthenticated={() => { setAuthed(true); setGateDismissed(true); window.location.reload(); }}
           onDismiss={() => setGateDismissed(true)}
+        />
+      )}
+
+      {showSignupPrompt && (
+        <SignupPromptModal
+          onRegister={() => { setShowSignupPrompt(false); setGateMode("register"); setGateDismissed(false); }}
+          onLogin={() => { setShowSignupPrompt(false); setGateMode("login"); setGateDismissed(false); }}
+          onClose={() => setShowSignupPrompt(false)}
         />
       )}
 
