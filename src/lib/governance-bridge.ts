@@ -1,33 +1,34 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 /**
- * TOLS Governance Tower ↔ Casino Platform Bridge
+ * TOLS Governance Tower ↔ Casino Platform — Project-to-Project Bridge
  *
- * Casino is the gaming frontend (this Next.js app, domain tols.fun).
- * Governance Tower is the control-plane (Base44 / TOLS Platform, domain
- * tolscrypto.base44.app or governance.tols.fun when self-hosted).
+ * ATTENZIONE: Questo ponte è tra DUE PROGETTI VERCEL SEPARATI con DUE REPO GIT DIVERSI.
+ *   - Casino  → questo repo `tols-casino-next`  → dominio principale  https://tols.fun
+ *   - Tower   → altro repo (governance tower)   → sottodominio        https://tower.tols.fun  (o governance.tols.fun)
  *
- * The bridge is bidirezionale:
- *   Casino → Tower: bet/deposit/withdrawal events, session heartbeats, health.
- *   Tower → Casino: RTP controls, limits, feature flags, session invalidation,
- *                   wallet interventions — delivered via signed webhook.
+ * Entrambi sono già connessi al dominio su Hostinger e deployati su Vercel come progetti distinti.
+ * Il ponte NON è via admin panel — è un collegamento servizio→servizio (service-to-service) via HTTPS + HMAC.
  *
- * Env:
- *   GOVERNANCE_TOWER_URL  — Tower origin, e.g. https://tolscrypto.base44.app
- *                           Falls back to TOLS_BASE_URL's origin when unset.
- *   TOLS_BASE_URL         — Tower API base (…/api). Legacy alias for the same.
- *   APP_URL               — Casino public origin (https://tols.fun)
- *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — shared HMAC secret
- *                           for webhook authenticity (either name accepted).
- *   TOLS_API_KEY / TOLS_APP_KEY — Tower API credentials (env or admin Settings).
+ * Flusso:
+ *   Casino → Tower: health, sync snapshot, bet/deposit/withdrawal events (POST /api/bridge/* su Tower)
+ *   Tower  → Casino: governance commands (POST /api/bridge/webhook su Casino con X-Bridge-Signature)
+ *   SSO bidirezionale: token HMAC 10m condiviso per login cross-domain
+ *
+ * Env su ENTRAMBI i progetti Vercel (stesso secret):
+ *   GOVERNANCE_TOWER_URL  — origin della Tower, es. https://tower.tols.fun  (alias: TOWER_URL)
+ *   APP_URL               — origin del Casino, es. https://tols.fun       (alias: CASINO_URL, NEXT_PUBLIC_APP_URL)
+ *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — secret HMAC condiviso (openssl rand -hex 32)
+ *   TOLS_BASE_URL         — legacy: base API della Tower (es. https://tower.tols.fun/api), se la Tower espone /api separato
+ *   TOLS_API_KEY / TOLS_APP_KEY — chiavi Tower API se la Tower le richiede
  */
 
 // ── Config ───────────────────────────────────────────────────────────────
 
 export interface BridgeConfig {
-  towerOrigin: string;        // e.g. https://tolscrypto.base44.app
-  towerApiBase: string;       // e.g. https://tolscrypto.base44.app/api
-  casinoOrigin: string;       // e.g. https://tols.fun
+  towerOrigin: string;        // es. https://tower.tols.fun
+  towerApiBase: string;       // es. https://tower.tols.fun/api
+  casinoOrigin: string;       // es. https://tols.fun
   hasBridgeSecret: boolean;
   hasTowerKeys: boolean;
   hasDb: boolean;
@@ -35,18 +36,26 @@ export interface BridgeConfig {
 
 function stripTrailingSlash(s: string) { return s.replace(/\/+$/, ""); }
 
+function pickEnv(...keys: string[]): string | undefined {
+  for (const k of keys) {
+    const v = process.env[k]?.trim();
+    if (v) return v;
+  }
+  return undefined;
+}
+
 export function getBridgeConfig(): BridgeConfig {
-  const towerApiBase = stripTrailingSlash(
-    process.env.TOLS_BASE_URL || "https://tolscrypto.base44.app/api"
-  );
-  // GOVERNANCE_TOWER_URL wins; otherwise derive origin from TOLS_BASE_URL's origin
-  const rawTowerOrigin = process.env.GOVERNANCE_TOWER_URL?.trim();
+  // Tower origin: prefer GOVERNANCE_TOWER_URL / TOWER_URL, fallback to origin di TOLS_BASE_URL
+  const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
+  const rawApiBase = pickEnv("TOLS_BASE_URL", "TOWER_API_BASE");
+  const towerApiBase = stripTrailingSlash(rawApiBase || "https://tolscrypto.base44.app/api");
   const towerOrigin = rawTowerOrigin
     ? stripTrailingSlash(rawTowerOrigin)
-    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://tolscrypto.base44.app"; } })();
+    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://tower.tols.fun"; } })();
 
-  const casinoOrigin = stripTrailingSlash(process.env.APP_URL || "https://tols.fun");
-  const bridgeSecret = process.env.GOVERNANCE_BRIDGE_SECRET || process.env.GOVERNANCE_WEBHOOK_SECRET || "";
+  // Casino origin: prefer APP_URL, fallback CASINO_URL / NEXT_PUBLIC_APP_URL
+  const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://tols.fun");
+  const bridgeSecret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
   const hasTowerKeys = Boolean(process.env.TOLS_API_KEY && process.env.TOLS_APP_KEY);
 
   return {
@@ -62,12 +71,12 @@ export function getBridgeConfig(): BridgeConfig {
 // ── HMAC helpers ─────────────────────────────────────────────────────────
 
 function bridgeSecret(): string {
-  return (process.env.GOVERNANCE_BRIDGE_SECRET || process.env.GOVERNANCE_WEBHOOK_SECRET || "").trim();
+  return (pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "").trim();
 }
 
 export function signBridgePayload(payload: string): string {
   const secret = bridgeSecret();
-  if (!secret) throw new Error("GOVERNANCE_BRIDGE_SECRET not configured");
+  if (!secret) throw new Error("GOVERNANCE_BRIDGE_SECRET not configured — imposta lo stesso secret su Casino e Tower (Vercel → Settings → Environment Variables)");
   return createHmac("sha256", secret).update(payload).digest("hex");
 }
 
@@ -86,25 +95,29 @@ export function verifyBridgeSignature(rawBody: string, signature: string | null)
 }
 
 // ── Outbound helper (Casino → Tower) ────────────────────────────────────
+// Funziona anche sottodominio: chiama direttamente l'altro progetto Vercel via HTTPS.
 
 export interface BridgeFetchOpts {
-  path?: string;              // appended to towerApiBase, e.g. "/events/bet"
+  path?: string;              // appende a towerApiBase, es. "/health" o "/bridge/webhook"
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
+  // Se true usa towerOrigin invece di towerApiBase (utile quando la Tower non ha /api)
+  useOrigin?: boolean;
 }
 
 /**
- * Call the Governance Tower API. Uses TOLS_API_KEY / TOLS_APP_KEY when present.
- * Returns the raw Response so the caller can decide how to parse errors.
+ * Chiama la Governance Tower (altro progetto Vercel su sottodominio).
+ * Usa TOLS_API_KEY / TOLS_APP_KEY se la Tower li richiede.
  */
 export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
-  const { towerApiBase } = getBridgeConfig();
+  const { towerApiBase, towerOrigin } = getBridgeConfig();
+  const base = opts.useOrigin ? towerOrigin : towerApiBase;
   const apiKey = process.env.TOLS_API_KEY || "";
   const appKey = process.env.TOLS_APP_KEY || "";
   const path = opts.path || "";
-  const url = path ? `${towerApiBase}${path.startsWith("/") ? path : `/${path}`}` : towerApiBase;
+  const url = path ? `${base}${path.startsWith("/") ? path : `/${path}`}` : base;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -116,7 +129,6 @@ export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response>
   if (apiKey) { headers["x-api-key"] = apiKey; headers["api_key"] = apiKey; }
   if (appKey) { headers["x-app-key"] = appKey; headers["app_key"] = appKey; }
 
-  // Sign outbound bridge requests when a secret is configured (tower can verify)
   if (bridgeSecret() && opts.body !== undefined) {
     const raw = typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body);
     headers["x-bridge-signature"] = `sha256=${signBridgePayload(raw)}`;
@@ -155,7 +167,11 @@ export type BridgeEventType =
 
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
   try {
-    const res = await bridgeFetch({ path: "/bridge/events", method: "POST", body: { type, payload, ts: new Date().toISOString(), source: "casino" } });
+    // Prova prima /bridge/events su apiBase, poi fallback su origin se 404
+    let res = await bridgeFetch({ path: "/bridge/events", method: "POST", body: { type, payload, ts: new Date().toISOString(), source: "casino" } });
+    if (res.status === 404) {
+      res = await bridgeFetch({ path: "/api/bridge/events", method: "POST", body: { type, payload, ts: new Date().toISOString(), source: "casino" }, useOrigin: true });
+    }
     const text = await res.text();
     let body: unknown = text;
     try { body = JSON.parse(text); } catch {}
@@ -180,7 +196,8 @@ export function isKnownInboundType(t: string): boolean {
   return ["governance.rtp_update","governance.limits_update","governance.feature_flag","governance.session_invalidate","governance.wallet_adjust","governance.player_block","ping"].includes(t);
 }
 
-// ── SSO: cross-domain token (Tower ↔ Casino) ────────────────────────────
+// ── SSO: cross-domain token (Tower ↔ Casino) — sottodomini .tols.fun ────
+// Con cookie su .tols.fun i due progetti possono condividere sessione; il token HMAC è il fallback quando i cookie non bastano.
 
 export interface BridgeSsoPayload {
   userId: string;
@@ -209,7 +226,6 @@ export function verifyBridgeSsoToken(token: string | undefined): BridgeSsoPayloa
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
     const p = JSON.parse(Buffer.from(b64, "base64url").toString()) as BridgeSsoPayload;
-    // 10 minute window
     if (Date.now() - p.issuedAt > 10 * 60 * 1000) return null;
     return p;
   } catch { return null; }
