@@ -2,7 +2,7 @@
 
 /* Coinflip on the shared Originals frame. */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
 import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
@@ -29,6 +29,11 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
   const [face, setFace] = useState<'heads' | 'tails'>('heads');
   const [outcome, setOutcome] = useState<null | { won: boolean; profit: number }>(null);
   const [spinning, setSpinning] = useState(false);
+  const settleTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
 
   const flip = useCallback(async () => {
     setOutcome(null);
@@ -38,12 +43,13 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
 
     const settle = () => {
       setFace(data.payload.flip === 'tails' ? 'tails' : 'heads');
-      setOutcome({ won: data.won, profit: data.payout - betAmount });
+      setOutcome({ won: data.won, profit: data.payout - data.amount });
       setSpinning(false);
     };
     // Let the coin turn before revealing; instant under reduced motion.
+    if (settleTimer.current) clearTimeout(settleTimer.current);
     if (reduced) settle();
-    else window.setTimeout(settle, 600);
+    else settleTimer.current = window.setTimeout(settle, 600);
   }, [place, betAmount, choice, reduced]);
 
   return (
@@ -64,7 +70,7 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={busy || spinning}
           action={
-            <BetButton onClick={flip} disabled={betAmount <= 0 || betAmount > balance} busy={busy || spinning}>
+            <BetButton onClick={flip} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy || spinning} repeatable>
               {spinning ? 'Flipping…' : 'Flip Coin'}
             </BetButton>
           }

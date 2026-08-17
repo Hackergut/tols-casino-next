@@ -27,6 +27,8 @@ export interface BetResponse<P = Record<string, unknown>> {
   serverSeedHash: string;
   clientSeed: string;
   nonce: number;
+  /** True for a zero-value round played from an empty wallet. */
+  practice?: boolean;
 }
 
 export interface Fairness {
@@ -62,8 +64,15 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
   const [profit, setProfit] = useState(0);
   const [betCount, setBetCount] = useState(0);
   const alive = useRef(true);
-  /** Guards against a second POST before `busy` has re-rendered. */
-  const inFlight = useRef(false);
+  /**
+   * Serial request tail. Rapid clicks are queued rather than silently dropped
+   * or sent concurrently. Concurrent settlements can arrive out of order and
+   * make an older `newBalance` overwrite a newer one; a serial queue preserves
+   * both fluid input and ledger order.
+   */
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const pending = useRef(0);
+  const reservedCents = useRef(0);
 
   useEffect(() => {
     alive.current = true;
@@ -79,75 +88,95 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
    * limit), not an exception.
    */
   const place = useCallback(
-    async (amount: number, payload?: Record<string, unknown>): Promise<BetResponse<P> | null> => {
-      /*
-       * Double-submit guard.
-       *
-       * `busy` was read from the closure and listed as a dependency, so the
-       * callback identity changed on every toggle — but a handler captured by
-       * an in-flight animation frame still held the previous closure, where
-       * `busy` was false. Two clicks inside one frame therefore produced two
-       * POSTs, and every POST to /api/bets debits. A ref is checked and set in
-       * the same synchronous tick, so the second call cannot observe the stale
-       * value.
-       */
-      if (inFlight.current) return null;
+    (amount: number, payload?: Record<string, unknown>): Promise<BetResponse<P> | null> => {
+      const currentBalance = useBalanceStore.getState().balance;
+      const practice = toCents(currentBalance) <= 0;
+      const stake = practice ? 0 : Math.round(amount * 100) / 100;
+      const stakeCents = toCents(stake);
 
-      const stake = Math.round(amount * 100) / 100;
-      // Compare in cents: a balance of 0.9999999999999999 after fractional
-      // credits must still allow a 1.00 all-in.
-      if (!(stake > 0)) {
+      if (!practice && !(stake > 0)) {
         setError("Invalid stake");
-        return null;
+        return Promise.resolve(null);
       }
-      if (toCents(stake) > toCents(balance)) {
+      // Reserve queued stakes immediately. Without this, ten quick clicks can
+      // all validate against the same pre-bet balance and the last nine only
+      // fail after travelling to the server.
+      if (!practice && stakeCents + reservedCents.current > toCents(currentBalance)) {
         setError("Insufficient balance");
-        return null;
+        return Promise.resolve(null);
       }
 
-      inFlight.current = true;
+      reservedCents.current += stakeCents;
+      pending.current += 1;
       setBusy(true);
       setError(null);
-      try {
-        const res = await fetch("/api/bets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ game, amount: stake, payload }),
-        });
-        const json = await res.json();
-        if (!alive.current) return null;
-        if (!json?.success) {
-          setError(typeof json?.error === "string" ? json.error : "Bet failed");
-          return null;
+
+      let resolveResult!: (value: BetResponse<P> | null) => void;
+      const resultPromise = new Promise<BetResponse<P> | null>((resolve) => {
+        resolveResult = resolve;
+      });
+
+      const execute = async () => {
+        try {
+          const res = await fetch("/api/bets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ game, amount: stake, payload }),
+          });
+          const json = await res.json().catch(() => null);
+          if (!alive.current) return resolveResult(null);
+          if (!res.ok || !json?.success) {
+            setError(typeof json?.error === "string" ? json.error : `Bet failed (${res.status})`);
+            return resolveResult(null);
+          }
+          const data = json.data as BetResponse<P>;
+          applyServer(data.newBalance);
+          setFairness({
+            serverSeedHash: data.serverSeedHash,
+            clientSeed: data.clientSeed,
+            nonce: data.nonce,
+          });
+          setHistory((prev) => [data.won ? data.multiplier : 0, ...prev].slice(0, 10));
+          const charged = Number.isFinite(data.amount) ? data.amount : stake;
+          setProfit((p) => Math.round((p + (data.payout - charged)) * 100) / 100);
+          setBetCount((c) => c + 1);
+          resolveResult(data);
+        } catch {
+          // A POST must never be retried blindly: the server may have committed
+          // the debit even when its response was lost. Reconcile the wallet
+          // instead, then let the player decide whether to submit another bet.
+          let reconciled = false;
+          try {
+            const walletRes = await fetch("/api/wallet", { cache: "no-store" });
+            const walletJson = await walletRes.json();
+            if (walletRes.ok && Number.isFinite(walletJson?.data?.balance)) {
+              applyServer(walletJson.data.balance);
+              reconciled = true;
+            }
+          } catch {
+            // Preserve the original connection error when reconciliation also
+            // fails; the next lobby poll will make another ordered attempt.
+          }
+          if (alive.current) {
+            setError(
+              reconciled
+                ? "Connection interrupted. Wallet refreshed safely; you can retry."
+                : "Connection interrupted. Check your balance before retrying.",
+            );
+          }
+          resolveResult(null);
+        } finally {
+          reservedCents.current = Math.max(0, reservedCents.current - stakeCents);
+          pending.current = Math.max(0, pending.current - 1);
+          if (alive.current && pending.current === 0) setBusy(false);
         }
-        const data = json.data as BetResponse<P>;
-        // Authoritative: computed by the server inside the transaction that
-        // moved the money. Beats any poll still in flight.
-        applyServer(data.newBalance);
-        setFairness({
-          serverSeedHash: data.serverSeedHash,
-          clientSeed: data.clientSeed,
-          nonce: data.nonce,
-        });
-        setHistory((prev) => [data.won ? data.multiplier : 0, ...prev].slice(0, 10));
-        // Use the stake the server echoes back, not the requested amount, so
-        // session P/L can never disagree with the wallet.
-        const charged = Number.isFinite(data.amount) ? data.amount : stake;
-        setProfit((p) => Math.round((p + (data.payout - charged)) * 100) / 100);
-        setBetCount((c) => c + 1);
-        return data;
-      } catch {
-        if (alive.current) setError("Network error");
-        return null;
-      } finally {
-        // Always clears, including on the error paths that used to leave the
-        // action button spinning forever. The ref clears even after unmount:
-        // it guards the request, not the render.
-        inFlight.current = false;
-        if (alive.current) setBusy(false);
-      }
+      };
+
+      // Keep the tail alive even when a previous network operation failed.
+      queue.current = queue.current.then(execute, execute);
+      return resultPromise;
     },
-    [balance, game, applyServer],
+    [game, applyServer],
   );
 
   return { balance, setBalance: applyServer, busy, error, history, fairness, profit, betCount, place };

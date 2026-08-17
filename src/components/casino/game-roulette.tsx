@@ -260,7 +260,7 @@ export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
   const clearBets = useCallback(() => { if (!locked) setBets(new Map()); }, [locked]);
 
   const spin = useCallback(async () => {
-    if (bets.size === 0 || totalStaked <= 0 || totalStaked > balance) return;
+    if (bets.size === 0 || balance > 0 && (totalStaked <= 0 || totalStaked > balance)) return;
     setSpinning(true);
     setResult(null);
     const data = await place(totalStaked, { bets: Array.from(bets.values()) });
@@ -325,7 +325,7 @@ export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
           <div className="tols-bet__action">
             <BetButton
               onClick={spin}
-              disabled={bets.size === 0 || totalStaked <= 0 || totalStaked > balance}
+              disabled={bets.size === 0 || balance > 0 && (totalStaked <= 0 || totalStaked > balance)}
               busy={locked}
             >
               {locked ? 'Spinning…' : 'Spin'}

@@ -314,8 +314,10 @@ export function BetPanel({
       </div>
 
       <label className="tols-bet__label" htmlFor="tols-bet-amount">
-        Bet Amount
-        <span className="tols-bet__balance">${balance.toFixed(2)}</span>
+        {balance <= 0 ? "Practice play" : "Bet Amount"}
+        <span className="tols-bet__balance">
+          {balance <= 0 ? "No payout" : `$${balance.toFixed(2)}`}
+        </span>
       </label>
 
       <div className="tols-bet__row">
@@ -386,10 +388,13 @@ export function BetButton({
   busy,
   children,
   tone = "primary",
+  repeatable = false,
 }: {
   onClick: () => void;
   disabled?: boolean;
   busy?: boolean;
+  /** Keep instant games clickable while the serial bet queue is draining. */
+  repeatable?: boolean;
   children: React.ReactNode;
   tone?: "primary" | "danger";
 }) {
@@ -397,7 +402,8 @@ export function BetButton({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled || busy}
+      disabled={disabled || (busy && !repeatable)}
+      aria-busy={busy || undefined}
       className="tols-btn"
       data-tone={tone}
       data-busy={busy || undefined}

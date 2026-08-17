@@ -180,7 +180,18 @@ test("the atomic debit uses the sanitised stake, never the raw request value", (
 });
 
 test("the insufficient-balance check compares in cents", () => {
-  assert.match(route, /Math\.round\(wallet\.balance \* 100\) < Math\.round\(stake \* 100\)/);
+  assert.match(route, /const walletCents = Math\.round\(wallet\.balance \* 100\)/);
+  assert.match(route, /walletCents < Math\.round\(stake \* 100\)/);
+});
+
+test("zero-value practice is restricted to an empty wallet and never reaches the ledger", () => {
+  assert.match(route, /const practice = stake === 0 && walletCents <= 0/);
+  assert.match(route, /if \(stake === 0 && !practice\) return err\("Invalid stake", 400\)/);
+  const practiceReturn = route.slice(route.indexOf("if (practice)"), route.indexOf("const controlDecision"));
+  assert.match(practiceReturn, /payout: 0/);
+  assert.match(practiceReturn, /practice: true/);
+  assert.match(practiceReturn, /newBalance: wallet\.balance/);
+  assert.doesNotMatch(practiceReturn, /\$transaction|casinoBet\.create|houseEarning/);
 });
 
 test("the response echoes the stake actually charged", () => {
@@ -220,7 +231,7 @@ test("normaliseTarget refuses unusable targets and caps the payable range", asyn
 });
 
 /* ------------------------------------------------------------------ *
- * Client hook: one balance, one in-flight bet.
+ * Client hook: one balance, serial rapid-bet queue.
  * ------------------------------------------------------------------ */
 
 const hook = code("src/components/casino/useBet.ts");
@@ -234,22 +245,32 @@ test("the hook reads the balance from the shared store, not a local copy", () =>
   );
 });
 
-test("the hook guards double-submit with a ref, not the busy state", () => {
-  assert.match(hook, /if \(inFlight\.current\) return null/);
-  assert.match(hook, /inFlight\.current = true/);
-  assert.match(hook, /inFlight\.current = false/);
-  // `busy` in the dep array was the stale-closure surface.
-  const from = hook.lastIndexOf("[balance, game");
-  const deps = hook.slice(from, hook.indexOf("]", from) + 1);
-  assert.doesNotMatch(deps, /\bbusy\b/, "busy must not gate the request path");
+test("rapid bets are serialised instead of dropped or settled out of order", () => {
+  assert.match(hook, /queue\.current = queue\.current\.then\(execute, execute\)/);
+  assert.match(hook, /pending\.current \+= 1/);
+  assert.match(hook, /pending\.current = Math\.max\(0, pending\.current - 1\)/);
+  assert.doesNotMatch(hook, /if \(inFlight\.current\) return null/);
 });
 
-test("the hook compares the stake against the balance in cents", () => {
-  assert.match(hook, /toCents\(stake\) > toCents\(balance\)/);
+test("the hook reserves queued stakes and compares them in cents", () => {
+  assert.match(hook, /const stakeCents = toCents\(stake\)/);
+  assert.match(hook, /stakeCents \+ reservedCents\.current > toCents\(currentBalance\)/);
+  assert.match(hook, /reservedCents\.current \+= stakeCents/);
+});
+
+test("an empty client wallet requests a zero-value practice round", () => {
+  assert.match(hook, /const practice = toCents\(currentBalance\) <= 0/);
+  assert.match(hook, /const stake = practice \? 0 : Math\.round\(amount \* 100\) \/ 100/);
 });
 
 test("the hook applies the settled balance as authoritative", () => {
   assert.match(hook, /applyServer\(data\.newBalance\)/);
+});
+
+test("a lost POST response reconciles the wallet instead of retrying the debit", () => {
+  assert.match(hook, /fetch\("\/api\/wallet", \{ cache: "no-store" \}\)/);
+  assert.match(hook, /applyServer\(walletJson\.data\.balance\)/);
+  assert.doesNotMatch(hook, /fetch\("\/api\/bets"[\s\S]{0,500}fetch\("\/api\/bets"/);
 });
 
 /* ------------------------------------------------------------------ *

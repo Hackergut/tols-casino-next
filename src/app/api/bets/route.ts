@@ -213,15 +213,20 @@ export async function POST(req: NextRequest) {
   if (typeof amount !== "number" || !Number.isFinite(amount)) return err("Invalid stake", 400);
 
   const stake = Math.round(amount * 100) / 100;
-  if (stake <= 0) return err("Invalid stake", 400);
+  if (stake < 0) return err("Invalid stake", 400);
   if (stake > MAX_STAKE) return err(`Maximum stake is ${MAX_STAKE}`, 400);
 
-  // reload wallet fresh
+  // Reload the wallet before deciding whether this is a paid round or practice.
+  // Practice is deliberately available only when the wallet is actually empty:
+  // a client with funds cannot send amount=0 to farm payable outcomes for free.
   const wallet = await db.casinoWallet.findUnique({ where: { userId: user.id } });
   if (!wallet) return err("No wallet", 400);
+  const walletCents = Math.round(wallet.balance * 100);
+  const practice = stake === 0 && walletCents <= 0;
+  if (stake === 0 && !practice) return err("Invalid stake", 400);
   // Compare in cents. A float compare rejects a legitimate all-in when the
   // balance is 0.9999999999999999 after repeated fractional credits.
-  if (Math.round(wallet.balance * 100) < Math.round(stake * 100)) {
+  if (!practice && walletCents < Math.round(stake * 100)) {
     return err("Insufficient balance", 400);
   }
 
@@ -366,7 +371,7 @@ export async function POST(req: NextRequest) {
         : [];
       const staked = bets.reduce((s, b) => s + (Number(b.amount) || 0), 0);
       // Guard: the sum of individual bets must match the deducted amount.
-      if (bets.length === 0 || Math.abs(staked - amount) > 1e-6) {
+      if (bets.length === 0 || (!practice && Math.abs(staked - stake) > 1e-6)) {
         result = { multiplier: 0, payout: 0, won: false, payload: { error: "bad bets", winning: -1, bets } };
         break;
       }
@@ -430,6 +435,28 @@ export async function POST(req: NextRequest) {
     }
     default:
       return err("Unknown game: " + game, 400);
+  }
+
+  // An empty wallet may still play every Original in practice mode. The server
+  // supplies the real provably-fair visual outcome, but no ledger row, jackpot,
+  // house earning, debit or credit is created. `payout` is always zero: practice
+  // can demonstrate a hit, never mint value.
+  if (practice) {
+    return ok({
+      betId: null,
+      game,
+      amount: 0,
+      multiplier: result.multiplier,
+      payout: 0,
+      won: result.won,
+      practice: true,
+      payload: result.payload,
+      serverSeedHash: hash,
+      clientSeed: seed,
+      nonce,
+      newBalance: wallet.balance,
+      controlApplied: null,
+    });
   }
 
   // ── Admin RTP / outcome control (internal prototype) ──

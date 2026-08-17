@@ -91,7 +91,7 @@ export function WheelGame({ onBack, initialBalance, onPickGame }: Props) {
     const seg = data.payload.segment;
     const settle = () => {
       setWinning(seg);
-      setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - betAmount });
+      setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
       setSpinning(false);
     };
 
@@ -125,7 +125,7 @@ export function WheelGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={busy || spinning}
           action={
-            <BetButton onClick={spin} disabled={betAmount <= 0 || betAmount > balance} busy={busy || spinning}>
+            <BetButton onClick={spin} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy || spinning}>
               {spinning ? 'Spinning…' : 'Spin'}
             </BetButton>
           }
