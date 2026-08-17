@@ -638,6 +638,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const limit = Math.min(50, Number(searchParams.get("limit") ?? 20));
   const bets = await db.casinoBet.findMany({
+    where: { amount: { gt: 0 }, result: { in: ["win", "lose", "push"] } },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: { user: { select: { username: true, avatarColor: true } } },

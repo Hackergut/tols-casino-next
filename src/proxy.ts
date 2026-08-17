@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveLocale } from "@/lib/i18n";
 import { assessVpn } from "@/lib/compliance";
+import { isCasinoAppPath } from "@/lib/casino-routes";
 
 /*
  * Edge pass on every page request. Two jobs:
@@ -42,7 +43,13 @@ export function proxy(req: NextRequest) {
   forwarded.set("x-geo-country", assessment.country ?? "");
   forwarded.set("x-geo-verdict", assessment.verdict);
 
-  const res = NextResponse.next({ request: { headers: forwarded } });
+  // The casino is a client-routed shell, but every public screen also has a
+  // durable URL. Rewrite known app paths to the shell while preserving the
+  // visible pathname, so refresh, deep links and browser Back all work.
+  const appDeepLink = req.nextUrl.pathname !== "/" && isCasinoAppPath(req.nextUrl.pathname);
+  const res = appDeepLink
+    ? NextResponse.rewrite(new URL("/", req.url), { request: { headers: forwarded } })
+    : NextResponse.next({ request: { headers: forwarded } });
 
   if (existing !== locale) {
     res.cookies.set("locale", locale, {

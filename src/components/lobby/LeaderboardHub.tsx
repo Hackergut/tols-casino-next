@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, CalendarClock, ChevronRight, Crown, Flame, Medal, RefreshCw,
+  Activity, ArrowLeft, CalendarClock, ChevronRight, Crown, Flame, Medal, RefreshCw,
   Sparkles, Target, Trophy, Users, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -154,7 +154,7 @@ function timeLeft(iso: string): string {
   return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
+export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack: () => void }) {
   const [data, setData] = useState<Overview>(EMPTY);
   const [activeBoard, setActiveBoard] = useState("weekly-race");
   const [feed, setFeed] = useState<"live" | "high">("live");
@@ -212,12 +212,15 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
   return (
     <div className="leaderboard-hub space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="flex items-start gap-3">
+          <button type="button" onClick={onBack} className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-surface text-white/55 transition-colors hover:border-lime/35 hover:text-lime" aria-label="Back"><ArrowLeft className="h-4 w-4" /></button>
+          <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-lime/20 bg-lime/8 px-3 py-1 text-[11px] font-black uppercase tracking-[.16em] text-lime">
             <Activity className="h-3.5 w-3.5" /> Live competition
           </div>
           <h1 className="font-display text-2xl uppercase text-white sm:text-3xl">Player Leaderboards</h1>
           <p className="mt-1 max-w-2xl text-sm text-white/48">Real paid bets power every ranking, promotion and tournament score. Practice rounds never count.</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="rounded-xl border border-white/7 bg-surface px-4 py-2 text-right">

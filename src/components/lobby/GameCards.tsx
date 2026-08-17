@@ -57,17 +57,20 @@ export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () 
       className="casino-game-card group relative block w-full aspect-[16/11] cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-[#0f1015] text-left transition-all duration-200 hover:-translate-y-1 hover:border-lime/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       {game.imageUrl ? (
-        /* Prefer the studio render; the catalogue's imageUrl (PNG/SVG) is the
-           fallback, so games without a render still show their tile. */
-        <img
-          src={game.imageUrl.replace(/\.(png|svg)$/, ".jpg")}
-          alt={game.name}
-          loading="lazy"
-          decoding="async"
-          draggable={false}
-          onError={(e) => { if (e.currentTarget.src !== game.imageUrl) e.currentTarget.src = game.imageUrl; }}
-          className="absolute inset-0 h-full w-full select-none object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+        /* Portrait campaign art gets a blurred cover layer plus a contained
+           poster, rather than losing its title to a landscape center crop. */
+        <>
+          {game.slug === "blackjack" && <img src={game.imageUrl} alt="" aria-hidden="true" className="absolute inset-[-12px] h-[calc(100%+24px)] w-[calc(100%+24px)] scale-110 object-cover opacity-55 blur-lg" />}
+          <img
+            src={game.imageUrl.replace(/\.(png|svg)$/, ".jpg")}
+            alt={game.name}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            onError={(e) => { if (e.currentTarget.src !== game.imageUrl) e.currentTarget.src = game.imageUrl; }}
+            className={`absolute inset-0 h-full w-full select-none transition-transform duration-300 group-hover:scale-105 ${game.slug === "blackjack" ? "object-contain" : "object-cover"}`}
+          />
+        </>
       ) : (
         <div className="flex h-full w-full items-center justify-center"><Gamepad2 className="h-10 w-10 text-lime/25" /></div>
       )}
@@ -99,6 +102,7 @@ export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onC
       className="casino-game-card group relative block w-full aspect-[16/11] cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-[#0f1015] text-left transition-all duration-200 hover:-translate-y-1 hover:border-lime/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       {/* Prefer the studio render, then the generated PNG, then the SVG. */}
+      {game.id === "blackjack" && <img src="/games/originals/blackjack.jpg" alt="" aria-hidden="true" className="absolute inset-[-12px] h-[calc(100%+24px)] w-[calc(100%+24px)] scale-110 object-cover opacity-55 blur-lg" />}
       <img
         src={`/games/originals/${game.id}.jpg`}
         alt={game.name}
@@ -111,7 +115,7 @@ export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onC
             ? `/games/originals/${game.id}.png`
             : `/games/originals/${game.id}.svg`;
         }}
-        className="absolute inset-0 h-full w-full select-none object-cover transition-transform duration-300 group-hover:scale-105"
+        className={`absolute inset-0 h-full w-full select-none transition-transform duration-300 group-hover:scale-105 ${game.id === "blackjack" ? "object-contain" : "object-cover"}`}
       />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-all duration-700 group-hover:left-full" />
