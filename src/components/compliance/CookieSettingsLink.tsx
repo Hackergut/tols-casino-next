@@ -1,6 +1,7 @@
 "use client";
 
 import { CONSENT_COOKIE } from "@/lib/compliance";
+import { useLocale } from "@/lib/use-locale";
 
 /**
  * "Cookie settings" control for the footer.
@@ -12,6 +13,7 @@ import { CONSENT_COOKIE } from "@/lib/compliance";
  * second "manage preferences" modal that can drift out of sync with it.
  */
 export function CookieSettingsLink({ className }: { className?: string }) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -21,7 +23,7 @@ export function CookieSettingsLink({ className }: { className?: string }) {
       }}
       className={className ?? "text-xs text-muted-foreground transition-colors duration-150 hover:text-lime"}
     >
-      Cookie settings
+      {t("cookies.customise")}
     </button>
   );
 }

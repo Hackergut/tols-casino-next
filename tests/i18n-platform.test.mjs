@@ -20,6 +20,12 @@ test("geo selects the platform language before Accept-Language", () => {
   assert.equal(i18n.resolveLocale({ country: "AE", acceptLanguage: "en-AE" }), "en");
 });
 
+test("automatic geo locale is not frozen as an explicit user preference", () => {
+  const proxy = readFileSync(new URL("../src/proxy.ts", import.meta.url), "utf8");
+  assert.match(proxy, /locale_detected/);
+  assert.doesNotMatch(proxy, /cookies\.set\("locale", locale/);
+});
+
 test("core navigation never falls back to raw translation keys", () => {
   const keys = ["common.back", "common.close", "nav.home", "nav.originals", "nav.liveCasino", "nav.table", "nav.leaderboards", "header.signup", "games.none"];
   for (const locale of i18n.LOCALES) for (const key of keys) assert.notEqual(i18n.translate(locale, key), key, `${locale} missing ${key}`);
@@ -33,11 +39,11 @@ test("server layout consumes the Edge-resolved locale before first paint", () =>
 });
 
 test("core shell components consume the shared locale instead of fixed Italian labels", () => {
-  const files = ["CasinoHeader.tsx", "CasinoSidebar.tsx", "MobileBottomNav.tsx", "HomeView.tsx", "HeroCarousel.tsx", "Carousel.tsx", "CompactGameShell.tsx"];
+  const files = ["CasinoHeader.tsx", "CasinoSidebar.tsx", "MobileBottomNav.tsx", "HomeView.tsx", "HeroCarousel.tsx", "Carousel.tsx", "CompactGameShell.tsx", "LobbyView.tsx", "OriginalsView.tsx", "VirtualGamesView.tsx"];
   for (const file of files) {
     const component = readFileSync(new URL(`../src/components/lobby/${file}`, import.meta.url), "utf8");
     assert.match(component, /useLocale/, `${file} is disconnected from global locale`);
-    assert.doesNotMatch(component, /Promozione precedente|Promozione successiva|Scorri a sinistra|Scorri a destra|Chiudi impostazioni|Impostazioni di gioco/, `${file} contains a fixed Italian label`);
+    assert.doesNotMatch(component, /Promozione precedente|Promozione successiva|Scorri a sinistra|Scorri a destra|Chiudi impostazioni|Impostazioni di gioco|Nessun gioco|Visualizza tutto|Carosello|placeholder="Cerca"/, `${file} contains a fixed Italian label`);
   }
 });
 

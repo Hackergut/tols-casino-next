@@ -490,7 +490,7 @@ function LiveSupportSection({ onBack }: { onBack: () => void }) {
   const faqs = [
     ["How long do withdrawals take?", "Crypto withdrawals are processed after confirmation, usually within minutes."],
     ["Is the game provably fair?", "Yes — every result is derived from a server seed hash, client seed and nonce."],
-    ["How do I redeem a code?", "Use Riscatta Codice in the profile menu."],
+    ["How do I redeem a code?", "Use Redeem code in the profile menu."],
   ];
   return (
     <Shell title="Live Support" subtitle="We're here to help" icon={LifeBuoy} onBack={onBack}>

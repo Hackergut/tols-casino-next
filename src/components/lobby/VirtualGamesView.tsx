@@ -11,12 +11,14 @@ import { Gamepad2 } from "lucide-react";
 import { LobbyGameCard } from "./GameCards";
 import { GamesGridSkeleton, EmptyGames } from "./LobbyView";
 import type { LobbyGame } from "./lobby-types";
+import { useLocale } from "@/lib/use-locale";
 
 export function VirtualGamesView({
   onGameSelect,
 }: {
   onGameSelect: (game: LobbyGame) => void;
 }) {
+  const { t } = useLocale();
   const [games, setGames] = useState<LobbyGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export function VirtualGamesView({
             EuroVirtuals
           </h3>
         </div>
-        <EmptyGames label="Nessun gioco virtuale disponibile" />
+        <EmptyGames label={t("games.none")} />
       </section>
     );
   }

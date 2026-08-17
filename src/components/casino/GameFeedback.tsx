@@ -14,6 +14,7 @@
 import { useEffect, useState } from "react";
 import { sfx } from "@/lib/game-audio";
 import { toast } from "sonner";
+import { useLocale } from "@/lib/use-locale";
 
 interface Win {
   key: number;
@@ -28,6 +29,7 @@ function haptic(pattern: number | number[]): void {
 }
 
 export function GameFeedback() {
+  const { t } = useLocale();
   const [win, setWin] = useState<Win | null>(null);
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export function GameFeedback() {
       } catch (e) {
         const u = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
         if (u.includes("/api/bets")) {
-          toast.error("Connessione persa", { description: "La puntata non è stata inviata." });
+          toast.error(t("error.connection"), { description: t("error.betNotSent") });
         }
         throw e;
       }
@@ -56,11 +58,11 @@ export function GameFeedback() {
           if (!res.ok || !j?.success) {
             const reason = String(j?.error ?? "");
             if (res.status === 429) {
-              toast.error("Troppe puntate", { description: "Attendi qualche secondo e riprova." });
+              toast.error(t("error.tooMany"), { description: t("error.wait") });
             } else if (/insufficient/i.test(reason)) {
-              toast.error("Saldo insufficiente", { description: "Riduci la puntata o effettua un deposito." });
+              toast.error(t("error.balance"), { description: t("error.reduce") });
             } else {
-              toast.error("Puntata non riuscita", { description: reason || "Riprova." });
+              toast.error(t("error.betFailed"), { description: reason || t("error.retry") });
             }
             return;
           }
@@ -82,7 +84,7 @@ export function GameFeedback() {
     };
 
     return () => { window.fetch = original; };
-  }, []);
+  }, [t]);
 
   // Celebration clears itself; a big win lingers a beat longer.
   useEffect(() => {

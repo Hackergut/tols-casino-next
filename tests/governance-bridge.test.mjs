@@ -45,6 +45,6 @@ test("admin bridge page creates and tests a backend connection through APIs", ()
   const page = read("src/components/admin/modules/bridge-page.tsx");
   assert.match(page, /fetch\('\/api\/bridge\/connection'/);
   assert.match(page, /fetch\('\/api\/bridge\/connection\/test'/);
-  assert.match(page, /Crea connessione/);
+  assert.match(page, /Create connection/);
   assert.doesNotMatch(page, /addPlatformConnection/);
 });

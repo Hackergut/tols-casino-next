@@ -8,15 +8,15 @@ import { LobbyGameCard } from "./GameCards";
 import { Carousel } from "./Carousel";
 import { VirtualGamesView } from "./VirtualGamesView";
 import { timeAgo, type CasinoStats, type LiveBet, type LobbyGame } from "./lobby-types";
+import { useLocale } from "@/lib/use-locale";
 
-/* Italian category tabs mapped to grid filters. */
-const IT_TABS = [
-  { id: "all", label: "Sala Principale", icon: Home },
-  { id: "originals", label: "Originali", icon: Gamepad2 },
-  { id: "slots", label: "Slot", icon: Layers },
-  { id: "live", label: "Casinò dal vivo", icon: Radio },
-  { id: "virtual", label: "Virtuali", icon: Radio },
-  { id: "table", label: "Giochi da Tavolo", icon: LayoutGrid },
+const CATEGORY_TABS = [
+  { id: "all", key: "nav.home", icon: Home },
+  { id: "originals", key: "nav.originals", icon: Gamepad2 },
+  { id: "slots", key: "nav.slots", icon: Layers },
+  { id: "live", key: "nav.liveCasino", icon: Radio },
+  { id: "virtual", key: "nav.virtual", icon: Radio },
+  { id: "table", key: "nav.table", icon: LayoutGrid },
 ] as const;
 
 function PromoBanner({ badge, title, subtitle, brand, accent }: {
@@ -142,6 +142,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
 }) {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [query, setQuery] = useState("");
+  const { t } = useLocale();
   const [gridMode, setGridMode] = useState(false);
 
   const filteredGames = games.filter((g) => {
@@ -171,7 +172,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
       {/* Category tabs + search */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="scrollbar-hide -mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1">
-          {IT_TABS.map(({ id, label, icon: Icon }) => (
+          {CATEGORY_TABS.map(({ id, key: labelKey, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
@@ -180,7 +181,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
                 ? { background: "color-mix(in oklab, var(--color-lime) 12%, transparent)", color: "var(--color-lime)", border: "1px solid color-mix(in oklab, var(--color-lime) 25%, transparent)" }
                 : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid transparent" }}
             >
-              <Icon className="h-4 w-4" /> {label}
+              <Icon className="h-4 w-4" /> {t(labelKey)}
             </button>
           ))}
         </div>
@@ -189,7 +190,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cerca"
+            placeholder={t("nav.search")}
             className="w-full rounded-xl border border-border/60 bg-secondary/40 py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-lime/40"
           />
         </div>
@@ -203,7 +204,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
       ) : loading ? (
         <GamesGridSkeleton />
       ) : filteredGames.length === 0 ? (
-        <EmptyGames label="Nessun gioco in questa categoria" />
+        <EmptyGames label={t("games.none")} />
       ) : gridMode ? (
         <section>
           <header className="mb-4 flex items-center justify-between gap-3">
@@ -212,7 +213,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
               <h2 className="text-lg font-black uppercase tracking-wide text-white">TOLS Games</h2>
             </div>
             <button onClick={() => setGridMode(false)} className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition-colors hover:text-white">
-              Carosello
+              {t("common.carousel")}
             </button>
           </header>
           <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
@@ -228,7 +229,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
           icon={<Gamepad2 className="h-5 w-5 shrink-0 text-lime" />}
           action={
             <button onClick={() => setGridMode(true)} className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition-colors hover:text-white">
-              Visualizza tutto
+              {t("common.viewAll")}
             </button>
           }
         >

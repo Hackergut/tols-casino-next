@@ -51,10 +51,13 @@ export function proxy(req: NextRequest) {
     ? NextResponse.rewrite(new URL("/", req.url), { request: { headers: forwarded } })
     : NextResponse.next({ request: { headers: forwarded } });
 
-  if (existing !== locale) {
-    res.cookies.set("locale", locale, {
+  // `locale` is reserved for an explicit language-picker choice. Automatic
+  // geo detection must be recalculated when the player changes country, so it
+  // is observed separately instead of being frozen for a year.
+  if (!existing) {
+    res.cookies.set("locale_detected", locale, {
       path: "/",
-      maxAge: 60 * 60 * 24 * 365,
+      maxAge: 60 * 60 * 24,
       sameSite: "lax",
     });
   }
