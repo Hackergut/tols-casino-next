@@ -74,7 +74,7 @@ export const ORIGINALS: OriginalMeta[] = [
     description:
       "Choose any target multiplier and the win chance is derived from it exactly. Low targets hit often for little; high targets almost never hit, and pay accordingly. Same curve as Crash, without the wait.",
     rtp: TARGET_RTP,
-    image: "/games/originals/limbo.png",
+    image: "/games/originals/limbo.jpg",
     volatility: "variable",
   },
   {
@@ -104,7 +104,7 @@ export const ORIGINALS: OriginalMeta[] = [
     description:
       "Choose how many mines are buried in the 25-tile grid, then pick your tiles. More mines and more picks means a bigger multiplier and a smaller chance of surviving. The layout is committed before you pick.",
     rtp: TARGET_RTP,
-    image: "/games/originals/mines.png",
+    image: "/games/originals/mines.jpg",
     volatility: "variable",
   },
   {
@@ -124,7 +124,7 @@ export const ORIGINALS: OriginalMeta[] = [
     description:
       "Select your numbers and the server draws ten from a pool of forty. Payouts are solved against the true hypergeometric odds for each pick count, so no combination is quietly worse than another.",
     rtp: TARGET_RTP,
-    image: "/games/originals/keno.png",
+    image: "/games/originals/keno.jpg",
     volatility: "medium",
   },
   {
@@ -134,7 +134,7 @@ export const ORIGINALS: OriginalMeta[] = [
     description:
       "Five targets, one shot. The payout band is drawn from the committed seed the moment you fire. Most shots return a small multiplier; a few return a great deal more.",
     rtp: TARGET_RTP,
-    image: "/games/originals/shoot.png",
+    image: "/games/originals/shoot.jpg",
     volatility: "high",
   },
   {
@@ -144,7 +144,7 @@ export const ORIGINALS: OriginalMeta[] = [
     description:
       "Fast Break turns the opening pool shot into a three-second provably-fair game. Choose one of four difficulty profiles: hit frequency falls as the top multiplier rises from 10× to 500×, while every profile stays fixed at 96% RTP. The server commits the result before the cue moves; the client reveals it only after the table animation finishes.",
     rtp: POOL_RUSH_RTP,
-    image: "/games/originals/poolrush.png",
+    image: "/games/originals/poolrush.jpg",
     volatility: "variable",
   },
   {

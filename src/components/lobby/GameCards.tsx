@@ -87,7 +87,9 @@ export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () 
   );
 }
 
-// Uniform Originals card — flat TOLS tile art (PNG), title + subtitle overlay.
+// Uniform Originals card — the artwork carries the shared TOLS title system,
+// so the UI adds only an interaction affordance instead of printing a second
+// title over the designed cover.
 export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onClick: () => void }) {
   return (
     <button
@@ -114,13 +116,9 @@ export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onC
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-all duration-700 group-hover:left-full" />
       </div>
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/75 to-transparent p-3 pt-10">
-        <div className="min-w-0">
-          <p className="truncate font-bold text-white" style={TITLE_STYLE}>{game.name}</p>
-          <p className="truncate text-white/60" style={META_STYLE}>TOLS Originals</p>
-        </div>
-        <span className="shrink-0 translate-y-1 rounded-full bg-lime px-2.5 py-1 text-[10px] font-black uppercase text-bg opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">Play</span>
-      </div>
+      <span className="absolute right-2.5 top-2.5 shrink-0 translate-y-1 rounded-full border border-black/20 bg-lime px-2.5 py-1 text-[10px] font-black uppercase text-bg opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+        Play
+      </span>
     </button>
   );
 }
