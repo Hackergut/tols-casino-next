@@ -50,9 +50,11 @@ function rtpFor(g: LobbyGame): number {
 export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () => void }) {
   const badge = game.isLive ? "Live" : game.isNew ? "New" : game.popularity > 70 ? "Hot" : null;
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className="group relative aspect-[16/11] cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-[#0f1015] transition-all duration-200 hover:-translate-y-1 hover:border-lime/30"
+      aria-label={`Play ${game.name}`}
+      className="casino-game-card group relative block w-full aspect-[16/11] cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-[#0f1015] text-left transition-all duration-200 hover:-translate-y-1 hover:border-lime/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       {game.imageUrl ? (
         /* Prefer the studio render; the catalogue's imageUrl (PNG/SVG) is the
@@ -81,16 +83,18 @@ export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () 
         </div>
         <span className="shrink-0 font-semibold tabular-nums text-white/70" style={META_STYLE}>{rtpFor(game).toFixed(1)}%</span>
       </div>
-    </div>
+    </button>
   );
 }
 
 // Uniform Originals card — flat TOLS tile art (PNG), title + subtitle overlay.
 export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onClick: () => void }) {
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className="group relative aspect-[16/11] cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-[#0f1015] transition-all duration-200 hover:-translate-y-1 hover:border-lime/30"
+      aria-label={`Play ${game.name}`}
+      className="casino-game-card group relative block w-full aspect-[16/11] cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-[#0f1015] text-left transition-all duration-200 hover:-translate-y-1 hover:border-lime/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       {/* Prefer the studio render, then the generated PNG, then the SVG. */}
       <img
@@ -117,6 +121,6 @@ export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onC
         </div>
         <span className="shrink-0 translate-y-1 rounded-full bg-lime px-2.5 py-1 text-[10px] font-black uppercase text-bg opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">Play</span>
       </div>
-    </div>
+    </button>
   );
 }

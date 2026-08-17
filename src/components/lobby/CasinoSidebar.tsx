@@ -13,7 +13,7 @@ export function CasinoSidebar({ active, onSelect, open }: { active: string; onSe
     <>
       {open && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => onSelect(active)} />}
       <aside
-        className={`fixed left-0 top-14 z-40 h-[calc(100vh-56px)] w-52 border-r border-lime/10 bg-background transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`casino-sidebar fixed left-0 top-[107px] z-40 h-[calc(100dvh-107px)] w-[min(84vw,280px)] border-r border-lime/10 bg-background transition-transform duration-300 md:top-14 md:h-[calc(100dvh-56px)] lg:static lg:w-56 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

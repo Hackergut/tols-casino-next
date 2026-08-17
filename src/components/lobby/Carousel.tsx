@@ -65,7 +65,7 @@ export function Carousel({ title, icon, action, size = "medium", children }: Car
       onClick={() => page(dir)}
       disabled={disabled}
       aria-label={dir === -1 ? "Scorri a sinistra" : "Scorri a destra"}
-      className="flex shrink-0 items-center justify-center rounded-full border border-white/10 text-white/70 transition-all hover:border-lime/40 hover:text-lime disabled:pointer-events-none disabled:opacity-25"
+      className="carousel-arrow flex shrink-0 items-center justify-center rounded-full border border-white/10 text-white/70 transition-all hover:border-lime/40 hover:text-lime disabled:pointer-events-none disabled:opacity-25"
       style={{ width: HIT_TARGET, height: HIT_TARGET }}
     >
       {dir === -1 ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
@@ -75,7 +75,7 @@ export function Carousel({ title, icon, action, size = "medium", children }: Car
   return (
     <section>
       {(title || action) && (
-        <header className="mb-4 flex items-center justify-between gap-3">
+        <header className="carousel-head mb-3 flex items-center justify-between gap-2 sm:mb-4 sm:gap-3">
           <div className="flex min-w-0 items-center gap-2">
             {icon}
             {title && <h2 className="font-display truncate text-base uppercase text-white">{title}</h2>}

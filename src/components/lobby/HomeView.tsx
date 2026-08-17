@@ -327,7 +327,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
       <MegaJackpot />
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
           ))}

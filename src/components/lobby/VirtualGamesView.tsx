@@ -120,7 +120,7 @@ export function VirtualGamesView({
           EuroVirtuals · {games.length} giochi
         </h3>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+      <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
         {games.map((g) => (
           <LobbyGameCard key={g.id} game={g} onClick={() => onGameSelect(g)} />
         ))}
