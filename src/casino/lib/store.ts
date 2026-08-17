@@ -21,7 +21,9 @@ interface SessionState {
   setUser: (u: SessionUser | null) => void;
   setBalance: (b: number) => void;
   adjustBalance: (delta: number) => void;
-  setWallet: (w: { balance: number; currency?: string; vipLevel?: number; totalWagered?: number }) => void;
+  /** Balance is intentionally absent: it lives in useBalanceStore, which
+   *  orders writes so a stale poll cannot overwrite a settled bet. */
+  setWallet: (w: { balance?: number; currency?: string; vipLevel?: number; totalWagered?: number }) => void;
   logout: () => void;
   hydrated: boolean;
   setHydrated: (h: boolean) => void;
@@ -41,7 +43,7 @@ export const useSessionStore = create<SessionState>()(
       adjustBalance: (delta) => set((s) => ({ balance: Math.max(0, s.balance + delta) })),
       setWallet: (w) =>
         set((s) => ({
-          balance: w.balance,
+          balance: w.balance ?? s.balance,
           currency: w.currency ?? s.currency,
           vipLevel: w.vipLevel ?? s.vipLevel,
           totalWagered: w.totalWagered ?? s.totalWagered,

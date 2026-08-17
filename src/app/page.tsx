@@ -132,8 +132,11 @@ function CasinoPage() {
           id: me.data.id, username: me.data.username, email: me.data.email,
           avatarColor: me.data.avatarColor, level: me.data.level ?? 1,
         });
+        // Currency/VIP/wagered only. The balance deliberately does NOT go
+        // through here: setWallet takes no sequence token, so mirroring it
+        // would reintroduce the stale-poll overwrite that applyPoll rejects.
+        // Consumers read the balance from useBalanceStore.
         setSessionWallet({
-          balance: Number(me.data.balance ?? 0),
           currency: me.data.currency,
           vipLevel: me.data.vipLevel,
           totalWagered: me.data.totalWagered,
@@ -150,7 +153,12 @@ function CasinoPage() {
   }, [setSessionUser, setSessionWallet]);
 
   useEffect(() => {
-    refreshBalance();
+    // Kick the first read off the effect body: refreshBalance() sets state
+    // synchronously on its early paths, which triggers a cascading render.
+    // Wrapping it defers the state writes to the async continuation.
+    void (async () => {
+      await refreshBalance();
+    })();
     const interval = setInterval(refreshBalance, 15000);
     return () => clearInterval(interval);
   }, [refreshBalance]);

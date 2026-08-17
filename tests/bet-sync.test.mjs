@@ -268,3 +268,44 @@ test("the lobby poll tokenises its read and cannot clobber a newer value", () =>
     "an unconditional setBalance from a poll is the original race",
   );
 });
+
+/* ------------------------------------------------------------------ *
+ * The fourth copy: useSessionStore was also carrying a balance.
+ *
+ * The lobby poll mirrored the balance into useSessionStore via setWallet(),
+ * a write with no sequence token — so a poll that applyPoll() had correctly
+ * discarded still landed there. DepositModal read that copy, so the wallet
+ * modal showed the pre-bet figure while the game showed the settled one.
+ * ------------------------------------------------------------------ */
+
+test("the lobby poll no longer mirrors the balance into useSessionStore", () => {
+  const call = page.slice(page.indexOf("setSessionWallet({"));
+  const args = call.slice(0, call.indexOf("})") + 2);
+  assert.doesNotMatch(
+    args,
+    /balance:/,
+    "setWallet carries no sequence token; mirroring the balance reintroduces the stale-poll overwrite",
+  );
+  // The rest of the wallet metadata must still be mirrored.
+  assert.match(args, /currency:/);
+  assert.match(args, /vipLevel:/);
+});
+
+test("the deposit modal reads the ordered balance, not the session mirror", () => {
+  const modal = code("src/casino/components/casino/DepositModal.tsx");
+  assert.match(modal, /useBalanceStore\(\(s\) => s\.balance\)/);
+  assert.doesNotMatch(
+    modal,
+    /const \{ balance, user \} = useSessionStore\(\)/,
+    "two stores for one number is what put a stale balance in front of the player",
+  );
+});
+
+test("setWallet leaves an existing balance untouched when none is supplied", () => {
+  const store = code("src/casino/lib/store.ts");
+  assert.match(
+    store,
+    /balance: w\.balance \?\? s\.balance/,
+    "an omitted balance must not blank the store to undefined",
+  );
+});
