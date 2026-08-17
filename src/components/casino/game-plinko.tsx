@@ -506,7 +506,7 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
     if (!data) return;
     // Animate to the server-decided bin, then reveal.
     await boardRef.current?.drop(data.payload.slot, skipAnim);
-    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - betAmount });
+    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
   }, [place, betAmount, rows, risk, skipAnim]);
 
   return (
@@ -527,7 +527,7 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={busy}
           action={
-            <BetButton onClick={dropBall} disabled={betAmount <= 0 || betAmount > balance} busy={busy}>
+            <BetButton onClick={dropBall} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy}>
               {busy ? 'Dropping…' : 'Drop Ball'}
             </BetButton>
           }

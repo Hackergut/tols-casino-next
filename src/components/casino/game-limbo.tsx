@@ -27,14 +27,19 @@ export function LimboGame({ onBack, initialBalance, onPickGame }: Props) {
   const [display, setDisplay] = useState(1);
   const [outcome, setOutcome] = useState<null | { won: boolean; roll: number; profit: number }>(null);
   const raf = useRef<number | undefined>(undefined);
+  const verdictTimer = useRef<number | undefined>(undefined);
 
-  useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
+  useEffect(() => () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    if (verdictTimer.current) clearTimeout(verdictTimer.current);
+  }, []);
 
   // Win chance is derived from the same edge the server uses, so the quoted
   // number cannot drift from the paid one.
   const winChance = useMemo(() => (target > 0 ? (TARGET_RTP / target) * 100 : 0), [target]);
 
   const animateTo = useCallback((to: number) => {
+    if (raf.current) cancelAnimationFrame(raf.current);
     const start = performance.now();
     const from = 1;
     const tick = (now: number) => {
@@ -54,8 +59,9 @@ export function LimboGame({ onBack, initialBalance, onPickGame }: Props) {
     const finalRoll = data.payload.roll;
     if (reduced) setDisplay(finalRoll);
     else animateTo(finalRoll);
-    window.setTimeout(
-      () => setOutcome({ won: data.won, roll: finalRoll, profit: data.payout - betAmount }),
+    if (verdictTimer.current) clearTimeout(verdictTimer.current);
+    verdictTimer.current = window.setTimeout(
+      () => setOutcome({ won: data.won, roll: finalRoll, profit: data.payout - data.amount }),
       reduced ? 0 : 700,
     );
   }, [place, betAmount, target, reduced, animateTo]);
@@ -78,7 +84,7 @@ export function LimboGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={busy}
           action={
-            <BetButton onClick={roll} disabled={betAmount <= 0 || betAmount > balance} busy={busy}>
+            <BetButton onClick={roll} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy} repeatable>
               {busy ? 'Rolling…' : 'Roll'}
             </BetButton>
           }

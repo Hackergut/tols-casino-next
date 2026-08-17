@@ -77,7 +77,7 @@ export function MinesGame({ onBack, initialBalance, onPickGame }: Props) {
     const data = await place(betAmount, { mines: mineCount, picks: Array.from(picks) });
     if (!data) return;
     setLayout(data.payload.layout);
-    const finish = () => setOutcome({ won: data.won, profit: data.payout - betAmount });
+    const finish = () => setOutcome({ won: data.won, profit: data.payout - data.amount });
     if (reduced) finish();
     else window.setTimeout(finish, 320);
   }, [n, place, betAmount, mineCount, picks, reduced]);
@@ -111,7 +111,7 @@ export function MinesGame({ onBack, initialBalance, onPickGame }: Props) {
             settled ? (
               <BetButton onClick={reset} tone="danger">New round</BetButton>
             ) : (
-              <BetButton onClick={reveal} disabled={n < 1 || betAmount <= 0 || betAmount > balance} busy={busy}>
+              <BetButton onClick={reveal} disabled={n < 1 || balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy}>
                 {busy ? 'Revealing…' : n < 1 ? 'Pick tiles' : `Reveal ${n} tile${n > 1 ? '' : ''}`}
               </BetButton>
             )

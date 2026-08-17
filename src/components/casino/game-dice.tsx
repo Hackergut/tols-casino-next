@@ -60,6 +60,7 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
     setResult(null);
     setShowResult(false);
 
+    if (rollIntervalRef.current) clearInterval(rollIntervalRef.current);
     const interval = reduced ? undefined : setInterval(() => setAnimatedRoll(Math.random() * 100), 50);
     if (interval) rollIntervalRef.current = interval;
 
@@ -95,7 +96,7 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={busy}
           action={
-            <BetButton onClick={roll} disabled={betAmount <= 0 || betAmount > balance} busy={busy}>
+            <BetButton onClick={roll} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy} repeatable>
               {busy ? 'Rolling…' : 'Roll Dice'}
             </BetButton>
           }

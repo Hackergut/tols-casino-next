@@ -68,7 +68,7 @@ export function CrashGame({ onBack, initialBalance, onPickGame }: Props) {
     const settle = () => {
       setMultiplier(stopAt);
       setPhase('done');
-      setOutcome({ won: data.won, crashPoint, profit: data.payout - betAmount });
+      setOutcome({ won: data.won, crashPoint, profit: data.payout - data.amount });
     };
 
     if (reduced || stopAt <= 1) {
@@ -118,7 +118,7 @@ export function CrashGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={running}
           action={
-            <BetButton onClick={run} disabled={betAmount <= 0 || betAmount > balance} busy={running}>
+            <BetButton onClick={run} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={running}>
               {running ? 'In flight…' : 'Bet'}
             </BetButton>
           }

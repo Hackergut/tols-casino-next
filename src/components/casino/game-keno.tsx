@@ -99,7 +99,7 @@ export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
     const balls = data.payload.drawn ?? [];
     const finish = () => {
       setDrawn(new Set(balls));
-      setOutcome({ won: data.won, hits: data.payload.hits ?? 0, profit: data.payout - betAmount });
+      setOutcome({ won: data.won, hits: data.payload.hits ?? 0, profit: data.payout - data.amount });
       setDrawing(false);
     };
 
@@ -137,7 +137,7 @@ export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
           action={
             <BetButton
               onClick={play}
-              disabled={selected.size < 1 || betAmount <= 0 || betAmount > balance}
+              disabled={selected.size < 1 || balance > 0 && (betAmount <= 0 || betAmount > balance)}
               busy={busyAll}
             >
               {busyAll ? 'Drawing…' : selected.size < 1 ? 'Pick numbers' : 'Play'}

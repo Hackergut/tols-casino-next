@@ -3,6 +3,7 @@
 // Lobby shell header — extracted from page.tsx (Phase 2). Balance uses the
 // PostedAmount signature (digit roll + posted tick on change).
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search, Wallet, Menu, X, ChevronDown, MessageCircle,
   Crown, Vault, Coins, Share2, Bell, Receipt, Ticket, Settings,
@@ -10,8 +11,10 @@ import {
 } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
 
-export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onSearchChange, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed }: {
+export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onSearchChange, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false }: {
   balance: number;
+  /** Games use a compact one-row header; search is restored on lobby return. */
+  inGame?: boolean;
   onMenuToggle: () => void;
   menuOpen: boolean;
   searchQuery: string;
@@ -22,6 +25,7 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
   onWalletClick: () => void;
   authed: boolean;
 }) {
+  const router = useRouter();
   const [userOpen, setUserOpen] = useState(false);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +40,8 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
   const handleLogout = async () => {
     setUserOpen(false);
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* ignore */ }
-    window.location.href = "/";
+    router.push("/");
+    router.refresh();
   };
 
   // Profile menu entries. `id` is a stable slug ready to route/wire to a view.
@@ -71,8 +76,8 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-lime/10 bg-background/95 backdrop-blur-xl">
-      <div className="flex h-14 items-center justify-between px-4">
+    <header className={`casino-header sticky top-0 z-50 border-b border-lime/10 bg-background/95 backdrop-blur-xl${inGame ? " casino-header--game" : ""}`}>
+      <div className="casino-header__bar flex h-14 items-center justify-between px-3 sm:px-4">
         {/* Left */}
         <div className="flex items-center gap-3">
           <button onClick={onMenuToggle} className="btn-press rounded-lg p-1.5 text-foreground/70 lg:hidden" aria-label="Toggle menu">
@@ -88,10 +93,10 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
 
         {/* Right */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={onNotifToggle} aria-label="Notifications" className="btn-press rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground">
+          <button onClick={onNotifToggle} aria-label="Notifications" className="casino-header__secondary btn-press rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground">
             <Bell className="h-5 w-5" />
           </button>
-          <button onClick={onChatToggle} aria-label="Community chat" className="btn-press rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground">
+          <button onClick={onChatToggle} aria-label="Community chat" className="casino-header__secondary btn-press rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground">
             <MessageCircle className="h-5 w-5" />
           </button>
 {authed ? (
@@ -168,8 +173,9 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
         </div>
       </div>
 
-      {/* Search — mobile */}
-      <div className="px-4 pb-3 md:hidden">{searchField}</div>
+      {/* Search — mobile lobby only. In-game the compact header gives the
+          canvas an extra row of vertical space and removes a dead control. */}
+      {!inGame && <div className="casino-header__mobile-search px-3 pb-3 sm:px-4 md:hidden">{searchField}</div>}
     </header>
   );
 }

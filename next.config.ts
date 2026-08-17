@@ -85,6 +85,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: !process.env.VERCEL,
   },
   reactStrictMode: false,
+  // Arena/E2B proxies the local dev server through a generated subdomain.
+  // Production is unaffected; this only permits Next's development assets.
+  allowedDevOrigins: ["*.e2b.app"],
   turbopack: {},
   async headers() {
     return [

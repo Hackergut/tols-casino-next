@@ -57,7 +57,7 @@ export function ShootGame({ onBack, initialBalance, onPickGame }: Props) {
         setOutcome({
           won: data.won,
           multiplier: data.payload.mult ?? data.multiplier,
-          profit: data.payout - betAmount,
+          profit: data.payout - data.amount,
           idx,
         });
         setFiring(null);
@@ -68,7 +68,7 @@ export function ShootGame({ onBack, initialBalance, onPickGame }: Props) {
     [busy, firing, place, betAmount, reduced],
   );
 
-  const canPlay = betAmount > 0 && betAmount <= balance;
+  const canPlay = balance <= 0 || (betAmount > 0 && betAmount <= balance);
 
   return (
     <GameFrame

@@ -275,7 +275,7 @@ export function SlotsGame({ onBack, initialBalance, onPickGame }: Props) {
     if (!data) return;
     // The reels animate to the grid the server already picked.
     await reelsRef.current?.spin(data.payload.grid, data.payload.winSym, skipAnim);
-    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - betAmount });
+    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
   }, [place, betAmount, skipAnim]);
 
   return (
@@ -297,7 +297,7 @@ export function SlotsGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={busy}
           action={
-            <BetButton onClick={spin} disabled={betAmount <= 0 || betAmount > balance} busy={busy}>
+            <BetButton onClick={spin} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy}>
               {busy ? 'Spinning…' : 'Spin'}
             </BetButton>
           }

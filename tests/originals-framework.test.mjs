@@ -105,15 +105,15 @@ test("games place bets through the shared hook, not raw fetch", () => {
 });
 
 test("the registry never hardcodes an RTP", () => {
-  // RTP must be imported from game-math so a card cannot advertise a return
-  // the engine does not pay.
+  // RTP must reference an exported server-math constant so a card cannot
+  // advertise a return the engine does not pay.
   const rtpLines = registry
     .split("\n")
     .filter((l) => /^\s+rtp:/.test(l) && !/rtp\??:\s*(number|string)/.test(l));
   assert.ok(rtpLines.length >= 11, "expected an rtp field per game");
   for (const line of rtpLines) {
     assert.ok(
-      /(TARGET_RTP|SLOTS_RTP|ROULETTE_RTP)/.test(line),
+      /(TARGET_RTP|SLOTS_RTP|ROULETTE_RTP|POOL_RUSH_RTP)/.test(line),
       `registry RTP must reference a game-math constant, got: ${line.trim()}`,
     );
   }

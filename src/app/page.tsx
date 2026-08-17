@@ -25,6 +25,7 @@ import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
+import { LeaderboardHub } from "@/components/lobby/LeaderboardHub";
 import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
@@ -70,6 +71,10 @@ const CoinflipGame = dynamic(
 );
 const ShootGame = dynamic(
   () => import("@/components/casino/game-shoot").then((m) => ({ default: m.ShootGame })),
+  { ssr: false, loading: () => <GameLoading /> }
+);
+const PoolRushGame = dynamic(
+  () => import("@/components/casino/game-poolrush").then((m) => ({ default: m.PoolRushGame })),
   { ssr: false, loading: () => <GameLoading /> }
 );
 const SlotsGame = dynamic(
@@ -319,6 +324,7 @@ function CasinoPage() {
       case "plinko": return <PlinkoGame {...props} />;
       case "coinflip": return <CoinflipGame {...props} />;
       case "shoot": return <ShootGame {...props} />;
+      case "poolrush": return <PoolRushGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
       default: return <p className="text-muted-foreground">Game not found</p>;
@@ -346,13 +352,16 @@ function CasinoPage() {
         onNotifToggle={() => setNotifOpen(true)}
         onWalletClick={() => (authed === true ? setDepositOpen(true) : (setGateMode("register"), setGateDismissed(false)))}
         authed={authed === true}
+        inGame={Boolean(activeGame)}
       />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} />
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-          <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+        <main className={`min-w-0 flex-1 overflow-y-auto ${activeGame ? "casino-main--game" : "pb-20 lg:pb-0"}`}>
+          <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
             {activeGame ? (
               <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
+            ) : activeSection === "rewards" ? (
+              <LeaderboardHub onPlay={() => handleSectionChange("originals")} />
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => handleSectionChange("lobby")} />
             ) : activeSection === "originals" ? (
@@ -385,7 +394,7 @@ function CasinoPage() {
                 {loading ? (
                   <GamesGridSkeleton />
                 ) : displayedGames.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                     {displayedGames.map((game, i) => (
                       <LobbyGameCard key={game.id || i} game={game} onClick={() => handleGameClick(game)} />
                     ))}
@@ -404,15 +413,20 @@ function CasinoPage() {
       {detailGame && <GameDetailModal game={detailGame} onClose={() => setDetailGame(null)} />}
       {virtualGame && <VirtualGameModal game={virtualGame} onClose={() => setVirtualGame(null)} />}
 
-      <MobileBottomNav
-        activeSection={activeSection}
-        chatOpen={chatOpen}
-        onHome={() => handleSectionChange("lobby")}
-        onCasino={() => handleSectionChange("originals")}
-        onRewards={() => handleSectionChange("rewards")}
-        onChat={() => setChatOpen(true)}
-        onMenu={() => setMenuOpen(true)}
-      />
+      {/* Once inside a game, its back button and bottom bet sheet are the
+          primary navigation. Hiding the global thumb bar prevents accidental
+          exits and returns 64px of scarce phone height to the canvas. */}
+      {!activeGame && (
+        <MobileBottomNav
+          activeSection={activeSection}
+          chatOpen={chatOpen}
+          onHome={() => handleSectionChange("lobby")}
+          onCasino={() => handleSectionChange("originals")}
+          onRewards={() => handleSectionChange("rewards")}
+          onChat={() => setChatOpen(true)}
+          onMenu={() => setMenuOpen(true)}
+        />
+      )}
 
       {authed === false && !gateDismissed && (
         <AuthGate
