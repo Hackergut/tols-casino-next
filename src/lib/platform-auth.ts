@@ -38,5 +38,17 @@ export function requirePlatformAuth(req: Request | NextRequest): PlatformAuthSuc
 
 export function hasScope(claims: PlatformJwtClaims, scope: string): boolean {
   if (!claims.scope || claims.scope.length === 0) return true; // se non specificato, permetti (retrocompat)
-  return claims.scope.includes(scope) || claims.scope.includes("*") || claims.scope.includes("platform:*");
+  if (claims.scope.includes(scope) || claims.scope.includes("*") || claims.scope.includes("platform:*")) return true;
+  // Alias per compatibilità governance UI: withdrawals:approve ↔ withdrawals:write
+  const aliases: Record<string, string[]> = {
+    "withdrawals:write": ["withdrawals:approve", "withdrawals:write"],
+    "withdrawals:approve": ["withdrawals:write", "withdrawals:approve"],
+    "withdrawals:read": ["withdrawals:read", "withdrawals:write", "withdrawals:approve"],
+    "deposits:read": ["deposits:read", "deposits:write"],
+    "payments:read": ["payments:read", "payments:write"],
+    "events:write": ["events:write", "events:*"],
+  };
+  const alts = aliases[scope];
+  if (alts) return alts.some((s) => claims.scope!.includes(s));
+  return false;
 }

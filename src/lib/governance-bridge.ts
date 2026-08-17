@@ -166,19 +166,33 @@ export type BridgeEventType =
   | "bridge.sync_request";
 
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
-  try {
-    // Prova prima /bridge/events su apiBase, poi fallback su origin se 404
-    let res = await bridgeFetch({ path: "/bridge/events", method: "POST", body: { type, payload, ts: new Date().toISOString(), source: "casino" } });
-    if (res.status === 404) {
-      res = await bridgeFetch({ path: "/api/bridge/events", method: "POST", body: { type, payload, ts: new Date().toISOString(), source: "casino" }, useOrigin: true });
+  const body = { type, payload, ts: new Date().toISOString(), source: "casino" };
+  // La Governance (gov.tols.fun) espone secondo UI: /api/platform/webhooks (events:write)
+  // Manteniamo fallback su /bridge/events per retrocompatibilità
+  const candidates: Array<{ path: string; useOrigin?: boolean }> = [
+    { path: "/api/platform/webhooks", useOrigin: true },
+    { path: "/api/platform/webhook", useOrigin: true },
+    { path: "/bridge/events" },
+    { path: "/api/bridge/events", useOrigin: true },
+  ];
+  for (const c of candidates) {
+    try {
+      const res = await bridgeFetch({ path: c.path, method: "POST", body, useOrigin: c.useOrigin });
+      if (res.status === 404) continue; // prova prossimo
+      const text = await res.text();
+      let b: unknown = text; try { b = JSON.parse(text); } catch {}
+      // se 401/403 per scope, riporta subito (non provare altri)
+      if (res.status === 401 || res.status === 403) return { ok: res.ok, status: res.status, body: b };
+      if (res.ok) return { ok: true, status: res.status, body: b };
+      // altro errore ma non 404: ritorna comunque per debug
+      return { ok: res.ok, status: res.status, body: b };
+    } catch (e) {
+      // network error: prova prossimo candidate se ce ne sono
+      if (c !== candidates[candidates.length - 1]) continue;
+      return { ok: false, status: 0, body: { error: e instanceof Error ? e.message : String(e) } };
     }
-    const text = await res.text();
-    let body: unknown = text;
-    try { body = JSON.parse(text); } catch {}
-    return { ok: res.ok, status: res.status, body };
-  } catch (e) {
-    return { ok: false, status: 0, body: { error: e instanceof Error ? e.message : String(e) } };
   }
+  return { ok: false, status: 404, body: { error: "All webhook candidates returned 404" } };
 }
 
 // ── Inbound event handling (Tower → Casino) ──────────────────────────────
