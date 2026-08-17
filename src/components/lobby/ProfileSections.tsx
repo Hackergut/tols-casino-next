@@ -15,6 +15,8 @@ import {
 import { VIP_TIERS, vipLevelForWager, vipProgress } from "@/lib/vip";
 import { useLocale } from "@/lib/use-locale";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
+import { useGameSettings } from "@/lib/game-settings";
+import { setSoundEnabled } from "@/lib/game-audio";
 
 const PROFILE_SECTIONS = new Set([
   "wallet", "vip", "cassaforte", "token", "affiliate", "notifications",
@@ -39,7 +41,6 @@ function useJson<T>(url: string | null): { data: T | null; loading: boolean; rel
   useEffect(() => {
     if (!url) return;
     let alive = true;
-    setLoading(true);
     fetch(url)
       .then((r) => r.json())
       .then((j) => { if (alive) setData(j.success ? (j.data as T) : null); })
@@ -47,7 +48,7 @@ function useJson<T>(url: string | null): { data: T | null; loading: boolean; rel
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [url, tick]);
-  return { data, loading, reload: () => setTick((t) => t + 1) };
+  return { data, loading, reload: () => { setLoading(true); setTick((t) => t + 1); } };
 }
 
 function Shell({ title, subtitle, icon: Icon, onBack, children }: {
@@ -374,9 +375,40 @@ function RiscattaCodiceSection({ onBack }: { onBack: () => void }) {
 }
 
 /* ── Settings ── */
+function PreferenceToggle({ label, description, active, onToggle }: {
+  label: string;
+  description?: string;
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm"
+      style={{ background: "rgba(255,255,255,0.03)" }}
+    >
+      <span className="min-w-0">
+        <span className="block" style={{ color: "rgba(255,255,255,0.72)" }}>{label}</span>
+        {description && <span className="mt-0.5 block text-[10px]" style={{ color: "rgba(255,255,255,0.32)" }}>{description}</span>}
+      </span>
+      <span className="relative h-5 w-9 shrink-0 rounded-full transition-colors" style={{ background: active ? "var(--color-lime)" : "rgba(255,255,255,0.15)" }}>
+        <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all" style={{ left: active ? "18px" : "2px" }} />
+      </span>
+    </button>
+  );
+}
+
 function SettingsSection({ onBack }: { onBack: () => void }) {
   const me = useJson<{ balance: number; currency: string }>("/api/wallet");
-  const [toggles, setToggles] = useState({ emailPromos: true, sounds: true, hideBalance: false });
+  const [toggles, setToggles] = useState({ emailPromos: true, hideBalance: false });
+  const soundEnabled = useGameSettings((s) => s.soundEnabled);
+  const toggleSound = useGameSettings((s) => s.toggleSound);
+  const quickPlay = useGameSettings((s) => s.quickPlay);
+  const setQuickPlay = useGameSettings((s) => s.setQuickPlay);
+  const showProfit = useGameSettings((s) => s.showProfit);
+  const setShowProfit = useGameSettings((s) => s.setShowProfit);
   const { locale, setLocale } = useLocale();
   return (
     <Shell title="Settings" subtitle="Account and preferences" icon={Settings} onBack={onBack}>
@@ -411,17 +443,40 @@ function SettingsSection({ onBack }: { onBack: () => void }) {
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Preferences</p>
         <div className="space-y-2">
-          {([["emailPromos", "Email promotions"], ["sounds", "Game sounds"], ["hideBalance", "Hide balance"]] as const).map(([k, label]) => (
-            <button key={k} onClick={() => setToggles((t) => ({ ...t, [k]: !t[k] }))}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <span style={{ color: "rgba(255,255,255,0.7)" }}>{label}</span>
-              <span className="relative h-5 w-9 rounded-full transition-colors" style={{ background: toggles[k] ? "var(--color-lime)" : "rgba(255,255,255,0.15)" }}>
-                <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all" style={{ left: toggles[k] ? "18px" : "2px" }} />
-              </span>
-            </button>
-          ))}
+          <PreferenceToggle
+            label="Game sounds"
+            description="Sound effects for all TOLS Originals"
+            active={soundEnabled}
+            onToggle={() => {
+              const next = !soundEnabled;
+              toggleSound();
+              setSoundEnabled(next);
+            }}
+          />
+          <PreferenceToggle
+            label="Quick play"
+            description="Reduce or skip result animations"
+            active={quickPlay}
+            onToggle={() => setQuickPlay(!quickPlay)}
+          />
+          <PreferenceToggle
+            label="Session profit"
+            description="Show running profit and loss in game headers"
+            active={showProfit}
+            onToggle={() => setShowProfit(!showProfit)}
+          />
+          <PreferenceToggle
+            label="Email promotions"
+            active={toggles.emailPromos}
+            onToggle={() => setToggles((t) => ({ ...t, emailPromos: !t.emailPromos }))}
+          />
+          <PreferenceToggle
+            label="Hide balance"
+            active={toggles.hideBalance}
+            onToggle={() => setToggles((t) => ({ ...t, hideBalance: !t.hideBalance }))}
+          />
         </div>
-        <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Preferences are local for now — wire to a user-settings endpoint to persist.</p>
+        <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Game preferences persist on this device and apply to every Original.</p>
       </div>
     </Shell>
   );

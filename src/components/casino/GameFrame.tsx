@@ -38,6 +38,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Shield, ChevronDown, Check, Copy, Volume2, VolumeX, Zap } from "lucide-react";
 import { HOUSE_EDGE } from "@/lib/game-math";
+import { setSoundEnabled } from "@/lib/game-audio";
 import { useGameSettings } from "@/lib/game-settings";
 import { getOriginal, type OriginalId } from "@/lib/originals-registry";
 import { GameInfoBlock, MoreOriginals, BetFeed } from "@/components/casino/GameInfo";
@@ -93,6 +94,10 @@ export function GameFrame({
   const quickPlay = useGameSettings((s) => s.quickPlay);
   const setQuickPlay = useGameSettings((s) => s.setQuickPlay);
   const showProfit = useGameSettings((s) => s.showProfit);
+
+  // The header and the account Settings page share this persisted preference;
+  // keep the Web Audio master gain in lockstep with it.
+  useEffect(() => { setSoundEnabled(soundEnabled); }, [soundEnabled]);
 
   return (
     <div className="tols-game">

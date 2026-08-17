@@ -11,9 +11,8 @@
  * and two had no animation whatsoever.
  */
 
-import { useEffect, useState, useCallback } from "react";
-import { sfx, isSoundEnabled, setSoundEnabled } from "@/lib/game-audio";
-import { Volume2, VolumeX } from "lucide-react";
+import { useEffect, useState } from "react";
+import { sfx } from "@/lib/game-audio";
 import { toast } from "sonner";
 
 interface Win {
@@ -30,9 +29,6 @@ function haptic(pattern: number | number[]): void {
 
 export function GameFeedback() {
   const [win, setWin] = useState<Win | null>(null);
-  const [soundOn, setSoundOn] = useState(true);
-
-  useEffect(() => { setSoundOn(isSoundEnabled()); }, []);
 
   useEffect(() => {
     const original = window.fetch;
@@ -72,7 +68,8 @@ export function GameFeedback() {
           if (!d) return;
           if (d.won) {
             const big = d.multiplier >= 10;
-            big ? sfx.bigWin() : sfx.win();
+            if (big) sfx.bigWin();
+            else sfx.win();
             haptic(big ? [40, 60, 40, 60, 90] : [30, 50, 30]);
             setWin({ key: Date.now(), payout: d.payout ?? 0, multiplier: d.multiplier ?? 0, big });
           } else {
@@ -94,13 +91,6 @@ export function GameFeedback() {
     return () => clearTimeout(t);
   }, [win]);
 
-  const toggleSound = useCallback(() => {
-    const next = !soundOn;
-    setSoundOn(next);
-    setSoundEnabled(next);
-    if (next) sfx.click();
-  }, [soundOn]);
-
   return (
     <>
       <style>{`
@@ -116,15 +106,6 @@ export function GameFeedback() {
         }
         @keyframes tolsFlash { 0% { opacity: 0.35 } 100% { opacity: 0 } }
       `}</style>
-
-      {/* Sound switch — audio must always be one tap from off. */}
-      <button
-        onClick={toggleSound}
-        aria-label={soundOn ? "Disattiva audio" : "Attiva audio"}
-        className="fixed bottom-[5.5rem] left-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface/90 text-white/70 backdrop-blur-sm transition-colors hover:text-lime lg:bottom-4"
-      >
-        {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-      </button>
 
       {win && (
         <div className="pointer-events-none fixed inset-0 z-[65] flex items-center justify-center">

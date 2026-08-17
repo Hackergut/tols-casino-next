@@ -90,7 +90,15 @@ const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, re
     const app = new Application();
 
     (async () => {
-      await app.init({ width: APP_W, height: APP_H, backgroundAlpha: 0, antialias: true });
+      await app.init({
+        width: APP_W,
+        height: APP_H,
+        backgroundAlpha: 0,
+        antialias: true,
+        autoDensity: true,
+        resolution: Math.min(window.devicePixelRatio || 1, 2),
+        preference: "webgl",
+      });
       if (cancelled) {
         app.destroy(true);
         return;
@@ -249,6 +257,7 @@ const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, re
   return (
     <div
       ref={hostRef}
+      className="slots__reels"
       style={{
         width: '100%',
         aspectRatio: `${APP_W} / ${APP_H}`,
