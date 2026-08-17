@@ -25,6 +25,7 @@ import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
+import { LeaderboardHub } from "@/components/lobby/LeaderboardHub";
 import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
@@ -354,6 +355,8 @@ function CasinoPage() {
           <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
             {activeGame ? (
               <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
+            ) : activeSection === "rewards" ? (
+              <LeaderboardHub onPlay={() => handleSectionChange("originals")} />
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => handleSectionChange("lobby")} />
             ) : activeSection === "originals" ? (

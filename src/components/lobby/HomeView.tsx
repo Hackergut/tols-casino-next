@@ -146,10 +146,10 @@ function ViewAll({ onClick }: { onClick: () => void }) {
 /* ── Featured race with live leaderboard ── */
 interface LeaderRow { userId: string; username: string; avatarColor: string; wagered: number }
 
-function WeeklyRace() {
+function WeeklyRace({ onOpen }: { onOpen: () => void }) {
   const [rows, setRows] = useState<LeaderRow[]>([]);
   useEffect(() => {
-    fetch("/api/leaderboard?metric=wagered&limit=5")
+    fetch("/api/leaderboard?metric=wagered&period=weekly&limit=5")
       .then((r) => r.json())
       .then((j) => { if (j.success) setRows(j.data.leaderboard ?? []); })
       .catch(() => {});
@@ -169,7 +169,9 @@ function WeeklyRace() {
             </p>
           </div>
         </div>
-        <span className="font-mono text-lg font-black tabular-nums text-lime">$100,000</span>
+        <button onClick={onOpen} className="flex min-h-10 items-center gap-1 rounded-xl border border-lime/25 bg-lime/8 px-3 font-mono text-sm font-black tabular-nums text-lime">
+          $100,000 <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </header>
 
       <div className="divide-y divide-white/5">
@@ -339,7 +341,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
           {row("Live Casino", <Radio className="h-5 w-5 shrink-0 text-lime" />, live, "live tables", "live")}
           <EurovirtualsRow onSelect={onGameClick} />
 
-          <WeeklyRace />
+          <WeeklyRace onOpen={() => onNavigate("rewards")} />
 
           {row("Game Shows", <Sparkles className="h-5 w-5 shrink-0 text-lime" />, [], "game shows", "live")}
           {row("Latest Releases", <Star className="h-5 w-5 shrink-0 text-lime" />, originals.slice(0, 6), "releases", "originals")}

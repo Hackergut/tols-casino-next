@@ -4,6 +4,7 @@ import { getSession, ok, err } from "@/lib/session";
 import { fairFloat, getActiveSeed, nextNonce } from "@/lib/provably-fair";
 import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
+import { syncTournamentProgress } from "@/lib/tournament-progress";
 import { after } from "next/server";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import {
@@ -567,7 +568,15 @@ export async function POST(req: NextRequest) {
   // wager. `after()` runs this once the response is sent AND keeps the
   // serverless function alive to finish it — a plain fire-and-forget promise is
   // frozen/killed on Vercel, so the VIP level never updated.
-  after(() => syncPlayerProfile(user.id).catch(() => {}));
+  after(async () => {
+    await Promise.all([
+      syncPlayerProfile(user.id).catch(() => {}),
+      syncTournamentProgress(user.id, game, stake, {
+        won: result.won,
+        payout: result.payout,
+      }).catch(() => {}),
+    ]);
+  });
 
   return ok({
     betId: betId,

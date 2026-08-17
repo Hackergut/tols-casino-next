@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
-  HomeIcon, Flame, Radio, LayoutGrid, Clock,
+  HomeIcon, Flame, Radio, LayoutGrid, Clock, Trophy,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -70,6 +70,7 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "lobby", label: "Home", icon: HomeIcon },
   { id: "originals", label: "Originals", icon: Flame },
+  { id: "rewards", label: "Leaderboards", icon: Trophy },
   { id: "slots", label: "Slots", icon: Gamepad2 },
   { id: "live", label: "Live Casino", icon: Radio },
   { id: "table", label: "Table Games", icon: LayoutGrid },
