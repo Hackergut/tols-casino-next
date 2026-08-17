@@ -5,21 +5,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Search, Wallet, Menu, X, ChevronDown, MessageCircle,
+  Wallet, Menu, X, ChevronDown, MessageCircle,
   Crown, Vault, Coins, Share2, Bell, Receipt, Ticket, Settings,
   ShieldCheck, LifeBuoy, LogOut, type LucideIcon,
 } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
 import { useLocale } from "@/lib/use-locale";
 
-export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onSearchChange, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false }: {
+export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false }: {
   balance: number;
-  /** Games use a compact one-row header; search is restored on lobby return. */
   inGame?: boolean;
   onMenuToggle: () => void;
   menuOpen: boolean;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
   onProfileNavigate: (section: string) => void;
   onChatToggle: () => void;
   onNotifToggle: () => void;
@@ -63,19 +60,7 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
     { id: "live-support", label: t("profile.support"), icon: LifeBuoy },
   ];
 
-  const searchField = (
-    <div className="relative w-full">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <input
-        id="global-search"
-        type="text"
-        placeholder={t("search.placeholder")}
-        value={searchQuery}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="w-full rounded-lg border border-border/60 bg-secondary/40 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-lime/40"
-      />
-    </div>
-  );
+
 
   return (
     <header className={`casino-header sticky top-0 z-50 border-b border-lime/10 bg-background/95 backdrop-blur-xl${inGame ? " casino-header--game" : ""}`}>
@@ -90,15 +75,14 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
           </h1>
         </div>
 
-        {/* Search — desktop */}
-        <div className="mx-6 hidden max-w-md flex-1 items-center md:flex">{searchField}</div>
+        <div className="flex-1" />
 
         {/* Right */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button onClick={onNotifToggle} aria-label={t("header.notifications")} className="casino-header__secondary btn-press rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground">
             <Bell className="h-5 w-5" />
           </button>
-          <button onClick={onChatToggle} aria-label={t("header.community")} className="casino-header__secondary btn-press rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground">
+          <button onClick={onChatToggle} aria-label={t("header.community")} className="casino-header__secondary btn-press hidden rounded-lg p-2 text-foreground/60 transition-colors hover:bg-secondary hover:text-foreground lg:inline-flex">
             <MessageCircle className="h-5 w-5" />
           </button>
 {authed ? (
@@ -111,10 +95,14 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
             />
           </button>
           ) : (
-          <button onClick={onWalletClick} title={t("auth.register")} className="flex items-center gap-2 rounded-lg border border-lime/15 px-3 py-1.5 cursor-pointer transition-colors hover:bg-lime/20">
-            <span className="text-[10px] font-black uppercase tracking-wide text-lime">Fun</span>
-            <span className="rounded bg-lime px-2 py-0.5 text-[10px] font-black uppercase text-bg">{t("header.signup")}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => onProfileNavigate("login")} className="rounded-lg border border-white/12 px-2.5 py-1.5 text-[11px] font-bold text-white/75 transition-colors hover:border-lime/40 hover:text-white sm:px-3 sm:text-xs">
+              {t("auth.login")}
+            </button>
+            <button onClick={() => onProfileNavigate("register")} className="rounded-lg bg-lime px-2.5 py-1.5 text-[11px] font-black text-bg transition-colors hover:bg-lime/90 sm:px-3 sm:text-xs">
+              {t("auth.register")}
+            </button>
+          </div>
           )}
           {authed && (
           <div className="relative" ref={userRef}>
@@ -175,9 +163,6 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, searchQuery, onS
         </div>
       </div>
 
-      {/* Search — mobile lobby only. In-game the compact header gives the
-          canvas an extra row of vertical space and removes a dead control. */}
-      {!inGame && <div className="casino-header__mobile-search px-3 pb-3 sm:px-4 md:hidden">{searchField}</div>}
     </header>
   );
 }

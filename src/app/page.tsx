@@ -194,6 +194,7 @@ function CasinoPage() {
       }
     } catch { /* fall through */ }
     setAuthed(false);
+    setChatOpen(false);
     setSessionUser(null);
     try {
       const w = await (await fetch("/api/wallet")).json();
@@ -312,6 +313,15 @@ function CasinoPage() {
     handleSectionChange(section);
   }, [handleSectionChange]);
 
+  const handleChatOpen = useCallback(() => {
+    if (authed === true) {
+      setChatOpen(true);
+      return;
+    }
+    setGateMode("register");
+    setGateDismissed(false);
+  }, [authed]);
+
   const handleGameClick = useCallback((game: LobbyGame) => {
     // Guests never had a wallet to bet from — the game opened anyway and the
     // first bet silently failed. Intercept here with the real next step.
@@ -403,17 +413,15 @@ function CasinoPage() {
         balance={balance}
         onMenuToggle={() => setMenuOpen(!menuOpen)}
         menuOpen={menuOpen}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
         onProfileNavigate={handleProfileNavigate}
-        onChatToggle={() => setChatOpen(true)}
+        onChatToggle={handleChatOpen}
         onNotifToggle={() => setNotifOpen(true)}
         onWalletClick={() => (authed === true ? setDepositOpen(true) : (setGateMode("register"), setGateDismissed(false)))}
         authed={authed === true}
         inGame={Boolean(activeGame)}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} />
+        <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <main className={`min-w-0 flex-1 overflow-y-auto ${activeGame ? "casino-main--game" : "pb-20 lg:pb-0"}`}>
           <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
             {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && (
@@ -435,7 +443,6 @@ function CasinoPage() {
                 loading={loading}
                 onGameClick={handleGameClick}
                 onNavigate={(target) => ORIGINAL_IDS.has(target as OriginalId) ? handleOriginalSelect(target) : handleSectionChange(target)}
-                authenticated={authed === true}
               />
             ) : activeSection === "lobby-classic" ? (
               <LobbyView
@@ -486,7 +493,7 @@ function CasinoPage() {
           onHome={() => handleSectionChange("lobby")}
           onCasino={() => handleSectionChange("originals")}
           onRewards={() => handleSectionChange("rewards")}
-          onChat={() => setChatOpen(true)}
+          onChat={handleChatOpen}
           onMenu={() => setMenuOpen(true)}
         />
       )}
@@ -510,7 +517,7 @@ function CasinoPage() {
       {/* Audio, haptics and win celebration for every game (see GameFeedback). */}
       <GameFeedback />
 
-      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatPanel open={chatOpen && authed === true} onClose={() => setChatOpen(false)} />
       <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
       <VaultSheet open={vaultOpen} onClose={() => setVaultOpen(false)} balance={balance} />
       <DepositModal />

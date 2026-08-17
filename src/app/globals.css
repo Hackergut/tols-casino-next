@@ -1446,10 +1446,6 @@ a,
 
 @media (max-width: 767px) {
   .casino-sidebar {
-    top: calc(107px + env(safe-area-inset-top));
-    height: calc(100dvh - 107px - env(safe-area-inset-top));
-  }
-  .casino-header--game ~ div .casino-sidebar {
     top: calc(56px + env(safe-area-inset-top));
     height: calc(100dvh - 56px - env(safe-area-inset-top));
   }

@@ -15,12 +15,11 @@
 import { useEffect, useState } from "react";
 import { TARGET_RTP, SLOTS_RTP } from '@/lib/game-math';
 import {
-  Flame, Layers, Radio, LayoutGrid, Gamepad2, Trophy, Gift, Users, Sparkles,
+  Flame, Layers, Radio, LayoutGrid, Gamepad2, Trophy, Sparkles,
   ChevronRight, Clock, Star,
 } from "lucide-react";
 import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
-import { motion, useReducedMotion } from "framer-motion";
 import { LobbyGameCard } from "./GameCards";
 import { EurovirtualsRow } from "./EurovirtualsRow";
 import type { LobbyGame } from "./lobby-types";
@@ -31,68 +30,6 @@ interface Props {
   loading: boolean;
   onGameClick: (game: LobbyGame) => void;
   onNavigate: (section: string) => void;
-  authenticated?: boolean;
-}
-
-/* ── 1. Auth call to action ── */
-function AuthBar({ onNavigate }: { onNavigate: (s: string) => void }) {
-  const { t } = useLocale();
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => onNavigate("login")}
-        className="rounded-xl border border-white/12 px-5 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:border-lime/40 hover:text-white"
-      >
-        {t("auth.login")}
-      </button>
-      <button
-        onClick={() => onNavigate("register")}
-        className="rounded-xl bg-lime px-5 py-2.5 text-sm font-black text-bg transition-transform hover:-translate-y-0.5"
-      >
-        {t("auth.register")}
-      </button>
-    </div>
-  );
-}
-
-/* ── 2. Promotions strip ── */
-const PROMOS = [
-  { id: "level-up", label: "Level Up!", detail: "Reward at every tier", icon: Star, accent: true },
-  { id: "clutch-up", label: "$20K Clutch Up", detail: "Ends in 10d", icon: Trophy, accent: false },
-  { id: "weekly-race", label: "$100,000 Weekly Race", detail: "Live leaderboard", icon: Flame, accent: true },
-  { id: "challenges", label: "Casino Challenges", detail: "29 open", icon: Gift, accent: false },
-  { id: "affiliate", label: "Affiliate Program", detail: "Earn commission", icon: Users, accent: false },
-];
-
-function PromoStrip({ onNavigate }: { onNavigate: (s: string) => void }) {
-  const { t } = useLocale();
-  return (
-    <div className="scrollbar-hide -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
-      {PROMOS.map(({ id, label, detail, icon: Icon, accent }) => (
-        <motion.button
-          key={id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: PROMOS.indexOf(PROMOS.find((x) => x.id === id)!) * 0.05, duration: 0.35 }}
-          onClick={() => onNavigate(id === "affiliate" ? "affiliate" : "rewards")}
-          className="group flex min-w-[190px] shrink-0 items-center gap-3 rounded-2xl border border-white/6 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-lime/30"
-          style={{
-            background: accent
-              ? "linear-gradient(120deg, color-mix(in oklab, var(--color-lime) 16%, #0f1015), #0f1015 75%)"
-              : "var(--color-surface)",
-          }}
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lime/12">
-            <Icon className="h-4 w-4 text-lime" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-bold text-white">{t(`promo.${id}.label`) || label}</span>
-            <span className="block truncate text-[11px] text-white/45">{t(`promo.${id}.detail`) || detail}</span>
-          </span>
-        </motion.button>
-      ))}
-    </div>
-  );
 }
 
 /* ── 3. Category navigation ── */
@@ -297,7 +234,7 @@ function MegaJackpot() {
 }
 
 /* ── Page ── */
-export function HomeView({ games, loading, onGameClick, onNavigate, authenticated }: Props) {
+export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
   const { t } = useLocale();
   const originals = games.filter((g) => g.gameType === "original");
   const slots = games.filter((g) => g.gameType === "external_slot");
@@ -319,10 +256,10 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
 
   return (
     <div className="space-y-7">
-      <PromoStrip onNavigate={onNavigate} />
-      <CategoryNav active="lobby" onNavigate={onNavigate} />
+      {/* Visual hierarchy: large promotion hero, category tabs, then the
+          primary Originals shelf before any secondary lobby content. */}
       <HeroCarousel onSelect={onNavigate} />
-      <MegaJackpot />
+      <CategoryNav active="lobby" onNavigate={onNavigate} />
 
       {loading ? (
         <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -330,15 +267,16 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
             <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
           ))}
         </div>
-      ) : (
+      ) : row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
+
+      <MegaJackpot />
+
+      {!loading && (
         <>
-          {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
           {row(t("nav.slots"), <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, t("nav.slots").toLowerCase(), "slots")}
           {row(t("nav.liveCasino"), <Radio className="h-5 w-5 shrink-0 text-lime" />, live, t("nav.liveCasino").toLowerCase(), "live")}
           <EurovirtualsRow onSelect={onGameClick} />
-
           <WeeklyRace onOpen={() => onNavigate("rewards")} />
-
           {row(t("home.gameShows"), <Sparkles className="h-5 w-5 shrink-0 text-lime" />, [], t("home.gameShows").toLowerCase(), "live")}
           {row(t("home.latest"), <Star className="h-5 w-5 shrink-0 text-lime" />, originals.slice(0, 6), t("home.latest").toLowerCase(), "originals")}
         </>
