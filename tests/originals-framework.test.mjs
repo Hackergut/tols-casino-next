@@ -113,7 +113,7 @@ test("the registry never hardcodes an RTP", () => {
   assert.ok(rtpLines.length >= 11, "expected an rtp field per game");
   for (const line of rtpLines) {
     assert.ok(
-      /(TARGET_RTP|SLOTS_RTP|ROULETTE_RTP|POOL_RUSH_RTP)/.test(line),
+      /(TARGET_RTP|SLOTS_RTP|ROULETTE_RTP|POOL_RUSH_RTP|BLACKJACK_RTP)/.test(line),
       `registry RTP must reference a game-math constant, got: ${line.trim()}`,
     );
   }

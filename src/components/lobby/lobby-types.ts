@@ -65,7 +65,8 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "plinko", name: "Plinko", icon: RotateCcw, color: "#f97316", desc: "Drop the ball and watch it bounce to a win!" },
   { id: "coinflip", name: "Coinflip", icon: Crown, color: "#eab308", desc: "Pick heads or tails — 1.98x payout." },
   { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#22d3ee", desc: "Shoot a target and reveal its multiplier!" },
-  { id: "poolrush", name: "Pool Rush", icon: CircleDot, color: "#35d07f", desc: "Choose your break difficulty and sink up to seven balls." },
+  { id: "poolrush", name: "Pool Rush", icon: CircleDot, color: "#ccff00", desc: "Choose your break difficulty and sink up to seven balls." },
+  { id: "blackjack", name: "Blackjack 1V1", icon: Crown, color: "#ccff00", desc: "Classic six-deck blackjack — beat the dealer to 21." },
   { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
 ];

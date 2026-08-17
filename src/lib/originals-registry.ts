@@ -13,6 +13,7 @@
  */
 
 import { TARGET_RTP, ROULETTE_RTP, SLOTS_RTP } from "@/lib/game-math";
+import { BLACKJACK_RTP } from "@/lib/blackjack";
 import {
   POOL_RUSH_MAX_BET,
   POOL_RUSH_MIN_BET,
@@ -30,6 +31,7 @@ export type OriginalId =
   | "keno"
   | "shoot"
   | "poolrush"
+  | "blackjack"
   | "slots"
   | "roulette";
 
@@ -157,6 +159,20 @@ export const ORIGINALS: OriginalMeta[] = [
     volatility: "variable",
     minBet: POOL_RUSH_MIN_BET,
     maxBet: POOL_RUSH_MAX_BET,
+    featured: true,
+    isNew: true,
+  },
+  {
+    id: "blackjack",
+    name: "Blackjack 1V1",
+    tagline: "Six decks · dealer stands on all 17",
+    description:
+      "Classic heads-up blackjack on a six-deck continuous shuffle. Blackjack pays 3:2, the dealer peeks under an ace or ten and stands on soft 17. Double any opening hand, split once and verify every initial deal against the committed seed.",
+    rtp: BLACKJACK_RTP,
+    image: "/games/originals/blackjack.jpg",
+    volatility: "medium",
+    minBet: 0.1,
+    maxBet: 500,
     featured: true,
     isNew: true,
   },

@@ -77,6 +77,10 @@ const PoolRushGame = dynamic(
   () => import("@/components/casino/game-poolrush").then((m) => ({ default: m.PoolRushGame })),
   { ssr: false, loading: () => <GameLoading /> }
 );
+const BlackjackGame = dynamic(
+  () => import("@/components/casino/game-blackjack").then((m) => ({ default: m.BlackjackGame })),
+  { ssr: false, loading: () => <GameLoading /> }
+);
 const SlotsGame = dynamic(
   () => import("@/components/casino/game-slots").then((m) => ({ default: m.SlotsGame })),
   { ssr: false, loading: () => <GameLoading /> }
@@ -325,6 +329,7 @@ function CasinoPage() {
       case "coinflip": return <CoinflipGame {...props} />;
       case "shoot": return <ShootGame {...props} />;
       case "poolrush": return <PoolRushGame {...props} />;
+      case "blackjack": return <BlackjackGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
       default: return <p className="text-muted-foreground">Game not found</p>;
