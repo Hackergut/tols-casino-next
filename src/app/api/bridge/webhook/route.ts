@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyBridgeSignature, isKnownInboundType } from "@/lib/governance-bridge";
+import { verifyRuntimeBridgeSignature, isKnownInboundType } from "@/lib/governance-bridge";
 import { db } from "@/lib/db";
 
 /**
@@ -36,11 +36,8 @@ export async function POST(req: NextRequest) {
   const sig = getSignature(req);
 
   // Allow either valid HMAC or CRON_SECRET (for scheduled pings)
-  const hmacOk = verifyBridgeSignature(raw, sig);
+  const hmacOk = await verifyRuntimeBridgeSignature(raw, sig);
   const cronOk = isCron(req);
-
-  // In dev without secrets, allow unsigned ping for wiring checks
-  const devAllowUnauthPing = process.env.NODE_ENV !== "production" && !process.env.GOVERNANCE_BRIDGE_SECRET && !process.env.GOVERNANCE_WEBHOOK_SECRET;
 
   let body: Record<string, unknown>;
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 }); }
@@ -61,8 +58,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, ok: true, type: "pong", ts: new Date().toISOString(), note: "Casino bridge is live" });
   }
 
-  if (!hmacOk && !cronOk && !devAllowUnauthPing) {
-    return NextResponse.json({ success: false, error: "Invalid bridge signature. Set GOVERNANCE_BRIDGE_SECRET on both sides and send X-Bridge-Signature: sha256=<hmac>." }, { status: 401 });
+  if (!hmacOk && !cronOk) {
+    return NextResponse.json({ success: false, error: "Invalid bridge signature. Create the Governance connection or set GOVERNANCE_BRIDGE_SECRET, then send X-Bridge-Signature: sha256=<hmac>." }, { status: 401 });
+  }
+  if (hmacOk) {
+    const timestamp = Number(req.headers.get("x-bridge-timestamp"));
+    if (!Number.isFinite(timestamp) || Math.abs(Date.now() / 1000 - timestamp) > 300) {
+      return NextResponse.json({ success: false, error: "Missing or stale X-Bridge-Timestamp (maximum clock skew: 5 minutes)" }, { status: 401 });
+    }
   }
 
   if (!isKnownInboundType(type) && !type.startsWith("governance.")) {

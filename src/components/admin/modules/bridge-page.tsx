@@ -1,12 +1,12 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Link2, CheckCircle2, XCircle, Clock, Shield, Server, Globe, ArrowLeftRight, Copy, Send } from 'lucide-react';
+import { RefreshCw, Link2, CheckCircle2, XCircle, Clock, Shield, Server, Globe, ArrowLeftRight, Copy, Send, Database, KeyRound, Save, Trash2, Unplug } from 'lucide-react';
 
 interface BridgeHealth {
   ok: boolean;
@@ -16,6 +16,27 @@ interface BridgeHealth {
   tower: { origin: string; apiBase: string; reachable: boolean | null; status?: number; latencyMs?: number; error?: string };
   bridge: { configured: boolean; hasTowerKeys: boolean; hasDb: boolean; envPresent: Record<string, boolean> };
   db: { ok: boolean; latencyMs?: number; error?: string };
+}
+
+interface GovernanceConnection {
+  id: string;
+  name: string;
+  towerOrigin: string;
+  towerApiBase: string;
+  casinoOrigin: string;
+  healthPath: string;
+  webhookPath: string;
+  enabled: boolean;
+  hasBridgeSecret: boolean;
+  hasApiKey: boolean;
+  hasAppKey: boolean;
+  apiKeyHint: string | null;
+  appKeyHint: string | null;
+  lastTestedAt: string | null;
+  lastStatus: 'untested' | 'connected' | 'error';
+  lastLatencyMs: number | null;
+  lastHttpStatus: number | null;
+  lastError: string | null;
 }
 
 interface BridgeConfigData {
@@ -35,6 +56,11 @@ function Dot({ ok, pending }: { ok: boolean | null; pending?: boolean }) {
 export function BridgePage() {
   const qc = useQueryClient();
   const [dryRun, setDryRun] = useState(true);
+  const [form, setForm] = useState({
+    name: 'TOLS Governance', towerOrigin: 'https://gov.tols.fun', towerApiBase: 'https://gov.tols.fun/api',
+    casinoOrigin: 'https://www.tols.fun', apiKey: '', appKey: '', bridgeSecret: '',
+    healthPath: '/api/platform/health', webhookPath: '/api/platform/webhooks', enabled: true,
+  });
 
   const healthQ = useQuery<{ ok: boolean; service: string; timestamp: string } & BridgeHealth>({
     queryKey: ['bridge-health'],
@@ -51,6 +77,17 @@ export function BridgePage() {
       const r = await fetch('/api/bridge/config');
       if (!r.ok) throw new Error('Unauthorized — log in as operator');
       return r.json();
+    },
+    retry: false,
+  });
+
+  const connectionQ = useQuery<{ success: boolean; data: { connection: GovernanceConnection | null; encryptionConfigured: boolean } }>({
+    queryKey: ['governance-connection'],
+    queryFn: async () => {
+      const r = await fetch('/api/bridge/connection', { cache: 'no-store' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not load Governance connection');
+      return j;
     },
     retry: false,
   });
@@ -75,6 +112,37 @@ export function BridgePage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['bridge-health'] }); qc.invalidateQueries({ queryKey: ['bridge-sync-preview'] }); },
   });
 
+  const saveConnection = useMutation({
+    mutationFn: async () => {
+      const r = await fetch('/api/bridge/connection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Could not save connection'); return j;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['governance-connection'] }); qc.invalidateQueries({ queryKey: ['bridge-health'] }); qc.invalidateQueries({ queryKey: ['bridge-config'] }); },
+  });
+  const testConnection = useMutation({
+    mutationFn: async () => {
+      const r = await fetch('/api/bridge/connection/test', { method: 'POST' });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Connection failed'); return j;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['governance-connection'] }); qc.invalidateQueries({ queryKey: ['bridge-health'] }); },
+  });
+  const deleteConnection = useMutation({
+    mutationFn: async () => {
+      const r = await fetch('/api/bridge/connection', { method: 'DELETE' });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Could not delete connection'); return j;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['governance-connection'] }); qc.invalidateQueries({ queryKey: ['bridge-health'] }); },
+  });
+
+  const connection = connectionQ.data?.data.connection;
+  useEffect(() => {
+    if (!connection) return;
+    // Query hydration is external state; defer the controlled-form update so
+    // the effect does not synchronously cascade a second render.
+    const task = window.setTimeout(() => setForm((current) => ({ ...current, name: connection.name, towerOrigin: connection.towerOrigin, towerApiBase: connection.towerApiBase, casinoOrigin: connection.casinoOrigin, apiKey: '', appKey: '', bridgeSecret: '', healthPath: connection.healthPath, webhookPath: connection.webhookPath, enabled: connection.enabled })), 0);
+    return () => window.clearTimeout(task);
+  }, [connection]);
+
   const health = healthQ.data as BridgeHealth | undefined;
   const cfg = configQ.data?.data;
 
@@ -87,6 +155,39 @@ export function BridgePage() {
         </div>
         <Button variant="outline" size="sm" onClick={() => { healthQ.refetch(); configQ.refetch(); syncQ.refetch(); }}><RefreshCw className="h-4 w-4 mr-1" />Aggiorna</Button>
       </div>
+
+      {/* Real persisted Governance connection — encrypted in PlatformSetting, not browser localStorage. */}
+      <Card className="border-primary/20 bg-card/55">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><CardTitle className="flex items-center gap-2 text-base"><Database className="h-4 w-4 text-primary" /> Connessione backend TOLS Governance</CardTitle><CardDescription>Crea la connessione service-to-service reale. URL e credenziali vengono salvati cifrati nel database e usati da webhook, sync, eventi e SSO.</CardDescription></div>
+            {connection ? <Badge className={connection.lastStatus === 'connected' ? 'bg-emerald-600' : connection.lastStatus === 'error' ? 'bg-red-600' : 'bg-amber-600'}>{connection.lastStatus}{connection.lastLatencyMs ? ` · ${connection.lastLatencyMs}ms` : ''}</Badge> : <Badge variant="outline">non creata</Badge>}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!connectionQ.data?.data.encryptionConfigured && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300"><KeyRound className="mr-1 inline h-3.5 w-3.5" />Configura <code>CONNECTION_ENCRYPTION_KEY</code> o <code>ADMIN_SESSION_SECRET</code> prima di salvare credenziali.</div>}
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1 text-xs"><span>Nome connessione</span><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="TOLS Governance Production" /></label>
+            <label className="space-y-1 text-xs"><span>Casino origin</span><Input value={form.casinoOrigin} onChange={(e) => setForm({ ...form, casinoOrigin: e.target.value })} placeholder="https://www.tols.fun" /></label>
+            <label className="space-y-1 text-xs"><span>Governance origin</span><Input value={form.towerOrigin} onChange={(e) => setForm({ ...form, towerOrigin: e.target.value })} placeholder="https://gov.tols.fun" /></label>
+            <label className="space-y-1 text-xs"><span>Governance API base</span><Input value={form.towerApiBase} onChange={(e) => setForm({ ...form, towerApiBase: e.target.value })} placeholder="https://gov.tols.fun/api" /></label>
+            <label className="space-y-1 text-xs"><span>API key {connection?.apiKeyHint && <em className="text-muted-foreground">({connection.apiKeyHint} salvata)</em>}</span><Input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={connection?.hasApiKey ? 'Lascia vuoto per mantenere' : 'Governance API key'} /></label>
+            <label className="space-y-1 text-xs"><span>App key {connection?.appKeyHint && <em className="text-muted-foreground">({connection.appKeyHint} salvata)</em>}</span><Input type="password" value={form.appKey} onChange={(e) => setForm({ ...form, appKey: e.target.value })} placeholder={connection?.hasAppKey ? 'Lascia vuoto per mantenere' : 'Governance app key'} /></label>
+            <label className="space-y-1 text-xs md:col-span-2"><span>Bridge secret condiviso</span><Input type="password" value={form.bridgeSecret} onChange={(e) => setForm({ ...form, bridgeSecret: e.target.value })} placeholder={connection?.hasBridgeSecret ? 'Lascia vuoto per mantenere il secret cifrato' : 'Minimo 32 caratteri — stesso valore su Governance'} /></label>
+            <label className="space-y-1 text-xs"><span>Health path</span><Input value={form.healthPath} onChange={(e) => setForm({ ...form, healthPath: e.target.value })} /></label>
+            <label className="space-y-1 text-xs"><span>Registration/webhook path</span><Input value={form.webhookPath} onChange={(e) => setForm({ ...form, webhookPath: e.target.value })} /></label>
+          </div>
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> usa questa connessione come backend Governance attivo</label>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => saveConnection.mutate()} disabled={saveConnection.isPending || !connectionQ.data?.data.encryptionConfigured}><Save className="mr-1 h-4 w-4" />{connection ? 'Aggiorna connessione' : 'Crea connessione'}</Button>
+            <Button variant="outline" onClick={() => testConnection.mutate()} disabled={!connection || testConnection.isPending}><Link2 className="mr-1 h-4 w-4" />{testConnection.isPending ? 'Handshake…' : 'Test + registra'}</Button>
+            {connection && <Button variant="destructive" onClick={() => deleteConnection.mutate()} disabled={deleteConnection.isPending}><Trash2 className="mr-1 h-4 w-4" />Elimina</Button>}
+          </div>
+          {(saveConnection.isError || testConnection.isError || deleteConnection.isError) && <p className="text-xs text-red-600">{((saveConnection.error || testConnection.error || deleteConnection.error) as Error).message}</p>}
+          {testConnection.data?.data && <pre className="max-h-52 overflow-auto rounded-lg bg-muted p-2 text-[10px]">{JSON.stringify(testConnection.data.data, null, 2)}</pre>}
+          {connection?.lastError && <p className="text-xs text-red-500"><Unplug className="mr-1 inline h-3.5 w-3.5" />{connection.lastError}</p>}
+        </CardContent>
+      </Card>
 
       {/* Health cards */}
       <div className="grid gap-4 md:grid-cols-3">
