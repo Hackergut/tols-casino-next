@@ -42,6 +42,7 @@ import {
   Search,
   X,
   Activity,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminStore, type AdminPage } from '@/stores/admin';
@@ -89,6 +90,7 @@ const NAV_DESCRIPTIONS: Record<AdminPage, string> = {
   'rtp-control': 'RTP control panel',
   'virtual-games': 'EuroVirtuals integration: config, transactions, test launch',
   'deposit-addresses': 'Set the public receive address per chain for player deposit QR codes',
+  bridge: 'Governance Tower ↔ Casino bridge — health, sync, SSO, webhooks',
 };
 
 interface NavGroup {
@@ -180,6 +182,7 @@ const navGroups: NavGroup[] = [
       { page: 'deposit-tracker', label: 'Deposit Tracker', icon: <TrendingUp className="h-4 w-4" /> },
       { page: 'telegram-alerts', label: 'Telegram Alerts', icon: <Bell className="h-4 w-4" />, badge: true },
       { page: 'live-monitor', label: 'Live Monitor', icon: <Activity className="h-4 w-4" />, badge: true },
+      { page: 'bridge', label: 'Bridge — Governance ↔ Casino', icon: <Link2 className="h-4 w-4" />, badge: true },
     ],
   },
 ];
