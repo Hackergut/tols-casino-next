@@ -553,3 +553,41 @@ export function slotPaytable(): number[] {
   const scale = SLOTS_RTP / rawE;
   return SLOT_BASE_PAY.map((v) => v * scale);
 }
+
+/* ------------------------------------------------------------------ *
+ * Stake and multiplier bounds
+ *
+ * These live here, next to the RTP constants, because both the API and
+ * the UI must agree on them. A bound the client enforces but the server
+ * does not is decoration: the request can always be replayed by hand.
+ * ------------------------------------------------------------------ */
+
+/** Largest stake a single bet may carry, in wallet currency. */
+export const MAX_STAKE = 100_000;
+
+/**
+ * Largest multiplier a player may target on the open-ended games
+ * (crash cash-out, limbo target).
+ *
+ * Both games take the target straight from the request and pay
+ * `stake * target` on a win. Without a ceiling, a target of 1e308 is a
+ * legitimate-looking bet whose rare win writes Infinity into the wallet.
+ * The cap keeps the maximum liability of one round finite and auditable.
+ */
+export const MAX_TARGET_MULTIPLIER = 1_000_000;
+
+/** Lowest target worth accepting; below 1x a "win" would return less than the stake. */
+export const MIN_TARGET_MULTIPLIER = 1.01;
+
+/**
+ * Clamp a client-supplied target multiplier into the payable range.
+ * Returns null when the value is not a usable number, so the caller can
+ * reject the bet rather than silently substituting a default.
+ */
+export function normaliseTarget(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (n < MIN_TARGET_MULTIPLIER || n > MAX_TARGET_MULTIPLIER) return null;
+  // Two decimals: the same precision the crash curve and the UI display use.
+  return Math.round(n * 100) / 100;
+}

@@ -21,6 +21,8 @@ import {
   type Risk,
   type PlinkoRows,
   type WheelSegments,
+  MAX_STAKE,
+  normaliseTarget,
 } from "@/lib/game-math";
 
 // Game engines — provably fair, calibrated to TARGET_RTP
@@ -194,11 +196,34 @@ export async function POST(req: NextRequest) {
     payload?: Record<string, unknown>;
   };
 
-  if (!game || typeof amount !== "number" || amount <= 0) return err("Invalid bet", 400);
+  /*
+   * Stake validation.
+   *
+   * `typeof amount !== "number"` does NOT reject NaN or Infinity, and every
+   * subsequent comparison against them is false — so `amount <= 0` passed and
+   * `wallet.balance < amount` passed, letting a NaN stake through to the
+   * engine, where `amount * multiplier` produced a NaN payout and wrote NaN
+   * into the wallet. Number.isFinite is the check that actually holds.
+   *
+   * The stake is also snapped to whole cents here rather than trusted raw: a
+   * client sending 0.1+0.2 sends 0.30000000000000004, and money must never be
+   * debited at sub-cent precision.
+   */
+  if (!game || typeof game !== "string") return err("Invalid bet", 400);
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return err("Invalid stake", 400);
+
+  const stake = Math.round(amount * 100) / 100;
+  if (stake <= 0) return err("Invalid stake", 400);
+  if (stake > MAX_STAKE) return err(`Maximum stake is ${MAX_STAKE}`, 400);
 
   // reload wallet fresh
   const wallet = await db.casinoWallet.findUnique({ where: { userId: user.id } });
-  if (!wallet || wallet.balance < amount) return err("Insufficient balance", 400);
+  if (!wallet) return err("No wallet", 400);
+  // Compare in cents. A float compare rejects a legitimate all-in when the
+  // balance is 0.9999999999999999 after repeated fractional credits.
+  if (Math.round(wallet.balance * 100) < Math.round(stake * 100)) {
+    return err("Insufficient balance", 400);
+  }
 
   // Seeds come from the player's committed pair: the server seed is a CSPRNG
   // value whose SHA-256 was published before this bet, and the nonce advances
@@ -222,23 +247,25 @@ export async function POST(req: NextRequest) {
       // The old Math.max(1.01, ...) floor silently pushed RTP above 100% at
       // extreme targets (target=99 under returned 99.99%). See MAX_WIN_CHANCE.
       const mult = won ? chanceMultiplier(winChance) : 0;
-      result = { multiplier: mult, payout: amount * mult, won, payload: { roll, target, isOver } };
+      result = { multiplier: mult, payout: stake * mult, won, payload: { roll, target, isOver } };
       break;
     }
     case "crash": {
-      const cashOutAt = Number(payload?.cashOutAt ?? 0);
+      const cashOutAt = normaliseTarget(payload?.cashOutAt);
+      if (cashOutAt === null) return err("Invalid cash-out target", 400);
       const point = crashPoint(serverSeed, seed, nonce);
-      const won = cashOutAt > 0 && point >= cashOutAt;
+      const won = point >= cashOutAt;
       const mult = won ? cashOutAt : 0;
-      result = { multiplier: mult, payout: amount * mult, won, payload: { crashPoint: point, cashOutAt } };
+      result = { multiplier: mult, payout: stake * mult, won, payload: { crashPoint: point, cashOutAt } };
       break;
     }
     case "limbo": {
-      const target = Number(payload?.target ?? 2);
+      const target = normaliseTarget(payload?.target);
+      if (target === null) return err("Invalid target multiplier", 400);
       // Same curve as crash, so both games share one derivation of the edge.
       const roll = limboRollFrom(fairFloat(serverSeed, seed, nonce));
       const won = roll >= target;
-      result = { multiplier: won ? target : 0, payout: amount * (won ? target : 0), won, payload: { roll, target } };
+      result = { multiplier: won ? target : 0, payout: stake * (won ? target : 0), won, payload: { roll, target } };
       break;
     }
     case "coinflip": {
@@ -249,7 +276,7 @@ export async function POST(req: NextRequest) {
       // 2 * TARGET_RTP — derived, so a change to HOUSE_EDGE moves every game
       // together instead of leaving a stray 1.98 behind.
       const cfMult = won ? 2 * TARGET_RTP : 0;
-      result = { multiplier: cfMult, payout: amount * cfMult, won, payload: { flip, choice } };
+      result = { multiplier: cfMult, payout: stake * cfMult, won, payload: { flip, choice } };
       break;
     }
     case "plinko": {
@@ -258,7 +285,7 @@ export async function POST(req: NextRequest) {
       const slot = plinkoSlot(serverSeed, seed, nonce, rows);
       const mult = plinkoMultiplier(slot, risk, rows);
       const won = mult > 0;
-      result = { multiplier: mult, payout: amount * mult, won, payload: { slot, risk, rows } };
+      result = { multiplier: mult, payout: stake * mult, won, payload: { slot, risk, rows } };
       break;
     }
     case "mines": {
@@ -269,7 +296,7 @@ export async function POST(req: NextRequest) {
       const hitMine = picks.some((p) => layout[p]);
       const mult = hitMine ? 0 : nextMineMultiplier(picks.length, minesCount);
       const won = !hitMine && picks.length > 0;
-      result = { multiplier: mult, payout: amount * mult, won, payload: { mines: minesCount, picks, layout: won ? layout : layout.map((m, i) => (picks.includes(i) ? m : m)) } };
+      result = { multiplier: mult, payout: stake * mult, won, payload: { mines: minesCount, picks, layout: won ? layout : layout.map((m, i) => (picks.includes(i) ? m : m)) } };
       break;
     }
     case "wheel": {
@@ -281,7 +308,7 @@ export async function POST(req: NextRequest) {
       const table = wheelTable(segments, risk);
       const idx = Math.floor(fairFloat(serverSeed, seed, nonce) * table.length);
       const mult = table[idx % table.length] ?? 0;
-      result = { multiplier: mult, payout: amount * mult, won: mult > 0, payload: { segment: idx, mult, risk, segments } };
+      result = { multiplier: mult, payout: stake * mult, won: mult > 0, payload: { segment: idx, mult, risk, segments } };
       break;
     }
     case "keno": {
@@ -308,7 +335,7 @@ export async function POST(req: NextRequest) {
       const mult = row[Math.min(hits, row.length - 1)] ?? 0;
       result = {
         multiplier: mult,
-        payout: amount * mult,
+        payout: stake * mult,
         won: mult > 0,
         payload: { picks, drawn, hits, risk },
       };
@@ -324,7 +351,7 @@ export async function POST(req: NextRequest) {
       const mult = band.multiplier;
       result = {
         multiplier: mult,
-        payout: amount * mult,
+        payout: stake * mult,
         won: mult > 0,
         payload: { roll: Math.floor(r * 10000) / 100, mult },
       };
@@ -368,7 +395,7 @@ export async function POST(req: NextRequest) {
         }
         if (win) totalPayout += amt * mult;
       }
-      const mult = amount > 0 ? totalPayout / amount : 0;
+      const mult = stake > 0 ? totalPayout / stake : 0;
       result = { multiplier: mult, payout: totalPayout, won: totalPayout > 0, payload: { winning, isRed, bets } };
       break;
     }
@@ -398,7 +425,7 @@ export async function POST(req: NextRequest) {
       // Rounded to 4dp, not 2: at 2dp the paytable lost ~0.02% of RTP because
       // every symbol's pay was truncated in the same direction.
       mult = Math.round(mult * 10000) / 10000;
-      result = { multiplier: mult, payout: amount * mult, won: mult > 0, payload: { grid, line, winSym } };
+      result = { multiplier: mult, payout: stake * mult, won: mult > 0, payload: { grid, line, winSym } };
       break;
     }
     default:
@@ -421,7 +448,7 @@ export async function POST(req: NextRequest) {
     const forcedMult = applyForcedMultiplier(controlDecision, result.multiplier, defaultWin[game] ?? 2);
     result = {
       multiplier: forcedMult,
-      payout: amount * forcedMult,
+      payout: stake * forcedMult,
       won: controlDecision.win,
       payload: { ...result.payload, _control: controlDecision.mode },
     };
@@ -435,11 +462,11 @@ export async function POST(req: NextRequest) {
   // read taken before the transaction).
   const final = await db.$transaction(async (tx) => {
     const debited = await tx.casinoWallet.updateMany({
-      where: { userId: user.id, balance: { gte: amount } },
+      where: { userId: user.id, balance: { gte: stake } },
       data: {
-        balance: { decrement: amount },
-        totalWagered: { increment: amount },
-        xp: { increment: Math.floor(amount) },
+        balance: { decrement: stake },
+        totalWagered: { increment: stake },
+        xp: { increment: Math.floor(stake) },
       },
     });
     if (debited.count === 0) return { insufficient: true } as const;
@@ -469,7 +496,7 @@ export async function POST(req: NextRequest) {
         gameId: game,
         gameName: game.charAt(0).toUpperCase() + game.slice(1),
         gameCategory: "originals",
-        amount,
+        amount: stake,
         multiplier: result.multiplier,
         payout: result.payout,
         result: result.won ? "win" : "lose",
@@ -491,8 +518,8 @@ export async function POST(req: NextRequest) {
   await db.globalJackpot
     .upsert({
       where: { id: "global" },
-      update: { amount: { increment: amount * 0.005 }, contributionsCount: { increment: 1 } },
-      create: { id: "global", amount: 50000 + amount * 0.005, contributionsCount: 1 },
+      update: { amount: { increment: stake * 0.005 }, contributionsCount: { increment: 1 } },
+      create: { id: "global", amount: 50000 + stake * 0.005, contributionsCount: 1 },
     })
     .catch(() => {});
 
@@ -502,9 +529,9 @@ export async function POST(req: NextRequest) {
       gameId: game,
       gameName: game.charAt(0).toUpperCase() + game.slice(1),
       betId: betId,
-      wager: amount,
+      wager: stake,
       payout: result.payout,
-      houseProfit: amount - result.payout,
+      houseProfit: stake - result.payout,
       currency: "USDT",
     },
   });
@@ -518,7 +545,10 @@ export async function POST(req: NextRequest) {
   return ok({
     betId: betId,
     game,
-    amount,
+    // Echo the stake actually charged, not the raw request value. The client
+    // computes profit as payout - stake, so returning an unrounded amount made
+    // its P/L disagree with the wallet by fractions of a cent.
+    amount: stake,
     multiplier: result.multiplier,
     payout: result.payout,
     won: result.won,

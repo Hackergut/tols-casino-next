@@ -3,6 +3,7 @@
 // GoldenX lobby shell — Phase 2: the 867-line inline shell now composes
 // extracted components from src/components/lobby/. Behavior unchanged.
 import React, { useState, useCallback, useEffect } from "react";
+import { useBalanceStore } from "@/lib/balance-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
@@ -84,7 +85,12 @@ const RouletteGame = dynamic(
 function CasinoPage() {
   const [activeSection, setActiveSection] = useState("lobby");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [balance, setBalance] = useState(1000);
+  /*
+   * Balance comes from the shared store, which orders writes by sequence so a
+   * 15s poll landing mid-round can no longer overwrite a settled bet result
+   * with the pre-bet snapshot it read before the bet existed.
+   */
+  const balance = useBalanceStore((s) => s.balance);
   const [games, setGames] = useState<LobbyGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CasinoStats | null>(null);
@@ -114,11 +120,14 @@ function CasinoPage() {
   // real login path (AuthGate) — only a legacy, unused AuthModal did — so a
   // signed-in player always hit "sign in to deposit" when opening the wallet.
   const refreshBalance = useCallback(async () => {
+    // Token the read against the store's current sequence. If a bet settles
+    // while these requests are in flight, the poll's value is discarded.
+    const token = useBalanceStore.getState().begin();
     try {
       const me = await (await fetch("/api/auth/me")).json();
       if (me?.data) {
         setAuthed(true);
-        setBalance(Number(me.data.balance ?? 0));
+        useBalanceStore.getState().applyPoll(Number(me.data.balance ?? 0), token);
         setSessionUser({
           id: me.data.id, username: me.data.username, email: me.data.email,
           avatarColor: me.data.avatarColor, level: me.data.level ?? 1,
@@ -136,7 +145,7 @@ function CasinoPage() {
     setSessionUser(null);
     try {
       const w = await (await fetch("/api/wallet")).json();
-      if (w?.success) setBalance(Number(w.data.balance ?? 0));
+      if (w?.success) useBalanceStore.getState().applyPoll(Number(w.data.balance ?? 0), token);
     } catch { /* ignore */ }
   }, [setSessionUser, setSessionWallet]);
 
