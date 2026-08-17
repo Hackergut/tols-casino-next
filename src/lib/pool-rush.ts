@@ -31,7 +31,7 @@ export interface PoolRushLevelConfig {
 
 export const POOL_RUSH_CONFIG: Record<PoolRushLevel, PoolRushLevelConfig> = {
   beginner: {
-    label: "Beginner", shot: "Centre shot", power: 35, volatility: "low", accent: "#35d07f", animationMs: 1300, cueEffect: 0,
+    label: "Beginner", shot: "Centre shot", power: 35, volatility: "low", accent: "#c8ff24", animationMs: 3600, cueEffect: 0,
     bands: [
       { balls: 0, multiplier: 0, probability: 0.5 },
       { balls: 1, multiplier: 1, probability: 0.276 },
@@ -44,7 +44,7 @@ export const POOL_RUSH_CONFIG: Record<PoolRushLevel, PoolRushLevelConfig> = {
     ],
   },
   intermediate: {
-    label: "Intermediate", shot: "Full hit", power: 55, volatility: "medium", accent: "#f4c84a", animationMs: 1450, cueEffect: 1.5,
+    label: "Intermediate", shot: "Full hit", power: 55, volatility: "medium", accent: "#d7ff3f", animationMs: 4000, cueEffect: 1.5,
     bands: [
       { balls: 0, multiplier: 0, probability: 0.65 },
       { balls: 1, multiplier: 1, probability: 0.15 },
@@ -57,7 +57,7 @@ export const POOL_RUSH_CONFIG: Record<PoolRushLevel, PoolRushLevelConfig> = {
     ],
   },
   expert: {
-    label: "Expert", shot: "Power draw", power: 78, volatility: "high", accent: "#ff5d62", animationMs: 1650, cueEffect: -3,
+    label: "Expert", shot: "Power draw", power: 78, volatility: "high", accent: "#b9f91c", animationMs: 4400, cueEffect: -3,
     bands: [
       { balls: 0, multiplier: 0, probability: 0.75 },
       { balls: 1, multiplier: 1, probability: 0.12064646464646465 },
@@ -70,7 +70,7 @@ export const POOL_RUSH_CONFIG: Record<PoolRushLevel, PoolRushLevelConfig> = {
     ],
   },
   pro: {
-    label: "Pro", shot: "Jump break", power: 100, volatility: "very-high", accent: "#b26cff", animationMs: 1800, cueEffect: 5,
+    label: "Pro", shot: "Jump break", power: 100, volatility: "very-high", accent: "#e5ff62", animationMs: 4800, cueEffect: 5,
     bands: [
       { balls: 0, multiplier: 0, probability: 0.85 },
       { balls: 1, multiplier: 1, probability: 0.09018436873747495 },

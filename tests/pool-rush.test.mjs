@@ -73,7 +73,9 @@ test("the client reveals copy only after the table animation timer", () => {
   const reveal = afterResponse.indexOf("setOutcome({");
   assert.ok(timer >= 0 && reveal > timer, "result copy must be set inside the post-animation timer");
   assert.match(afterResponse.slice(0, timer), /setPhase\("breaking"\)/);
-  for (const level of pool.POOL_RUSH_LEVELS) {
-    assert.ok(pool.POOL_RUSH_CONFIG[level].animationMs <= 1800);
+  const durations = pool.POOL_RUSH_LEVELS.map((level) => pool.POOL_RUSH_CONFIG[level].animationMs);
+  for (const duration of durations) {
+    assert.ok(duration >= 3600 && duration <= 5000, `cinematic break duration ${duration}ms is outside the visible-motion range`);
   }
+  assert.deepEqual(durations, [...durations].sort((a, b) => a - b), "harder breaks should not animate faster");
 });
