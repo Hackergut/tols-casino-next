@@ -144,7 +144,7 @@ export const ORIGINALS: OriginalMeta[] = [
     description:
       "Fast Break turns the opening pool shot into a three-second provably-fair game. Choose one of four difficulty profiles: hit frequency falls as the top multiplier rises from 10× to 500×, while every profile stays fixed at 96% RTP. The server commits the result before the cue moves; the client reveals it only after the table animation finishes.",
     rtp: POOL_RUSH_RTP,
-    image: "/games/originals/poolrush.svg",
+    image: "/games/originals/poolrush.png",
     volatility: "variable",
   },
   {
