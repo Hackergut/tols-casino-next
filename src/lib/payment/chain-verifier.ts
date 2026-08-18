@@ -171,7 +171,7 @@ async function verifyErc20(args: VerifyArgs, rpc: string, contract: string, deci
   }
 }
 
-// ── Solana (SOL native via SystemProgram transfer; SPL tokens marked TODO). ──
+// ── Solana (SOL native and SPL tokens) ──
 async function verifySolana(args: VerifyArgs): Promise<VerifyResult> {
   try {
     const res = await fetch(SOL_RPC(), {
@@ -193,10 +193,12 @@ async function verifySolana(args: VerifyArgs): Promise<VerifyResult> {
     });
     const tip = (await tipRes.json()).result ?? slot;
     const confirmations = Math.max(0, tip - slot + 1);
-    // Native SOL: scan SystemProgram Transfer instructions for a transfer to the
-    // expected address with the claimed lamports.
-    let toAddr = "";
-    let lamports = BigInt(0);
+
+    let matchedAddress = false;
+    let amountMatches = false;
+    let bestAmount = 0;
+
+    // 1. Native SOL: scan SystemProgram Transfer instructions
     const acctKeys: string[] = (tx.transaction?.message?.accountKeys || []).map((k: any) => (typeof k === "string" ? k : k.pubkey));
     for (const ix of tx.transaction?.message?.instructions || []) {
       try {
@@ -204,20 +206,67 @@ async function verifySolana(args: VerifyArgs): Promise<VerifyResult> {
         // SystemProgram Transfer discriminator = 2
         if (dataB.length >= 12 && dataB.readUInt32LE(0) === 2) {
           const lam = dataB.readBigUInt64LE(4);
-          const fromIdx = ix.accounts[0];
           const toIdx = ix.accounts[1];
           const to = acctKeys[toIdx];
-          if (to && sameAddr(to, args.expectedAddress)) { toAddr = to; lamports = lam; }
+          if (to && sameAddr(to, args.expectedAddress)) {
+            matchedAddress = true;
+            const solReceived = Number(lam) / 1e9;
+            if (amountsClose(solReceived, args.expectedAmount)) {
+              amountMatches = true;
+              bestAmount = solReceived;
+            } else if (!bestAmount) {
+              bestAmount = solReceived;
+            }
+          }
         }
       } catch { /* ignore decode errors per-instruction */ }
     }
-    const amountOnChain = Number(lamports) / 1e9;
-    const matched = !!toAddr;
-    if (matched) {
-      return { found: true, confirmed: confirmations >= args.minConfirmations, confirmations, toAddressMatches: true, amountMatches: amountsClose(amountOnChain, args.expectedAmount), amountOnChain };
+
+    // 2. SPL Tokens: check postTokenBalances against preTokenBalances
+    if (!amountMatches && tx.meta?.postTokenBalances) {
+      for (const post of tx.meta.postTokenBalances) {
+        if (post.owner && sameAddr(post.owner, args.expectedAddress)) {
+          const pre = (tx.meta.preTokenBalances || []).find(
+            (p: any) => p.accountIndex === post.accountIndex && p.mint === post.mint
+          );
+          const preAmt = Number(pre?.uiTokenAmount?.uiAmountString || pre?.uiTokenAmount?.uiAmount || 0);
+          const postAmt = Number(post.uiTokenAmount?.uiAmountString || post.uiTokenAmount?.uiAmount || 0);
+          const received = postAmt - preAmt;
+
+          if (received > 0) {
+            matchedAddress = true;
+            if (amountsClose(received, args.expectedAmount)) {
+              amountMatches = true;
+              bestAmount = received;
+              break; // exact match found
+            } else if (!bestAmount) {
+              bestAmount = received;
+            }
+          }
+        }
+      }
     }
-    // No native SOL match found; SPL token deposits are not supported here yet.
-    return { found: true, confirmed: confirmations >= args.minConfirmations, confirmations, toAddressMatches: false, amountMatches: false, amountOnChain: null, error: "solana spl-token deposits not yet supported" };
+
+    if (matchedAddress) {
+      return {
+        found: true,
+        confirmed: confirmations >= args.minConfirmations,
+        confirmations,
+        toAddressMatches: true,
+        amountMatches,
+        amountOnChain: bestAmount
+      };
+    }
+
+    return {
+      found: true,
+      confirmed: confirmations >= args.minConfirmations,
+      confirmations,
+      toAddressMatches: false,
+      amountMatches: false,
+      amountOnChain: null,
+      error: "no matching transfer found"
+    };
   } catch (e) {
     return fail(`solana error: ${(e as Error).message}`);
   }
@@ -345,18 +394,42 @@ async function listIncomingSolana(address: string): Promise<IncomingTx[]> {
         { maxSupportedTransactionVersion: 0, commitment: "confirmed" },
       ]).catch(() => null);
       if (!tx?.meta || !tx.transaction) continue;
+      const confirmations = tip && tx.slot ? Math.max(1, tip - tx.slot + 1) : 1;
+
+
+
+      // 1. Check native SOL received
       const acctKeys: string[] = (tx.transaction.message?.accountKeys || []).map((k: any) =>
         typeof k === "string" ? k : k.pubkey
       );
       const idx = acctKeys.findIndex((k) => sameAddr(k, address));
-      if (idx < 0) continue;
-      // Native SOL received = post balance − pre balance for our account.
-      const pre = Number(tx.meta.preBalances?.[idx] ?? 0);
-      const post = Number(tx.meta.postBalances?.[idx] ?? 0);
-      const lamports = post - pre;
-      if (lamports <= 0) continue;
-      const confirmations = tip && tx.slot ? Math.max(1, tip - tx.slot + 1) : 1;
-      out.push({ txHash: s.signature, amount: lamports / 1e9, confirmations });
+      if (idx >= 0) {
+        const pre = Number(tx.meta.preBalances?.[idx] ?? 0);
+        const post = Number(tx.meta.postBalances?.[idx] ?? 0);
+        const lamports = post - pre;
+        if (lamports > 0) {
+          out.push({ txHash: s.signature, amount: lamports / 1e9, confirmations });
+
+        }
+      }
+
+      // 2. Check SPL tokens received
+      if (tx.meta.postTokenBalances) {
+        for (const postTok of tx.meta.postTokenBalances) {
+          if (postTok.owner && sameAddr(postTok.owner, address)) {
+            const preTok = (tx.meta.preTokenBalances || []).find(
+              (p: any) => p.accountIndex === postTok.accountIndex && p.mint === postTok.mint
+            );
+            const preAmt = Number(preTok?.uiTokenAmount?.uiAmountString || preTok?.uiTokenAmount?.uiAmount || 0);
+            const postAmt = Number(postTok.uiTokenAmount?.uiAmountString || postTok.uiTokenAmount?.uiAmount || 0);
+            const received = postAmt - preAmt;
+            if (received > 0) {
+              out.push({ txHash: s.signature, amount: received, confirmations });
+
+            }
+          }
+        }
+      }
     }
     return out;
   } catch {
