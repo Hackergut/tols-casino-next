@@ -379,6 +379,14 @@ async function handleSetConfig(request: NextRequest) {
       )
     }
 
+    const tokenFormat = /^\d+:[A-Za-z0-9_-]+$/
+    if (!tokenFormat.test(botToken)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid botToken format' },
+        { status: 400 },
+      )
+    }
+
     const response = await fetch('/?XTransformPort=3005/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
