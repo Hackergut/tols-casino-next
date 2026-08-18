@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, ok, err } from "@/lib/session";
+import crypto from "crypto";
 
 // POST /api/deposits — simulate a crypto deposit (demo: instantly credit)
 export async function POST(req: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   const wallet = await db.casinoWallet.findUnique({ where: { userId: user.id } });
   if (!wallet) return err("No wallet", 400);
 
-  const txHash = chain.slice(0, 3) + "_" + Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 14);
+  const txHash = chain.slice(0, 3) + "_" + crypto.randomBytes(16).toString("hex");
 
   const deposit = await db.casinoDeposit.create({
     data: {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
       currency,
       status: "confirmed",
       credited: true,
-      fromAddress: "0x" + Math.random().toString(16).slice(2, 12),
+      fromAddress: "0x" + crypto.randomBytes(5).toString("hex"),
       toAddress: JSON.parse(wallet.depositAddresses || "{}")[chain] || "tols-deposit-" + chain,
     },
   });
