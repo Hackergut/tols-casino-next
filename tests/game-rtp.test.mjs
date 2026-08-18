@@ -52,6 +52,7 @@ const {
   SLOTS_RTP,
   KENO_POOL,
   KENO_DRAWN,
+  normaliseDiceTarget,
 } = M;
 
 /** Payout tables are rounded to whole cents, so allow a cent of slack. */
@@ -251,6 +252,16 @@ test("dice never pays above the target at extreme chances", () => {
     const rtp = (Math.min(chance, MAX_WIN_CHANCE) / 100) * chanceMultiplier(chance);
     assert.ok(rtp <= TARGET_RTP + 1e-12, `chance=${chance} → ${rtp}`);
   }
+});
+
+test("dice rejects targets outside the offerable range", () => {
+  assert.equal(normaliseDiceTarget(-1, true), null);
+  assert.equal(normaliseDiceTarget(99, true), null);
+  assert.equal(normaliseDiceTarget(95, true), 95);
+  assert.equal(normaliseDiceTarget(1, false), null);
+  assert.equal(normaliseDiceTarget(93, false), null);
+  assert.equal(normaliseDiceTarget(92, false), 92);
+  assert.equal(normaliseDiceTarget(50.5, false), null);
 });
 
 test("crash returns a flat RTP at every cash-out target", () => {

@@ -22,6 +22,7 @@ import {
   type PlinkoRows,
   type WheelSegments,
   MAX_STAKE,
+  normaliseDiceTarget,
   normaliseTarget,
 } from "@/lib/game-math";
 
@@ -238,8 +239,9 @@ export async function POST(req: NextRequest) {
 
   switch (game) {
     case "dice": {
-      const target = Number(payload?.target ?? 50);
       const isOver = Boolean(payload?.isOver ?? false);
+      const target = normaliseDiceTarget(payload?.target ?? 50, isOver);
+      if (target === null) return err("Invalid dice target", 400);
       const roll = Math.floor(fairFloat(serverSeed, seed, nonce) * 10000) / 100; // 0..100 (2dp)
       const won = rollDice(roll, target, isOver);
       const winChance = isOver ? 100 - target : target;

@@ -201,6 +201,16 @@ test("crash and limbo validate the client-supplied target", () => {
   );
 });
 
+test("dice rejects impossible over/under targets instead of treating them as guaranteed wins", () => {
+  assert.match(route, /const target = normaliseDiceTarget\(payload\?\.target \?\? 50, isOver\)/);
+  assert.match(route, /if \(target === null\) return err\("Invalid dice target", 400\)/);
+  assert.doesNotMatch(
+    route,
+    /const target = Number\(payload\?\.target \?\? 50\)/,
+    "a raw Number() target lets requests like over=-1 become always-win bets",
+  );
+});
+
 test("normaliseTarget refuses unusable targets and caps the payable range", async () => {
   const src = read("src/lib/game-math.ts");
   const body = src.slice(src.indexOf("export function normaliseTarget"));

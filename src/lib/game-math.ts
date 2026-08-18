@@ -591,3 +591,19 @@ export function normaliseTarget(value: unknown): number | null {
   // Two decimals: the same precision the crash curve and the UI display use.
   return Math.round(n * 100) / 100;
 }
+
+/**
+ * Validate the Dice threshold exactly as the UI offers it.
+ *
+ * Dice pays from the implied win chance, so a target outside the offerable
+ * range must be rejected rather than silently clamped. Otherwise a request like
+ * "over -1" becomes an always-win bet while still paying a normal multiplier.
+ */
+export function normaliseDiceTarget(value: unknown, isOver: boolean): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+  const min = isOver ? Math.ceil(100 - MAX_WIN_CHANCE) : 2;
+  const max = isOver ? 98 : Math.floor(MAX_WIN_CHANCE);
+  if (n < min || n > max) return null;
+  return n;
+}
