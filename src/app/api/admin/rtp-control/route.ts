@@ -33,23 +33,27 @@ export async function GET() {
     orderBy: { priority: "desc" },
   });
 
-  // Get actual bet stats per game (last 1000 bets)
+  // Get actual bet stats per game
   const gameStats: Record<string, { total: number; wins: number; wagered: number; returned: number }> = {};
   for (const g of ORIGINAL_GAMES) {
-    const bets = await db.casinoBet.findMany({
-      where: { gameId: g.id },
-      orderBy: { createdAt: "desc" },
-      take: 1000,
-      select: { amount: true, payout: true, result: true },
-    });
-    const wagered = bets.reduce((s, b) => s + b.amount, 0);
-    const returned = bets.reduce((s, b) => s + b.payout, 0);
-    gameStats[g.id] = {
-      total: bets.length,
-      wins: bets.filter((b) => b.result === "win").length,
-      wagered,
-      returned,
-    };
+    gameStats[g.id] = { total: 0, wins: 0, wagered: 0, returned: 0 };
+  }
+
+  const groupStats = await db.casinoBet.groupBy({
+    by: ["gameId", "result"],
+    where: { gameId: { in: ORIGINAL_GAMES.map((g) => g.id) } },
+    _count: { _all: true },
+    _sum: { amount: true, payout: true },
+  });
+
+  for (const stat of groupStats) {
+    const g = gameStats[stat.gameId];
+    if (g) {
+      g.total += stat._count._all;
+      if (stat.result === "win") g.wins += stat._count._all;
+      g.wagered += stat._sum.amount || 0;
+      g.returned += stat._sum.payout || 0;
+    }
   }
 
   // Merge game definitions with rules and stats
