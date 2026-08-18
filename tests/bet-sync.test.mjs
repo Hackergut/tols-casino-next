@@ -187,6 +187,15 @@ test("the response echoes the stake actually charged", () => {
   assert.match(route, /amount: stake,/);
 });
 
+test("roulette validates split bets against the charged stake, not the raw request amount", () => {
+  assert.match(route, /Math\.abs\(staked - stake\) > 1e-6/);
+  assert.doesNotMatch(
+    route,
+    /Math\.abs\(staked - amount\) > 1e-6/,
+    "roulette must compare against the rounded stake the wallet is actually charged",
+  );
+});
+
 /* ------------------------------------------------------------------ *
  * Open-ended multipliers: crash and limbo take their target from the client.
  * ------------------------------------------------------------------ */

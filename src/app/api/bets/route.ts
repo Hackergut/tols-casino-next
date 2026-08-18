@@ -368,7 +368,7 @@ export async function POST(req: NextRequest) {
         : [];
       const staked = bets.reduce((s, b) => s + (Number(b.amount) || 0), 0);
       // Guard: the sum of individual bets must match the deducted amount.
-      if (bets.length === 0 || Math.abs(staked - amount) > 1e-6) {
+      if (bets.length === 0 || Math.abs(staked - stake) > 1e-6) {
         result = { multiplier: 0, payout: 0, won: false, payload: { error: "bad bets", winning: -1, bets } };
         break;
       }
