@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { randomBytes } from "crypto";
 
 // ── RTP / outcome control ──────────────────────────────────────────────
 // Resolves the most specific active GameControl for a (user, game) pair and
@@ -67,7 +68,7 @@ export async function resolveControl(userId: string, gameId: string, fair: FairO
       // Bias: nudge the win probability. rtpTarget > 1 heats (more wins),
       // < 1 cools (fewer wins). This is a legitimate RTP / house-edge lever.
       const t = Math.max(0, Math.min(2, c.rtpTarget));
-      const roll = Math.random();
+      const roll = randomBytes(4).readUInt32LE(0) / 0x100000000;
       let win = fair.won;
       if (fair.won && t < 1 && roll > t) win = false;   // cool down winners
       if (!fair.won && t > 1 && roll < t - 1) win = true; // heat up losers
