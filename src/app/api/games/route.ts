@@ -239,8 +239,17 @@ export async function GET(request: NextRequest) {
       db.casinoGame.count({ where }),
     ]);
 
+    // The admin CRUD consumers read the raw model fields, while the embedded
+    // casino lobby (GamesGrid / Lobby) reads `slug` + `image`. Expose both so a
+    // single endpoint serves the two surfaces without breaking either.
+    const mapped = games.map((g) => ({
+      ...g,
+      slug: g.alias,
+      image: g.imageUrl,
+    }));
+
     return NextResponse.json({
-      data: games,
+      data: mapped,
       pagination: {
         page,
         limit,

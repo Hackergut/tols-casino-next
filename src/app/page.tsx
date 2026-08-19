@@ -85,6 +85,10 @@ const RouletteGame = dynamic(
   () => import("@/components/casino/game-roulette").then((m) => ({ default: m.RouletteGame })),
   { ssr: false, loading: () => <GameLoading /> }
 );
+const ScopaGame = dynamic(
+  () => import("@/components/casino/game-scopa").then((m) => ({ default: m.ScopaGame })),
+  { ssr: false, loading: () => <GameLoading /> }
+);
 
 /* ── Main Casino SPA ── */
 function CasinoPage() {
@@ -327,6 +331,7 @@ function CasinoPage() {
       case "poolrush": return <PoolRushGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
+      case "scopa": return <ScopaGame {...props} />;
       default: return <p className="text-muted-foreground">Game not found</p>;
     }
   };

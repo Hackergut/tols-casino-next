@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  Dices, Rocket, CircleDot, Bomb, TrendingUp, Coins, Disc, Grid3x3,
+  Dices, Rocket, CircleDot, Bomb, TrendingUp, Coins, Disc, Grid3x3, Swords,
   Gamepad2, Radio, Spade, Store, Trophy, Users, Wallet, Crown, Flame, Sparkles, Gift, Package, History, Shield, BarChart3, Target, Key,
   ChevronsLeft, ChevronsRight
 } from "lucide-react";
@@ -29,6 +29,7 @@ const SIDEBAR_GROUPS = [
       { slug: "coinflip", name: "Coin Flip", icon: Coins },
       { slug: "wheel", name: "Wheel", icon: Disc },
       { slug: "keno", name: "Keno", icon: Grid3x3 },
+      { slug: "scopa", name: "Scopa", icon: Swords },
     ],
   },
 ];
