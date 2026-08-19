@@ -55,6 +55,30 @@ export const CHAINS: Record<string, ChainMeta> = {
     decimals: 18,
     uri: (address, amount) => `polygon:${address}${amount ? `?value=${amount}` : ""}`,
   },
+  usdc_erc20: {
+    id: "usdc_erc20",
+    name: "USDC (ERC-20)",
+    symbol: "USDC",
+    color: "#2775ca",
+    decimals: 6,
+    uri: (address) => `ethereum:${address}`,
+  },
+  bnb: {
+    id: "bnb",
+    name: "BNB (BSC)",
+    symbol: "BNB",
+    color: "#f0b90b",
+    decimals: 18,
+    uri: (address, amount) => `ethereum:${address}${amount ? `?value=${amount}` : ""}`,
+  },
+  usdt_bep20: {
+    id: "usdt_bep20",
+    name: "USDT (BEP-20)",
+    symbol: "USDT",
+    color: "#f0b90b",
+    decimals: 18,
+    uri: (address) => `ethereum:${address}`,
+  },
 };
 
 export const CHAIN_IDS = Object.keys(CHAINS);

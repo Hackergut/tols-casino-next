@@ -38,9 +38,10 @@ export type AdminPage =
   | 'deposit-tracker'
   | 'telegram-alerts'
   | 'rtp-control'
+  | 'live-monitor'
   | 'virtual-games'
   | 'deposit-addresses'
-  | 'live-monitor';
+  | 'bridge';
 
 export interface ActionLogEntry {
   id: string;
@@ -89,9 +90,10 @@ const PAGE_LABELS: Record<AdminPage, string> = {
   'rtp-control': 'RTP Control',
   'deposit-tracker': 'Deposit Tracker',
   'telegram-alerts': 'Telegram Alerts',
+  'live-monitor': 'Live Monitor',
   'virtual-games': 'Virtual Games',
   'deposit-addresses': 'Deposit Addresses',
-  'live-monitor': 'Live Monitor',
+  bridge: 'Bridge — Governance ↔ Casino',
 };
 
 export interface SlotAggregatorConfig {

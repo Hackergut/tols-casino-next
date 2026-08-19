@@ -449,6 +449,14 @@ export const SCOPA_ODDS: Record<ScopaMarket, number> = {
   scopa_over: 1.22,
 };
 
+/**
+ * Target return for Scopa Fast Bet. The odds above are floored from
+ * `SCOPA_RTP / p_upper` (95% CI upper bound on the Monte-Carlo probability),
+ * so the realised return can never exceed this value. Matches Pool Rush's
+ * 96% "fast bet" tier.
+ */
+export const SCOPA_RTP = 0.96;
+
 export function resolveScopaMarket(market: ScopaMarket, r: ScopaRoundResult): boolean {
   switch (market) {
     case "player":

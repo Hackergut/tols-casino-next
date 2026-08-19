@@ -1,0 +1,22 @@
+# Patch già applicato in questo branch — snapshot per Copilot
+# Branch: arena/01a00d5d-tols-casino-next
+# Questo patch rappresenta gli endpoint /api/platform/* (JWT RS256) che eliminano i mockup governance.
+# Se Copilot deve riapplicarlo: git apply docs/casino-platform-bridge.patch
+
+Files:
+- src/lib/platform-jwt.ts          JWT RS256 verify (PUBLIC KEY) + signForTest (PRIVATE KEY), iss/aud/exp check, base64 PEM support
+- src/lib/platform-auth.ts         requirePlatformAuth() guard per /api/platform/* 
+- src/app/api/platform/health/route.ts           GET public — db + bridge env
+- src/app/api/platform/whoami/route.ts           GET JWT — verifica token governance
+- src/app/api/platform/deposits/route.ts         GET JWT — CasinoDeposit reali
+- src/app/api/platform/withdrawals/route.ts      GET JWT — CasinoWithdrawal reali + pending agg
+- src/app/api/platform/withdrawals/[id]/approve/route.ts  POST JWT — approve + audit
+- src/app/api/platform/withdrawals/[id]/reject/route.ts   POST JWT — reject + wallet refund
+- src/app/api/platform/payments/route.ts         GET JWT — aggregati + txHash lookup
+- src/app/api/platform/stats/route.ts            GET JWT — stats per governance dashboard
+
+Env (Vercel):
+  Casino (tols.fun): PLATFORM_JWT_PUBLIC_KEY, GOVERNANCE_TOWER_URL, APP_URL, GOVERNANCE_BRIDGE_SECRET
+  Tower (tolsgovernz.vercel.app): PLATFORM_JWT_PRIVATE_KEY, GOVERNANCE_TOWER_URL, APP_URL, GOVERNANCE_BRIDGE_SECRET
+
+Nota: patch già applicato — non serve riapplicare se sei su arena/01a00d5d-tols-casino-next

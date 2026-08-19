@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { TARGET_RTP, SLOTS_RTP } from '@/lib/game-math';
 import {
   Flame, Layers, Radio, LayoutGrid, Gamepad2, Trophy, Gift, Users, Sparkles,
   ChevronRight, Clock, Star,
@@ -21,6 +22,7 @@ import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
 import { motion, useReducedMotion } from "framer-motion";
 import { LobbyGameCard } from "./GameCards";
+import { EurovirtualsRow } from "./EurovirtualsRow";
 import type { LobbyGame } from "./lobby-types";
 
 interface Props {
@@ -144,10 +146,10 @@ function ViewAll({ onClick }: { onClick: () => void }) {
 /* ── Featured race with live leaderboard ── */
 interface LeaderRow { userId: string; username: string; avatarColor: string; wagered: number }
 
-function WeeklyRace() {
+function WeeklyRace({ onOpen }: { onOpen: () => void }) {
   const [rows, setRows] = useState<LeaderRow[]>([]);
   useEffect(() => {
-    fetch("/api/leaderboard?metric=wagered&limit=5")
+    fetch("/api/leaderboard?metric=wagered&period=weekly&limit=5")
       .then((r) => r.json())
       .then((j) => { if (j.success) setRows(j.data.leaderboard ?? []); })
       .catch(() => {});
@@ -167,7 +169,9 @@ function WeeklyRace() {
             </p>
           </div>
         </div>
-        <span className="font-mono text-lg font-black tabular-nums text-lime">$100,000</span>
+        <button onClick={onOpen} className="flex min-h-10 items-center gap-1 rounded-xl border border-lime/25 bg-lime/8 px-3 font-mono text-sm font-black tabular-nums text-lime">
+          $100,000 <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </header>
 
       <div className="divide-y divide-white/5">
@@ -218,10 +222,10 @@ function AboutTols() {
       {open && (
         <div className="mt-3 space-y-3 text-sm leading-relaxed text-white/55">
           <p>
-            Game maths is enforced server-side. Roulette pays true single-zero odds at 97.3% RTP,
-            the slots reel weights are normalised so the return is exactly 97%, and Plinko,
-            Mines, Dice, Limbo and Crash all settle on the server before any animation plays —
-            the client only draws the result it was given.
+            Game maths is enforced server-side. The Originals return {(TARGET_RTP * 100).toFixed(0)}%,
+            slots {(SLOTS_RTP * 100).toFixed(0)}%, and Roulette pays true single-zero odds at 97.3% —
+            the best return on the site. Plinko, Mines, Dice, Limbo and Crash all settle on the
+            server before any animation plays; the client only draws the result it was given.
           </p>
           <p>
             Balances move in atomic database transactions, withdrawals hold funds until an
@@ -325,7 +329,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
       <MegaJackpot />
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
           ))}
@@ -335,8 +339,9 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
           {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
           {row("Slots", <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, "slots", "slots")}
           {row("Live Casino", <Radio className="h-5 w-5 shrink-0 text-lime" />, live, "live tables", "live")}
+          <EurovirtualsRow onSelect={onGameClick} />
 
-          <WeeklyRace />
+          <WeeklyRace onOpen={() => onNavigate("rewards")} />
 
           {row("Game Shows", <Sparkles className="h-5 w-5 shrink-0 text-lime" />, [], "game shows", "live")}
           {row("Latest Releases", <Star className="h-5 w-5 shrink-0 text-lime" />, originals.slice(0, 6), "releases", "originals")}

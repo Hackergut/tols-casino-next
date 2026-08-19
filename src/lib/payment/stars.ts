@@ -1,4 +1,5 @@
 ﻿import { db } from "@/lib/db";
+import { tg } from "@/lib/telegram-api";
 
 /*
  * Telegram Stars (XTR) — the in-app wallet available to every Telegram user.
@@ -35,18 +36,17 @@ export async function createStarsInvoice(args: {
   payload: string;
 }): Promise<CreatedInvoice> {
   const stars = usdtToStars(args.usdtAmount);
-  const res = await fetch(`https://api.telegram.org/bot${args.botToken}/createInvoiceLink`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const j = await tg<string>(
+    "createInvoiceLink",
+    {
       title: `TOLS Casino — ${args.usdtAmount} USDT`,
       description: `Top up ${args.usdtAmount} USDT to your casino balance`,
       payload: args.payload,
       currency: "XTR",
       prices: [{ label: "Balance top-up", amount: stars }],
-    }),
-  });
-  const j = (await res.json()) as { ok: boolean; result?: string; description?: string };
+    },
+    args.botToken,
+  );
   if (!j.ok || !j.result) throw new Error(`createInvoiceLink failed: ${j.description ?? JSON.stringify(j)}`);
   return { invoiceLink: j.result, starsAmount: stars, payload: args.payload };
 }

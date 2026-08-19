@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
-  HomeIcon, Flame, Radio, LayoutGrid, Clock, Swords,
+  HomeIcon, Flame, Radio, LayoutGrid, Clock, Trophy, Swords,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -63,14 +63,16 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "plinko", name: "Plinko", icon: RotateCcw, color: "#f97316", desc: "Drop the ball and watch it bounce to a win!" },
   { id: "coinflip", name: "Coinflip", icon: Crown, color: "#eab308", desc: "Pick heads or tails — 1.98x payout." },
   { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#22d3ee", desc: "Shoot a target and reveal its multiplier!" },
+  { id: "poolrush", name: "Pool Rush", icon: CircleDot, color: "#35d07f", desc: "Choose your break difficulty and sink up to seven balls." },
   { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
   { id: "scopa", name: "Scopa Siciliana", icon: Swords, color: "#eab308", desc: "Bet on an automatic Sicilian Scopa round — provably fair." },
 ];
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: "lobby", label: "Lobby", icon: HomeIcon },
+  { id: "lobby", label: "Home", icon: HomeIcon },
   { id: "originals", label: "Originals", icon: Flame },
+  { id: "rewards", label: "Leaderboards", icon: Trophy },
   { id: "slots", label: "Slots", icon: Gamepad2 },
   { id: "live", label: "Live Casino", icon: Radio },
   { id: "table", label: "Table Games", icon: LayoutGrid },

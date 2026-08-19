@@ -67,7 +67,7 @@ export function LiveBetRow({ bet }: { bet: LiveBet }) {
 
 export function GamesGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+    <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
       {Array.from({ length: 10 }).map((_, i) => (
         <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
       ))}
@@ -215,7 +215,7 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
               Carosello
             </button>
           </header>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+          <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
             {filteredGames.map((game, i) => (
               <LobbyGameCard key={game.id || i} game={game} onClick={() => onGameClick(game)} />
             ))}

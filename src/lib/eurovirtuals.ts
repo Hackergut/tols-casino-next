@@ -112,3 +112,46 @@ export async function evLaunch(input: EvLaunchInput): Promise<{ url: string } | 
     return { error: "Could not reach EuroVirtuals" };
   }
 }
+
+// ── Provider call: fetch the game catalogue (operator → provider) ──
+export interface EvGame {
+  game_uuid: string;
+  game_name: string;
+  thumbnail: string;
+  category: string;
+  provider: string;
+  currency: string;
+  minimum_stake: Record<string, number>;
+  maximum_stake: Record<string, number>;
+  maximum_win: Record<string, number>;
+  status: number;
+}
+export async function evGames(): Promise<{ games: EvGame[] } | { error: string }> {
+  const base = process.env.EV_API_BASE;
+  const apiKey = process.env.EV_API_KEY;
+  const appKey = process.env.EV_APP_KEY;
+  if (!base || !apiKey || !appKey) return { error: "EuroVirtuals not configured" };
+
+  // Docs show no request body for GET /v1/games; the empty object is what
+  // gets signed (verified against staging — signature over {} succeeds).
+  const body: Record<string, unknown> = {};
+  try {
+    const r = await fetch(`${base.replace(/\/+$/, "")}/v1/games`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-api-key": apiKey,
+        "x-signature-key": evSignature(body, appKey),
+        "x-timestamp": String(Math.floor(Date.now() / 1000)),
+      },
+    });
+    const j = await r.json();
+    if (j?.status_code === 200 && Array.isArray(j?.data?.data)) {
+      return { games: (j.data.data as EvGame[]).filter((g) => g.status === 1) };
+    }
+    return { error: String(j?.status_description ?? "Failed to load games") };
+  } catch {
+    return { error: "Could not reach EuroVirtuals" };
+  }
+}

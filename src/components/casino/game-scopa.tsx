@@ -1,23 +1,24 @@
 'use client';
 
 /*
- * Scopa Siciliana Fast Bet — public casino surface.
+ * Scopa Siciliana Fast Bet — on the shared Originals frame.
  *
- * The bet settles server-side in one request; the client then replays the
- * returned `timeline` (deal + move events) as a live auto-game: cards are
- * dealt, played from the two face-up hands, captured into the two piles, and
- * the five scoring categories tally up before the outcome banner. The replay
- * is purely cosmetic — the result was already decided — and the board state is
- * rebuilt with the pure reducer in `@/lib/scopa-playback` (no strategy
- * reimplementation, so it can never disagree with the server).
+ * The outcome is decided server-side (/api/bets, case "scopa") in one request;
+ * the client replays the returned `timeline` (deal + move events) as a live
+ * auto-round: cards are dealt, played from the two face-up hands, captured
+ * into the two piles, and the five scoring categories tally up before the
+ * outcome banner. The replay is cosmetic — the result was already committed —
+ * and the board is rebuilt with the pure reducer in `@/lib/scopa-playback`.
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Shield, ChevronDown, ChevronUp, FastForward, Swords, Trophy } from 'lucide-react';
-import { GameBetControls } from '@/components/casino/game-shared';
-import { SicilianCard, SicilianCardBack } from '@/components/casino/scopa-card';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FastForward, Swords } from 'lucide-react';
+import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
+import { useBet } from '@/components/casino/useBet';
+import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
+import type { OriginalId } from '@/lib/originals-registry';
 import { SCOPA_MARKETS, SCOPA_ODDS, type ScopaMarket, type Card as ScopaCard, type ScopaEvent } from '@/lib/scopa';
 import {
   applyEventTo,
@@ -26,8 +27,14 @@ import {
   scopaCardKey,
   type ScopaBoard,
 } from '@/lib/scopa-playback';
+import { SicilianCard, SicilianCardBack } from '@/components/casino/scopa-card';
 
-interface Props { onBack: () => void; initialBalance: number; }
+interface Props {
+  onBack: () => void;
+  initialBalance: number;
+  /** Jump to a sibling Original from the rail under the canvas. */
+  onPickGame?: (id: OriginalId) => void;
+}
 
 interface ScopaPayload {
   market: ScopaMarket;
@@ -49,7 +56,6 @@ interface ScopaPayload {
   bankPrimiera: number;
 }
 
-type RoundResult = { won: boolean; payout: number; payload: ScopaPayload };
 type Phase = 'idle' | 'dealing' | 'playing' | 'scoring' | 'done';
 
 const cx = (...cls: (string | false | null | undefined)[]) => cls.filter(Boolean).join(' ');
@@ -61,9 +67,12 @@ const MARKET_GROUPS: { title: string; ids: ScopaMarket[] }[] = [
   { title: 'Scope', ids: ['scopa_over'] },
 ];
 
-/* ── Card face. `layoutId` is what lets framer-motion fly a card between the
-   hand, the table and the piles with a shared-element transition. The actual
-   artwork is the authentic Sicilian deck in `SicilianCard`. ── */
+function marketLabel(m: ScopaMarket): string {
+  return SCOPA_MARKETS.find((x) => x.id === m)?.label ?? m;
+}
+
+/* ── Card face. `layoutId` is the framer-motion shared element that flies a
+   card between the hand, the table and the piles. ── */
 function ScopaCardFace({
   card,
   size,
@@ -94,7 +103,6 @@ function ScopaCardFace({
   );
 }
 
-/* ── Score panel (one per side) ── */
 function ScorePanel({
   name,
   points,
@@ -114,7 +122,7 @@ function ScorePanel({
     <div className={cx('scopa-score-panel', winner && done && 'winner')}>
       <div className="scopa-score-head">
         <span className="scopa-score-name">{name}</span>
-        {winner && done && <Trophy className="h-3.5 w-3.5" style={{ color: 'var(--g-green)' }} />}
+        {winner && done && <Swords className="h-3 w-3" style={{ color: 'var(--g-green, #00e701)' }} />}
       </div>
       <div
         className="scopa-score-points"
@@ -134,47 +142,42 @@ function ScorePanel({
   );
 }
 
-export function ScopaGame({ onBack, initialBalance }: Props) {
-  const reduced = useReducedMotion();
-  const [balance, setBalance] = useState(initialBalance);
-  const [betAmount, setBetAmount] = useState(5);
+export function ScopaGame({ onBack, initialBalance, onPickGame }: Props) {
+  const reduced = useSkipAnimation();
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<ScopaPayload>('scopa', initialBalance);
+  const betAmount = useGameSettings((st) => st.stake);
+  const setBetAmount = useGameSettings((st) => st.setStake);
+
   const [market, setMarket] = useState<ScopaMarket>('player');
-  const [betting, setBetting] = useState(false);
-  const [result, setResult] = useState<RoundResult | null>(null);
+  const [round, setRound] = useState<ScopaPayload | null>(null);
+  const [lastWon, setLastWon] = useState<boolean | null>(null);
+
   const [board, setBoard] = useState<ScopaBoard>(emptyBoard());
   const [phase, setPhase] = useState<Phase>('idle');
   const [revealed, setRevealed] = useState(0);
   const [flash, setFlash] = useState<{ id: number; kind: 'scopa' | 'sweep' } | null>(null);
   const [lastActor, setLastActor] = useState<0 | 1 | null>(null);
-  const [history, setHistory] = useState<Array<{ market: ScopaMarket; outcome: string; result: string; payout: number }>>([]);
-  const [showPF, setShowPF] = useState(false);
-  const [pfData, setPfData] = useState<{ serverSeedHash: string; clientSeed: string; nonce: number } | null>(null);
 
   const cancelRef = useRef<{ done: boolean }>({ done: false });
   const timersRef = useRef<number[]>([]);
 
   const odds = SCOPA_ODDS[market] ?? 2;
-  const potentialPayout = betAmount * odds;
-  const marketLabel = useMemo(() => SCOPA_MARKETS.find((m) => m.id === market)?.label ?? market, [market]);
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
   }, []);
 
-  /* ── Replay the returned timeline (scheduling only — state resets happen in
-     `place`, and the timeline steps fire from timers, never synchronously). ── */
+  // Replay the committed timeline (scheduling only — resets happen in placeBet).
   useEffect(() => {
-    if (!result || reduced) return;
-    const timeline = result.payload.timeline;
+    if (!round || reduced) return;
+    const timeline = round.timeline;
     const cancel = { done: false };
     cancelRef.current = cancel;
     clearTimers();
-
     const at = (ms: number, fn: () => void) => {
       timersRef.current.push(window.setTimeout(() => { if (!cancel.done) fn(); }, ms));
     };
-
     let i = 0;
     const run = () => {
       if (cancel.done) return;
@@ -194,355 +197,221 @@ export function ScopaGame({ onBack, initialBalance }: Props) {
       at(ev.kind === 'deal' ? 70 : 175, run);
     };
     at(180, run);
-
     return () => {
       cancel.done = true;
       clearTimers();
     };
-  }, [result, reduced, clearTimers]);
+  }, [round, reduced, clearTimers]);
 
-  // Auto-dismiss the "Scopa!" / "Raccolta" flash.
   useEffect(() => {
     if (!flash) return;
     const t = setTimeout(() => setFlash(null), 800);
     return () => clearTimeout(t);
   }, [flash]);
 
+  useEffect(() => () => clearTimers(), [clearTimers]);
+
   const skip = useCallback(() => {
-    if (!result) return;
+    if (!round) return;
     cancelRef.current.done = true;
     clearTimers();
-    setBoard(finalBoard(result.payload.timeline));
+    setBoard(finalBoard(round.timeline));
     setRevealed(5);
     setFlash(null);
     setPhase('done');
-  }, [result, clearTimers]);
+  }, [round, clearTimers]);
 
-  const place = useCallback(async () => {
-    if (betting || betAmount <= 0 || betAmount > balance) return;
-    setBetting(true);
-    setResult(null);
+  const placeBet = useCallback(async () => {
+    setRound(null);
     setFlash(null);
     setLastActor(null);
-    try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'scopa', amount: betAmount, payload: { market } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as ScopaPayload;
-        if (reduced) {
-          setBoard(finalBoard(payload.timeline));
-          setRevealed(5);
-          setPhase('done');
-        } else {
-          setBoard(emptyBoard());
-          setRevealed(0);
-          setPhase('dealing');
-        }
-        setResult({ won: data.data.won, payout: data.data.payout, payload });
-        setBalance(data.data.newBalance);
-        setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
-        setHistory((prev) =>
-          [
-            {
-              market,
-              outcome: payload.outcome === 'draw' ? 'Pareggio' : payload.outcome === 'player' ? 'Giocatore' : 'Banco',
-              result: data.data.won ? 'win' : 'lose',
-              payout: data.data.payout,
-            },
-            ...prev,
-          ].slice(0, 15)
-        );
-      }
-    } catch {
-      /* connection errors are surfaced by the global GameFeedback wrapper */
+    const data = await place(betAmount, { market });
+    if (!data) return;
+    const payload = data.payload as ScopaPayload;
+    if (reduced) {
+      setBoard(finalBoard(payload.timeline));
+      setRevealed(5);
+      setPhase('done');
+    } else {
+      setBoard(emptyBoard());
+      setRevealed(0);
+      setPhase('dealing');
     }
-    setBetting(false);
-  }, [betting, betAmount, balance, market, reduced]);
+    setRound(payload);
+    setLastWon(data.won);
+  }, [place, betAmount, market, reduced]);
 
-  const busy = betting || (phase !== 'idle' && phase !== 'done');
-  const payload = result?.payload;
-  const remaining = payload
+  const done = phase === 'done';
+  const playing = phase !== 'idle' && phase !== 'done';
+  const remaining = round
     ? 40 - (board.hands[0].length + board.hands[1].length + board.table.length + board.piles[0].length + board.piles[1].length)
     : 40;
 
-  const cells = payload
+  const cells = round
     ? [
-        { label: 'Carte', g: payload.playerCardsCount, b: payload.bankCardsCount, text: (v: number) => String(v) },
-        { label: 'Denari', g: payload.playerDenari, b: payload.bankDenari, text: (v: number) => String(v) },
-        { label: 'Settebello', g: payload.playerSettebello ? 1 : 0, b: payload.bankSettebello ? 1 : 0, text: (v: number) => (v ? '✓' : '—') },
-        { label: 'Primiera', g: payload.playerPrimiera, b: payload.bankPrimiera, text: (v: number) => String(v) },
-        { label: 'Scope', g: payload.playerScopa, b: payload.bankScopa, text: (v: number) => String(v) },
+        { label: 'Carte', g: round.playerCardsCount, b: round.bankCardsCount, text: (v: number) => String(v) },
+        { label: 'Denari', g: round.playerDenari, b: round.bankDenari, text: (v: number) => String(v) },
+        { label: 'Settebello', g: round.playerSettebello ? 1 : 0, b: round.bankSettebello ? 1 : 0, text: (v: number) => (v ? '✓' : '—') },
+        { label: 'Primiera', g: round.playerPrimiera, b: round.bankPrimiera, text: (v: number) => String(v) },
+        { label: 'Scope', g: round.playerScopa, b: round.bankScopa, text: (v: number) => String(v) },
       ]
     : [];
 
   return (
-    <div className="game-wrapper compact-game">
-      {/* Header */}
-      <div className="g-header">
-        <button onClick={onBack} className="g-back" aria-label="Back"><ArrowLeft className="w-4 h-4" /></button>
-        <div><h1>Scopa Siciliana</h1><p>Fast Bet · partita automatica con strategia fissa, provably fair</p></div>
-      </div>
-
-      <div className="game-grid">
-        {/* === GAME AREA === */}
-        <div className="space-y-2">
-          <div className={cx('scopa-area', phase === 'done' && (result?.won ? 'win' : payload?.outcome === 'draw' ? 'draw' : 'loss'))}>
-            <div className="scopa-deck">
-              <div className="scopa-deck-stack">
-                <SicilianCardBack />
-                <SicilianCardBack style={{ position: 'absolute', top: '0.1rem', left: '0.1rem', zIndex: 1 }} />
-              </div>
-              <span>× {remaining}</span>
-            </div>
-            {busy && !reduced && (
-              <button onClick={skip} className="scopa-skip" aria-label="Salta animazione">
-                <FastForward className="h-3 w-3" /> Salta
-              </button>
-            )}
-
-            <div className="scopa-felt">
-              {/* Giocatore hand */}
-              <div className={cx('scopa-hand-row', lastActor === 0 && busy && 'active')}>
-                <span className="scopa-hand-name">Giocatore</span>
-                <div className="scopa-hand">
-                  {board.hands[0].map((c) => (
-                    <ScopaCardFace key={scopaCardKey(c)} card={c} size="sm" layoutId={`scopa-${scopaCardKey(c)}`} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Table + piles */}
-              <div className="scopa-table">
-                <div className="scopa-pile">
-                  <span className="scopa-pile-name">Giocatore</span>
-                  <div className="scopa-pile-stack">
-                    {board.piles[0].map((c, i) => (
-                      <ScopaCardFace
-                        key={scopaCardKey(c)}
-                        card={c}
-                        size="sm"
-                        layoutId={`scopa-${scopaCardKey(c)}`}
-                        style={{ position: 'absolute', top: `${Math.min(i, 14) * 0.12}rem`, left: 0, zIndex: i }}
-                      />
-                    ))}
-                  </div>
-                  <span className="scopa-pile-count">{board.piles[0].length} carte</span>
-                </div>
-
-                <div className="scopa-table-cards">
-                  {board.table.map((c) => (
-                    <ScopaCardFace key={scopaCardKey(c)} card={c} size="md" layoutId={`scopa-${scopaCardKey(c)}`} />
-                  ))}
-                </div>
-
-                <div className="scopa-pile">
-                  <span className="scopa-pile-name">Banco</span>
-                  <div className="scopa-pile-stack">
-                    {board.piles[1].map((c, i) => (
-                      <ScopaCardFace
-                        key={scopaCardKey(c)}
-                        card={c}
-                        size="sm"
-                        layoutId={`scopa-${scopaCardKey(c)}`}
-                        style={{ position: 'absolute', top: `${Math.min(i, 14) * 0.12}rem`, left: 0, zIndex: i }}
-                      />
-                    ))}
-                  </div>
-                  <span className="scopa-pile-count">{board.piles[1].length} carte</span>
-                </div>
-              </div>
-
-              {/* Banco hand */}
-              <div className={cx('scopa-hand-row', lastActor === 1 && busy && 'active')}>
-                <span className="scopa-hand-name">Banco</span>
-                <div className="scopa-hand">
-                  {board.hands[1].map((c) => (
-                    <ScopaCardFace key={scopaCardKey(c)} card={c} size="sm" layoutId={`scopa-${scopaCardKey(c)}`} />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Idle hint */}
-            {!result && (
-              <div className="scopa-idle">
-                <Swords className="h-6 w-6" style={{ color: 'rgba(255,255,255,0.35)' }} />
-                <span>{betting ? 'Piazzamento in corso…' : 'Scegli un mercato e piazza la scommessa'}</span>
-              </div>
-            )}
-
-            {/* Flash overlay (Scopa! / Raccolta) */}
-            <AnimatePresence>
-              {flash && phase !== 'done' && (
-                <motion.div
-                  key={flash.id}
-                  className="scopa-flash"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <div
-                    className={cx('scopa-flash-badge', flash.kind === 'sweep' && 'green')}
-                    style={{ animation: 'scopa-flash 0.8s ease forwards' }}
-                  >
-                    {flash.kind === 'scopa' ? 'SCOPA!' : 'RACCOLTA'}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Outcome overlay */}
-            <AnimatePresence>
-              {phase === 'done' && payload && (
-                <motion.div className="scopa-outcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div
-                    className={cx(
-                      'scopa-outcome-title',
-                      result?.won ? 'win' : payload.outcome === 'draw' ? 'draw' : 'loss'
-                    )}
-                    style={{ animation: 'scopa-outcome-pop 0.5s cubic-bezier(0.16,1,0.3,1)' }}
-                  >
-                    {result?.won ? 'Vittoria' : payload.outcome === 'draw' ? 'Pareggio' : 'Sconfitta'}
-                  </div>
-                  <div className="scopa-outcome-sub">
-                    Giocatore {payload.playerPoints} · Banco {payload.bankPoints} · {marketLabel}
-                  </div>
-                  {result?.won && <div className="scopa-outcome-payout">+${result.payout.toFixed(2)}</div>}
-                </motion.div>
-              )}
-            </AnimatePresence>
+    <GameFrame
+      gameId="scopa"
+      onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
+      history={history}
+      fairness={fairness}
+      controls={
+        <BetPanel
+          amount={betAmount}
+          setAmount={setBetAmount}
+          balance={balance}
+          disabled={busy || playing}
+          action={
+            <BetButton
+              onClick={placeBet}
+              disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={busy || playing}
+              repeatable
+            >
+              {playing ? 'Giocando…' : `Punta ${marketLabel(market)} @ ${odds.toFixed(2)}×`}
+            </BetButton>
+          }
+        >
+          {MARKET_GROUPS.map((g) => (
+            <SegmentedControl<ScopaMarket>
+              key={g.title}
+              label={g.title}
+              value={market}
+              onChange={setMarket}
+              disabled={busy || playing}
+              options={g.ids.map((id) => ({ value: id, label: marketLabel(id) }))}
+            />
+          ))}
+          <div>
+            <StatRow label="Quota" value={`${odds.toFixed(2)}×`} tone="lime" />
+            <StatRow label="Vincita potenziale" value={`$${(betAmount * odds).toFixed(2)}`} tone="lime" />
           </div>
-
-          {/* Scoreboard */}
-          {payload && (
-            <div className="scopa-scoreboard">
-              <ScorePanel
-                name="Giocatore"
-                points={payload.playerPoints}
-                cells={cells.map((c) => ({ label: c.label, value: c.text(c.g), win: c.g > c.b }))}
-                winner={payload.outcome === 'player'}
-                revealed={revealed}
-                done={phase === 'done'}
-              />
-              <ScorePanel
-                name="Banco"
-                points={payload.bankPoints}
-                cells={cells.map((c) => ({ label: c.label, value: c.text(c.b), win: c.b > c.g }))}
-                winner={payload.outcome === 'bank'}
-                revealed={revealed}
-                done={phase === 'done'}
-              />
-            </div>
-          )}
-
-          {/* Stats */}
-          <div className="g-stats">
-            <div className="g-stat"><p className="g-stat-label">Mercato</p><p className="g-stat-value" style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>{marketLabel}</p></div>
-            <div className="g-stat"><p className="g-stat-label">Quota</p><p className="g-stat-value lime">{odds.toFixed(2)}×</p></div>
-            <div className="g-stat"><p className="g-stat-label">RTP target</p><p className="g-stat-value">96%</p></div>
+          {error && <p className="tols-error">{error}</p>}
+        </BetPanel>
+      }
+    >
+      <div className={cx('scopa-area', done && (lastWon ? 'win' : round?.outcome === 'draw' ? 'draw' : 'loss'))}>
+        <div className="scopa-deck">
+          <div className="scopa-deck-stack">
+            <SicilianCardBack />
+            <SicilianCardBack style={{ position: 'absolute', top: '0.1rem', left: '0.1rem', zIndex: 1 }} />
           </div>
+          <span>× {remaining}</span>
+        </div>
+        {playing && !reduced && (
+          <button onClick={skip} className="scopa-skip" aria-label="Salta animazione">
+            <FastForward className="h-3 w-3" /> Salta
+          </button>
+        )}
 
-          {/* History */}
-          {history.length > 0 && (
-            <div className="g-history">
-              <div className="g-history-head">
-                <h3 className="g-history-title">Round recenti</h3>
-                <button onClick={() => setHistory([])} className="text-[10px] flex items-center gap-1" style={{ color: 'var(--g-text-3)' }}><RotateCcw className="w-3 h-3" />Clear</button>
-              </div>
-              <div className="g-history-list">
-                {history.map((h, i) => (
-                  <div key={i} className="g-history-item">
-                    <div className="flex items-center gap-2">
-                      <span className={'g-history-badge ' + (h.result === 'win' ? 'win' : 'loss')}>{h.result}</span>
-                      <span className="text-[11px]" style={{ color: 'var(--g-text-2)' }}>
-                        {SCOPA_MARKETS.find((m) => m.id === h.market)?.label ?? h.market} → <span className="font-semibold" style={{ color: 'var(--g-text)' }}>{h.outcome}</span>
-                      </span>
-                    </div>
-                    <span className={'text-[11px] font-bold tabular-nums ' + (h.result === 'win' ? 'text-[#00e701]' : 'text-[#ff3b3b]')} style={{ fontFamily: 'var(--g-mono)' }}>
-                      {h.result === 'win' ? '+' : '-'}${h.payout.toFixed(2)}
-                    </span>
-                  </div>
+        <div className="scopa-felt">
+          {([0, 1] as const).map((side) => (
+            <div key={`hand-${side}`} className={cx('scopa-hand-row', lastActor === side && playing && 'active')}>
+              <span className="scopa-hand-name">{side === 0 ? 'Giocatore' : 'Banco'}</span>
+              <div className="scopa-hand">
+                {board.hands[side].map((c) => (
+                  <ScopaCardFace key={scopaCardKey(c)} card={c} size="sm" layoutId={`scopa-${scopaCardKey(c)}`} />
                 ))}
               </div>
             </div>
-          )}
+          ))}
 
-          {/* Provably Fair */}
-          <div className="g-pf">
-            <button onClick={() => setShowPF((v) => !v)} className="g-pf-toggle w-full">
-              <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5" style={{ color: 'var(--g-green)' }} />
-                <span className="text-xs font-semibold" style={{ color: 'var(--g-text-2)' }}>Provably Fair</span>
-              </div>
-              {showPF ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--g-text-3)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--g-text-3)' }} />}
-            </button>
-            {showPF && (
-              <div className="g-pf-body">
-                <div className="g-pf-row"><span className="g-pf-label">Server Seed Hash</span><span className="g-pf-val">{pfData ? pfData.serverSeedHash.slice(0, 20) + '...' : '—'}</span></div>
-                <div className="g-pf-row"><span className="g-pf-label">Client Seed</span><span className="g-pf-val">{pfData ? pfData.clientSeed : '—'}</span></div>
-                <div className="g-pf-row"><span className="g-pf-label">Nonce</span><span className="g-pf-val">{pfData ? pfData.nonce : '—'}</span></div>
-                <p className="text-[10px] mt-2" style={{ color: 'var(--g-text-3)' }}>
-                  Ricalcola HMAC-SHA256(serverSeed, clientSeed:nonce:cursor), mescola il mazzo e rigioca la partita per verificare l'esito.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* === CONTROLS PANEL === */}
-        <div className="space-y-2">
-          <div className="g-balance">
-            <p className="g-balance-label">Balance</p>
-            <p className="g-balance-value">{balance.toFixed(2)}</p>
-          </div>
-
-          {/* Market picker */}
-          <div className="g-panel p-3 space-y-2">
-            {MARKET_GROUPS.map((g) => (
-              <div key={g.title}>
-                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--g-text-3)' }}>{g.title}</p>
-                <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${g.ids.length}, minmax(0, 1fr))` }}>
-                  {g.ids.map((id) => {
-                    const m = SCOPA_MARKETS.find((x) => x.id === id);
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => setMarket(id)}
-                        disabled={busy}
-                        className={'g-btn g-btn-toggle ' + (market === id ? 'active' : 'inactive')}
-                        style={{ fontSize: '10px', padding: '0.35rem 0.25rem' }}
-                      >
-                        <span className="block truncate">{m?.label ?? id}</span>
-                        <span className="block text-[9px] opacity-70">{SCOPA_ODDS[id]?.toFixed(2)}×</span>
-                      </button>
-                    );
-                  })}
+          <div className="scopa-table">
+            {([0, 1] as const).map((side) => (
+              <div key={`pile-${side}`} className="scopa-pile">
+                <span className="scopa-pile-name">{side === 0 ? 'Giocatore' : 'Banco'}</span>
+                <div className="scopa-pile-stack">
+                  {board.piles[side].map((c, i) => (
+                    <ScopaCardFace
+                      key={scopaCardKey(c)}
+                      card={c}
+                      size="sm"
+                      layoutId={`scopa-${scopaCardKey(c)}`}
+                      style={{ position: 'absolute', top: `${Math.min(i, 14) * 0.12}rem`, left: 0, zIndex: i }}
+                    />
+                  ))}
                 </div>
+                <span className="scopa-pile-count">{board.piles[side].length} carte</span>
               </div>
             ))}
-          </div>
 
-          <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={busy} />
-
-          {/* Profit on win */}
-          <div className="g-panel p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs" style={{ color: 'var(--g-text-3)' }}>Vincita potenziale</span>
-              <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--g-green)', fontFamily: 'var(--g-mono)' }}>
-                +{potentialPayout.toFixed(2)}
-              </span>
+            <div className="scopa-table-cards">
+              {board.table.map((c) => (
+                <ScopaCardFace key={scopaCardKey(c)} card={c} size="md" layoutId={`scopa-${scopaCardKey(c)}`} />
+              ))}
             </div>
           </div>
-
-          <button onClick={place} disabled={busy || betAmount <= 0 || betAmount > balance} className="g-btn g-btn-play">
-            {busy ? 'Giocando...' : `Punta ${marketLabel} @ ${odds.toFixed(2)}×`}
-          </button>
         </div>
+
+        {!round && (
+          <div className="scopa-idle">
+            <Swords className="h-6 w-6" style={{ color: 'rgba(255,255,255,0.35)' }} />
+            <span>{busy ? 'Piazzamento in corso…' : 'Scegli un mercato e piazza la scommessa'}</span>
+          </div>
+        )}
+
+        <AnimatePresence>
+          {flash && !done && (
+            <motion.div key={flash.id} className="scopa-flash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div
+                className={cx('scopa-flash-badge', flash.kind === 'sweep' && 'green')}
+                style={{ animation: 'scopa-flash 0.8s ease forwards' }}
+              >
+                {flash.kind === 'scopa' ? 'SCOPA!' : 'RACCOLTA'}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {done && round && (
+            <motion.div className="scopa-outcome" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div
+                className={cx('scopa-outcome-title', lastWon ? 'win' : round.outcome === 'draw' ? 'draw' : 'loss')}
+                style={{ animation: 'scopa-outcome-pop 0.5s cubic-bezier(0.16,1,0.3,1)' }}
+              >
+                {lastWon ? 'Vittoria' : round.outcome === 'draw' ? 'Pareggio' : 'Sconfitta'}
+              </div>
+              <div className="scopa-outcome-sub">
+                Giocatore {round.playerPoints} · Banco {round.bankPoints} · {marketLabel(market)}
+              </div>
+              {lastWon && <div className="scopa-outcome-payout">+${(round.odds * betAmount).toFixed(2)}</div>}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+
+      {round && (
+        <div className="scopa-scoreboard">
+          <ScorePanel
+            name="Giocatore"
+            points={round.playerPoints}
+            cells={cells.map((c) => ({ label: c.label, value: c.text(c.g), win: c.g > c.b }))}
+            winner={round.outcome === 'player'}
+            revealed={revealed}
+            done={done}
+          />
+          <ScorePanel
+            name="Banco"
+            points={round.bankPoints}
+            cells={cells.map((c) => ({ label: c.label, value: c.text(c.b), win: c.b > c.g }))}
+            winner={round.outcome === 'bank'}
+            revealed={revealed}
+            done={done}
+          />
+        </div>
+      )}
+    </GameFrame>
   );
 }
