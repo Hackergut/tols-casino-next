@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
-  HomeIcon, Flame, Radio, LayoutGrid, Clock,
+  HomeIcon, Flame, Radio, LayoutGrid, Clock, Swords,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -65,6 +65,7 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#22d3ee", desc: "Shoot a target and reveal its multiplier!" },
   { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
+  { id: "scopa", name: "Scopa Siciliana", icon: Swords, color: "#eab308", desc: "Bet on an automatic Sicilian Scopa round — provably fair." },
 ];
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [

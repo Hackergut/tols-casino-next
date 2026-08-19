@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Flame, Sparkles, TrendingUp, Users, Zap, ChevronRight, Dices, Rocket, CircleDot, Bomb, TrendingUp as Limbo, Coins, Disc, Grid3x3, Play, Cherry, Store } from "lucide-react";
+import { Trophy, Flame, Sparkles, TrendingUp, Users, Zap, ChevronRight, Dices, Rocket, CircleDot, Bomb, TrendingUp as Limbo, Coins, Disc, Grid3x3, Play, Cherry, Store, Swords } from "lucide-react";
 import { GameCard } from "../GameCard";
 import { JackpotTicker, OdometerText } from "../JackpotTicker";
 import { LiveBetsFeed } from "../LiveBetsFeed";
@@ -22,6 +22,7 @@ interface Stats {
 
 const ORIGINALS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   dice: Dices, crash: Rocket, plinko: CircleDot, mines: Bomb, limbo: Limbo, coinflip: Coins, wheel: Disc, keno: Grid3x3,
+  scopa: Swords,
 };
 
 export function Lobby({ onSelectGame, onNavigate }: { onSelectGame: (slug: string) => void; onNavigate: (id: string) => void }) {

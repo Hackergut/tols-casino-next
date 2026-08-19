@@ -111,6 +111,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   all: <LayoutGrid className="h-3.5 w-3.5" />,
   slots: <Gamepad2 className="h-3.5 w-3.5" />,
   original: <Zap className="h-3.5 w-3.5" />,
+  originals: <Zap className="h-3.5 w-3.5" />,
   crash: <Zap className="h-3.5 w-3.5" />,
   dice: <Dices className="h-3.5 w-3.5" />,
   mines: <Sparkles className="h-3.5 w-3.5" />,

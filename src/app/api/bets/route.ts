@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, ok, err } from "@/lib/session";
 import { fairFloat, getActiveSeed, nextNonce } from "@/lib/provably-fair";
+import { playScopaRound, resolveScopaMarket, SCOPA_ODDS, type ScopaMarket } from "@/lib/scopa";
 import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import { after } from "next/server";
@@ -380,6 +381,43 @@ export async function POST(req: NextRequest) {
       result = { multiplier: mult, payout: amount * mult, won: mult > 0, payload: { grid, line, winSym } };
       break;
     }
+    case "scopa": {
+      // Scopa Siciliana Fast Bet. The player bets on a fixed market of a
+      // fully automatic Scopa round (Player vs Bank). The deck is shuffled
+      // with the fair stream (39 HMAC-SHA256 floats), then the whole round is
+      // a pure function of that deck, so the result is provably fair and
+      // reproducible from the revealed server seed.
+      const rawMarket = String(payload?.market ?? "player");
+      const market: ScopaMarket = rawMarket in SCOPA_ODDS ? (rawMarket as ScopaMarket) : "player";
+      const r = playScopaRound((cursor) => fairFloat(serverSeed, seed, nonce, cursor));
+      const won = resolveScopaMarket(market, r);
+      const odds = SCOPA_ODDS[market] ?? 2;
+      result = {
+        multiplier: won ? odds : 0,
+        payout: amount * (won ? odds : 0),
+        won,
+        payload: {
+          market,
+          odds,
+          outcome: r.outcome,
+          timeline: r.timeline,
+          playerCardsCount: r.playerCards.length,
+          bankCardsCount: r.bankCards.length,
+          playerPoints: r.playerPoints,
+          bankPoints: r.bankPoints,
+          totalPoints: r.totalPoints,
+          playerScopa: r.playerScopa,
+          bankScopa: r.bankScopa,
+          playerSettebello: r.playerSettebello,
+          bankSettebello: r.bankSettebello,
+          playerDenari: r.playerDenari,
+          bankDenari: r.bankDenari,
+          playerPrimiera: r.playerPrimiera,
+          bankPrimiera: r.bankPrimiera,
+        },
+      };
+      break;
+    }
     default:
       return err("Unknown game: " + game, 400);
   }
@@ -396,6 +434,7 @@ export async function POST(req: NextRequest) {
     const defaultWin: Record<string, number> = {
       dice: 1.98, crash: 2, limbo: 2, coinflip: 1.98, wheel: 2,
       mines: 2, plinko: 2, keno: 3, shoot: 2, slots: 6, roulette: 2,
+      scopa: 2,
     };
     const forcedMult = applyForcedMultiplier(controlDecision, result.multiplier, defaultWin[game] ?? 2);
     result = {
