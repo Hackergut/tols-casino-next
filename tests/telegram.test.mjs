@@ -36,6 +36,7 @@ async function load(rel) {
 }
 
 const { validateTelegramInitData } = await load("src/lib/telegram-auth.ts");
+const { tg } = await load("src/lib/telegram-api.ts");
 
 const BOT_TOKEN = "123456:TEST-TOKEN-FOR-UNIT-TESTS";
 
@@ -100,6 +101,45 @@ test("missing hash, empty input and missing token all fail closed", () => {
 test("initData without a user object is rejected", () => {
   const initData = signInitData({ auth_date: String(now()), query_id: "AAE" });
   assert.equal(validateTelegramInitData(initData, BOT_TOKEN), null);
+});
+
+/* ───────────────────────── Telegram API Client (tg) ───────────────────────── */
+
+const originalFetch = global.fetch;
+
+test("tg() handles network errors gracefully", async () => {
+  global.fetch = async () => {
+    throw new Error("simulated network error");
+  };
+  try {
+    const res = await tg("getMe", {}, BOT_TOKEN);
+    assert.equal(res.ok, false);
+    assert.equal(res.description, "simulated network error");
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("tg() handles malformed JSON gracefully", async () => {
+  global.fetch = async () => ({
+    status: 502,
+    json: async () => {
+      throw new SyntaxError("Unexpected token < in JSON at position 0");
+    },
+  });
+  try {
+    const res = await tg("getMe", {}, BOT_TOKEN);
+    assert.equal(res.ok, false);
+    assert.equal(res.description, "HTTP 502");
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("tg() fails closed when bot token is missing", async () => {
+  const res = await tg("getMe", {}, null);
+  assert.equal(res.ok, false);
+  assert.equal(res.description, "TELEGRAM_BOT_TOKEN is not set");
 });
 
 /* ───────────────────────── Webhook hardening ───────────────────────── */
