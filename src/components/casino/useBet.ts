@@ -136,10 +136,19 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
             clientSeed: data.clientSeed,
             nonce: data.nonce,
           });
-          setHistory((prev) => [data.won ? data.multiplier : 0, ...prev].slice(0, 10));
-          const charged = Number.isFinite(data.amount) ? data.amount : stake;
-          setProfit((p) => Math.round((p + (data.payout - charged)) * 100) / 100);
-          setBetCount((c) => c + 1);
+          /*
+           * Practice rounds (empty wallet, stake 0) settle without touching the
+           * ledger, so they must not touch the ledger's presentation either:
+           * the history strip used to fill with zero-stake "wins" that paid
+           * nothing, and betCount nudged the public feed for a bet that does
+           * not exist.
+           */
+          if (!data.practice) {
+            setHistory((prev) => [data.won ? data.multiplier : 0, ...prev].slice(0, 10));
+            const charged = Number.isFinite(data.amount) ? data.amount : stake;
+            setProfit((p) => Math.round((p + (data.payout - charged)) * 100) / 100);
+            setBetCount((c) => c + 1);
+          }
           resolveResult(data);
         } catch {
           // A POST must never be retried blindly: the server may have committed

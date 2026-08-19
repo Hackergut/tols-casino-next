@@ -16,9 +16,10 @@ import {
   forwardRef,
 } from 'react';
 import { Undo2 } from 'lucide-react';
-import { GameFrame, BetButton, StatRow } from '@/components/casino/GameFrame';
+import { GameFrame, BetButton, StatRow, BetModeAndAuto } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
-import { useSkipAnimation } from '@/lib/game-settings';
+import { useAutoBet, useAutoStatus, isAutoRunning } from '@/components/casino/useAutoBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { ROULETTE_RTP } from '@/lib/game-math';
 
@@ -235,15 +236,26 @@ const DOZENS = [
 export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
   const skipAnim = useSkipAnimation();
   const { balance, busy, error, history, fairness, profit, betCount, place } = useBet<{ winning: number }>('roulette', initialBalance);
-  const [chip, setChip] = useState(1);
+  // Chip value persists like every other game setting.
+  const [chip, setChip] = useGameSetting<number>('roulette', 'chip', 1, CHIPS);
   const [bets, setBets] = useState<Map<string, Bet>>(new Map());
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<null | { winning: number; won: boolean; payout: number }>(null);
+  /*
+   * `net` and `staked` are captured at settle time. The old result read the
+   * live `totalStaked`, so editing the table after a win mutated the "you
+   * lost $X" banner of the spin you had just watched; and a win showed the
+   * gross payout ("+$36") while a loss showed the net stake ("−$1") — two
+   * different accounting bases for one number.
+   */
+  const [result, setResult] = useState<null | { winning: number; net: number }>(null);
   const [recent, setRecent] = useState<number[]>([]);
   const wheelRef = useRef<RouletteHandle | null>(null);
 
   const totalStaked = Array.from(bets.values()).reduce((s, b) => s + b.amount, 0);
-  const locked = busy || spinning;
+  // Read straight from the status store: the useAutoBet instance below is
+  // declared after spin(), but the table lock must exist before placeBet.
+  const autoRunning = useAutoStatus((s) => s.running && s.gameId === 'roulette');
+  const locked = busy || spinning || autoRunning;
 
   const placeBet = useCallback((type: string, value?: number) => {
     if (locked) return;
@@ -259,18 +271,26 @@ export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
 
   const clearBets = useCallback(() => { if (!locked) setBets(new Map()); }, [locked]);
 
-  const spin = useCallback(async () => {
-    if (bets.size === 0 || balance > 0 && (totalStaked <= 0 || totalStaked > balance)) return;
+  const spin = useCallback(async (): Promise<number | null> => {
+    if (bets.size === 0 || balance > 0 && (totalStaked <= 0 || totalStaked > balance)) return null;
     setSpinning(true);
     setResult(null);
-    const data = await place(totalStaked, { bets: Array.from(bets.values()) });
-    if (!data) { setSpinning(false); return; }
+    // Bets are locked during the spin (the table is disabled), so this
+    // capture stays the amount actually settled.
+    const staked = totalStaked;
+    const data = await place(staked, { bets: Array.from(bets.values()) });
+    if (!data) { setSpinning(false); return null; }
     const winning = data.payload.winning;
-    await wheelRef.current?.spin(winning, skipAnim);
-    setResult({ winning, won: data.won, payout: data.payout });
+    const charged = Number.isFinite(data.amount) ? data.amount : staked;
+    await wheelRef.current?.spin(winning, skipAnim || isAutoRunning('roulette'));
+    setResult({ winning, net: Math.round((data.payout - charged) * 100) / 100 });
     setRecent((prev) => [winning, ...prev].slice(0, 12));
     setSpinning(false);
+    return Math.round((data.payout - charged) * 100) / 100;
   }, [bets, totalStaked, balance, place, skipAnim]);
+
+  const auto = useAutoBet('roulette', spin);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
 
   const chipOn = (type: string, value?: number) => bets.get(betKey(type, value))?.amount ?? 0;
 
@@ -300,6 +320,9 @@ export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
          * same shell, spacing and button styling as every other Original.
          */
         <div className="tols-bet">
+          {/* Same Manual/Auto unit every BetPanel gets — roulette's rail is
+              bespoke, but the betting modes must not be. */}
+          <BetModeAndAuto blocked={busy || spinning} />
           <span className="tols-bet__label">
             Chip value
             <span className="tols-bet__balance">${balance.toFixed(2)}</span>
@@ -324,11 +347,12 @@ export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
           </div>
           <div className="tols-bet__action">
             <BetButton
-              onClick={spin}
-              disabled={bets.size === 0 || balance > 0 && (totalStaked <= 0 || totalStaked > balance)}
-              busy={locked}
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void spin(); }}
+              disabled={auto.running ? false : bets.size === 0 || balance > 0 && (totalStaked <= 0 || totalStaked > balance)}
+              busy={autoMode ? auto.running : locked}
+              repeatable={autoMode}
             >
-              {locked ? 'Spinning…' : 'Spin'}
+              {autoMode ? (auto.running ? 'Stop Auto' : 'Start Auto') : locked ? 'Spinning…' : 'Spin'}
             </BetButton>
             <button type="button" className="tols-chip" onClick={clearBets} disabled={locked || bets.size === 0}>
               <Undo2 className="size-3.5" /> Clear bets
@@ -344,8 +368,8 @@ export function RouletteGame({ onBack, initialBalance, onPickGame }: Props) {
         {result && (
           <div className="roul__result">
             <span className="roul__ball" style={{ background: numColor(result.winning) }}>{result.winning}</span>
-            <span className="roul__amount" data-won={result.won || undefined}>
-              {result.won ? `+$${result.payout.toFixed(2)}` : `-$${totalStaked.toFixed(2)}`}
+            <span className="roul__amount" data-won={result.net > 0 || undefined}>
+              {result.net >= 0 ? `+$${result.net.toFixed(2)}` : `−$${Math.abs(result.net).toFixed(2)}`}
             </span>
           </div>
         )}

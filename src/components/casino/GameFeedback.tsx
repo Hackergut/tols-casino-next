@@ -12,7 +12,8 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { sfx, isSoundEnabled, setSoundEnabled } from "@/lib/game-audio";
+import { sfx, setSoundEnabled } from "@/lib/game-audio";
+import { useGameSettings } from "@/lib/game-settings";
 import { Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,9 +31,8 @@ function haptic(pattern: number | number[]): void {
 
 export function GameFeedback() {
   const [win, setWin] = useState<Win | null>(null);
-  const [soundOn, setSoundOn] = useState(true);
-
-  useEffect(() => { setSoundOn(isSoundEnabled()); }, []);
+  // Single source of truth: the game-settings store (see game-audio).
+  const soundOn = useGameSettings((s) => s.soundEnabled);
 
   useEffect(() => {
     const original = window.fetch;
@@ -70,9 +70,13 @@ export function GameFeedback() {
           }
           const d = j?.data;
           if (!d) return;
+          // Practice rounds (empty wallet) pay nothing, so they deserve no
+          // fanfare — celebrating +$0.00 looked like a broken win.
+          if (d.practice) return;
           if (d.won) {
             const big = d.multiplier >= 10;
-            big ? sfx.bigWin() : sfx.win();
+            if (big) sfx.bigWin();
+            else sfx.win();
             haptic(big ? [40, 60, 40, 60, 90] : [30, 50, 30]);
             setWin({ key: Date.now(), payout: d.payout ?? 0, multiplier: d.multiplier ?? 0, big });
           } else {
@@ -96,7 +100,6 @@ export function GameFeedback() {
 
   const toggleSound = useCallback(() => {
     const next = !soundOn;
-    setSoundOn(next);
     setSoundEnabled(next);
     if (next) sfx.click();
   }, [soundOn]);

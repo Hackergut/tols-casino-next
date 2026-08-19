@@ -41,6 +41,7 @@ import { HOUSE_EDGE } from "@/lib/game-math";
 import { useGameSettings } from "@/lib/game-settings";
 import { getOriginal, type OriginalId } from "@/lib/originals-registry";
 import { GameInfoBlock, MoreOriginals, BetFeed } from "@/components/casino/GameInfo";
+import { useAutoStatus } from "@/components/casino/useAutoBet";
 
 /* ─────────────────────────── Frame ─────────────────────────── */
 
@@ -282,9 +283,6 @@ export function BetPanel({
   children?: React.ReactNode;
   action: React.ReactNode;
 }) {
-  const mode = useGameSettings((s) => s.mode);
-  const setMode = useGameSettings((s) => s.setMode);
-
   const clamp = useCallback(
     (v: number) => {
       if (!Number.isFinite(v)) return min;
@@ -295,23 +293,7 @@ export function BetPanel({
 
   return (
     <div className="tols-bet">
-      {/* Mode tabs sit above the amount in every game, so the control the
-          player reaches for first is always in the same place. */}
-      <div className="tols-bet__modes" role="tablist" aria-label="Bet mode">
-        {(["manual", "auto"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            role="tab"
-            aria-selected={mode === m}
-            data-active={mode === m || undefined}
-            onClick={() => setMode(m)}
-            disabled={disabled}
-          >
-            {m === "manual" ? "Manual" : "Auto"}
-          </button>
-        ))}
-      </div>
+      <BetModeAndAuto blocked={disabled} />
 
       <label className="tols-bet__label" htmlFor="tols-bet-amount">
         {balance <= 0 ? "Practice play" : "Bet Amount"}
@@ -321,15 +303,18 @@ export function BetPanel({
       </label>
 
       <div className="tols-bet__row">
-        <input
+        {/*
+         * NumberField, not a bare input: piping each keystroke through
+         * parse+clamp made decimals untypable ("0.5" became 5 — the point was
+         * swallowed because parseFloat("0.") rendered "0").
+         */}
+        <NumberField
           id="tols-bet-amount"
-          type="number"
-          inputMode="decimal"
           min={0}
           step={0.1}
-          value={Number.isFinite(amount) ? amount : ""}
+          value={amount}
           disabled={disabled}
-          onChange={(e) => setAmount(clamp(parseFloat(e.target.value)))}
+          onCommit={(v) => setAmount(clamp(v))}
           className="tols-bet__input font-mono"
         />
         <button
@@ -410,6 +395,194 @@ export function BetButton({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Manual/Auto tabs + the auto limits, as one unit. BetPanel renders it above
+ * the amount, and games with a bespoke rail (roulette) render the same unit
+ * so Auto is reachable — and lockable mid-run — on every Original.
+ *
+ * The tabs lock while a run is active: switching to Manual mid-run would hide
+ * the Stop button while the loop kept betting.
+ */
+export function BetModeAndAuto({ blocked = false }: { blocked?: boolean }) {
+  const mode = useGameSettings((s) => s.mode);
+  const setMode = useGameSettings((s) => s.setMode);
+  const autoRunning = useAutoStatus((s) => s.running);
+
+  return (
+    <>
+      {/* Mode tabs sit above the amount in every game, so the control the
+          player reaches for first is always in the same place. */}
+      <div className="tols-bet__modes" role="tablist" aria-label="Bet mode">
+        {(["manual", "auto"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            data-active={mode === m || undefined}
+            onClick={() => setMode(m)}
+            disabled={autoRunning || blocked}
+          >
+            {m === "manual" ? "Manual" : "Auto"}
+          </button>
+        ))}
+      </div>
+      {mode === "auto" && <AutoFields />}
+    </>
+  );
+}
+
+/* ─────────────────────── Auto-bet fields ─────────────────────── */
+
+/**
+ * The inputs behind the Auto tab — the tab existed on every panel but had no
+ * backing implementation, so it persisted a promise no game kept. The limits
+ * are persisted (game-settings `auto`) and the live status comes from the
+ * shared auto runner, so this works identically in all twelve Originals.
+ */
+function AutoFields() {
+  const auto = useGameSettings((s) => s.auto);
+  const setAuto = useGameSettings((s) => s.setAuto);
+  const running = useAutoStatus((s) => s.running);
+  const round = useAutoStatus((s) => s.round);
+  const net = useAutoStatus((s) => s.net);
+
+  return (
+    <div className="tols-bet__auto">
+      <div className="tols-field">
+        <label htmlFor="tols-auto-rounds">Rounds (0 = unlimited)</label>
+        <NumberField
+          id="tols-auto-rounds"
+          integer
+          min={0}
+          step={1}
+          value={auto.rounds}
+          onCommit={(v) => setAuto({ rounds: v })}
+          disabled={running}
+          className="tols-input font-mono"
+        />
+      </div>
+      <div className="tols-bet__auto-limits">
+        <div className="tols-field">
+          <label htmlFor="tols-auto-profit">Stop on profit</label>
+          <NumberField
+            id="tols-auto-profit"
+            min={0}
+            step={1}
+            value={auto.stopOnProfit}
+            onCommit={(v) => setAuto({ stopOnProfit: v })}
+            disabled={running}
+            className="tols-input font-mono"
+          />
+        </div>
+        <div className="tols-field">
+          <label htmlFor="tols-auto-loss">Stop on loss</label>
+          <NumberField
+            id="tols-auto-loss"
+            min={0}
+            step={1}
+            value={auto.stopOnLoss}
+            onCommit={(v) => setAuto({ stopOnLoss: v })}
+            disabled={running}
+            className="tols-input font-mono"
+          />
+        </div>
+      </div>
+      {running ? (
+        <p className="tols-bet__auto-status" data-up={net > 0 || undefined} aria-live="polite">
+          Round {round} · Net {net >= 0 ? "+" : "−"}${Math.abs(net).toFixed(2)} — press the game
+          button to stop
+        </p>
+      ) : (
+        <p className="tols-bet__auto-hint">
+          Runs one round after another with the settings above. Animations are skipped for speed.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────── Numeric input ─────────────────────── */
+
+/**
+ * A numeric input that does not fight the player while typing.
+ *
+ * The old controls piped every keystroke through parse+clamp and rendered the
+ * result, so decimals were effectively untypable: "0.5" became 5 (the point
+ * was swallowed when parseFloat("0.") re-rendered "0"), and a cleared field
+ * snapped back to the old value mid-edit. This keeps a local draft while the
+ * field is focused, commits parsed values live, and re-syncs only when an
+ * outside control (½, 2×, chips, Max) moves the value.
+ */
+export function NumberField({
+  id,
+  value,
+  onCommit,
+  min,
+  max,
+  step = 0.1,
+  disabled,
+  className,
+  ariaLabel,
+  integer = false,
+}: {
+  id?: string;
+  value: number;
+  onCommit: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+  className?: string;
+  ariaLabel?: string;
+  /** Round commits to whole numbers (round counts, mine counts). */
+  integer?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const focused = useRef(false);
+
+  // External change (½, 2×, chip buttons, a programmatic reset): re-sync the
+  // text unless the player is mid-edit in this field.
+  useEffect(() => {
+    if (!focused.current) setDraft(null);
+  }, [value]);
+
+  const commit = (raw: string) => {
+    if (raw.trim() === "") return;
+    let v = Number(raw);
+    if (!Number.isFinite(v)) return;
+    if (typeof min === "number") v = Math.max(min, v);
+    if (typeof max === "number") v = Math.min(max, v);
+    onCommit(integer ? Math.round(v) : v);
+  };
+
+  return (
+    <input
+      id={id}
+      type="number"
+      inputMode="decimal"
+      min={min}
+      max={max}
+      step={step}
+      aria-label={ariaLabel}
+      value={draft ?? (Number.isFinite(value) ? String(value) : "")}
+      disabled={disabled}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onBlur={() => {
+        focused.current = false;
+        setDraft(null);
+      }}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        commit(e.target.value);
+      }}
+      className={className}
+    />
   );
 }
 

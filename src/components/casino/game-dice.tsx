@@ -14,6 +14,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { chanceMultiplier, MAX_WIN_CHANCE } from '@/lib/game-math';
@@ -35,7 +36,11 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
   const betAmount = useGameSettings((st) => st.stake);
   const setBetAmount = useGameSettings((st) => st.setStake);
   const [target, setTarget] = useGameSetting<number>('dice', 'target', 50);
-  const [isOver, setIsOver] = useState(true);
+  // Direction remembers the last game too — it used to reset to "over" on
+  // every visit while the target it belongs with stayed persisted.
+  const [side, setSide] = useGameSetting<'over' | 'under'>('dice', 'choice', 'over', ['over', 'under']);
+  const isOver = side === 'over';
+  const setIsOver = useCallback((v: boolean) => setSide(v ? 'over' : 'under'), [setSide]);
   const [result, setResult] = useState<Result>(null);
   const [animatedRoll, setAnimatedRoll] = useState(50);
   const [showResult, setShowResult] = useState(false);
@@ -56,22 +61,32 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
   const multiplier = useMemo(() => chanceMultiplier(winChance), [winChance]);
   const payout = betAmount * multiplier;
 
-  const roll = useCallback(async () => {
+  /**
+   * One roll. Resolves to the round's net profit, or null when the bet did
+   * not settle — the auto-bet loop keys off that distinction.
+   */
+  const roll = useCallback(async (): Promise<number | null> => {
     setResult(null);
     setShowResult(false);
 
     if (rollIntervalRef.current) clearInterval(rollIntervalRef.current);
-    const interval = reduced ? undefined : setInterval(() => setAnimatedRoll(Math.random() * 100), 50);
+    const skip = reduced || isAutoRunning('dice');
+    const interval = skip ? undefined : setInterval(() => setAnimatedRoll(Math.random() * 100), 50);
     if (interval) rollIntervalRef.current = interval;
 
     const data = await place(betAmount, { target, isOver });
     if (interval) clearInterval(interval);
-    if (!data) return;
+    if (!data) return null;
 
     setResult({ won: data.won, roll: data.payload.roll, payout: data.payout, multiplier: data.multiplier });
     setAnimatedRoll(data.payload.roll);
     setShowResult(true);
+    return Math.round((data.payout - data.amount) * 100) / 100;
   }, [place, betAmount, target, isOver, reduced]);
+
+  const auto = useAutoBet('dice', roll);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+  const locked = busy || auto.running;
 
   useEffect(() => () => { if (rollIntervalRef.current) clearInterval(rollIntervalRef.current); }, []);
 
@@ -94,10 +109,15 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy}
+          disabled={locked}
           action={
-            <BetButton onClick={roll} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy} repeatable>
-              {busy ? 'Rolling…' : 'Roll Dice'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void roll(); }}
+              disabled={auto.running ? false : balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={autoMode ? auto.running : busy}
+              repeatable
+            >
+              {autoMode ? (auto.running ? 'Stop Auto' : 'Start Auto') : busy ? 'Rolling…' : 'Roll Dice'}
             </BetButton>
           }
         >
@@ -105,7 +125,7 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
             label="Direction"
             value={isOver ? 'over' : 'under'}
             onChange={(v) => { setIsOver(v === 'over'); setResult(null); setShowResult(false); }}
-            disabled={busy}
+            disabled={locked}
             options={[
               { value: 'over', label: `Over ${target}` },
               { value: 'under', label: `Under ${target}` },
@@ -161,7 +181,7 @@ export function DiceGame({ onBack, initialBalance, onPickGame }: Props) {
           min={isOver ? Math.ceil(100 - MAX_WIN_CHANCE) : 2}
           max={isOver ? 98 : Math.floor(MAX_WIN_CHANCE)}
           value={target}
-          disabled={busy}
+          disabled={locked}
           onChange={(e) => { setTarget(Number(e.target.value)); setResult(null); setShowResult(false); }}
           className="dice__slider"
           aria-label="Target"

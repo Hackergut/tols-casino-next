@@ -5,7 +5,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
-import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
+import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { TARGET_RTP } from '@/lib/game-math';
 
@@ -25,7 +26,9 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
   // cannot silently jump when the player switches game.
   const betAmount = useGameSettings((st) => st.stake);
   const setBetAmount = useGameSettings((st) => st.setStake);
-  const [choice, setChoice] = useState<'heads' | 'tails'>('heads');
+  // The call lasts between sessions — it used to reset to heads on every
+  // visit even though the stake and every other game's settings survive.
+  const [choice, setChoice] = useGameSetting<'heads' | 'tails'>('coinflip', 'choice', 'heads', ['heads', 'tails']);
   const [face, setFace] = useState<'heads' | 'tails'>('heads');
   const [outcome, setOutcome] = useState<null | { won: boolean; profit: number }>(null);
   const [spinning, setSpinning] = useState(false);
@@ -35,22 +38,30 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
     if (settleTimer.current) clearTimeout(settleTimer.current);
   }, []);
 
-  const flip = useCallback(async () => {
+  const flip = useCallback(async (): Promise<number | null> => {
     setOutcome(null);
     setSpinning(true);
     const data = await place(betAmount, { choice });
-    if (!data) { setSpinning(false); return; }
+    if (!data) { setSpinning(false); return null; }
 
+    const net = Math.round((data.payout - data.amount) * 100) / 100;
     const settle = () => {
       setFace(data.payload.flip === 'tails' ? 'tails' : 'heads');
       setOutcome({ won: data.won, profit: data.payout - data.amount });
       setSpinning(false);
     };
-    // Let the coin turn before revealing; instant under reduced motion.
+    // Let the coin turn before revealing; instant under reduced motion or
+    // while auto-betting.
     if (settleTimer.current) clearTimeout(settleTimer.current);
-    if (reduced) settle();
+    const skip = reduced || isAutoRunning('coinflip');
+    if (skip) settle();
     else settleTimer.current = window.setTimeout(settle, 600);
+    return net;
   }, [place, betAmount, choice, reduced]);
+
+  const auto = useAutoBet('coinflip', flip);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+  const locked = busy || spinning || auto.running;
 
   return (
     <GameFrame
@@ -68,10 +79,15 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy || spinning}
+          disabled={locked}
           action={
-            <BetButton onClick={flip} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy || spinning} repeatable>
-              {spinning ? 'Flipping…' : 'Flip Coin'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void flip(); }}
+              disabled={auto.running ? false : balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={autoMode ? auto.running : busy || spinning}
+              repeatable
+            >
+              {autoMode ? (auto.running ? 'Stop Auto' : 'Start Auto') : spinning ? 'Flipping…' : 'Flip Coin'}
             </BetButton>
           }
         >
@@ -79,7 +95,7 @@ export function CoinflipGame({ onBack, initialBalance, onPickGame }: Props) {
             label="Your call"
             value={choice}
             onChange={setChoice}
-            disabled={busy || spinning}
+            disabled={locked}
             options={[{ value: 'heads', label: 'Heads' }, { value: 'tails', label: 'Tails' }]}
           />
           <div>

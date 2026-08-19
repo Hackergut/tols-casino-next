@@ -3,11 +3,12 @@
 /* Limbo on the shared Originals frame. */
 
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
+import { GameFrame, BetPanel, BetButton, StatRow, NumberField } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
-import { TARGET_RTP, MIN_WIN_MULTIPLIER } from '@/lib/game-math';
+import { TARGET_RTP, MIN_WIN_MULTIPLIER, MAX_TARGET_MULTIPLIER } from '@/lib/game-math';
 
 interface Props {
   onBack: () => void;
@@ -52,19 +53,25 @@ export function LimboGame({ onBack, initialBalance, onPickGame }: Props) {
     raf.current = requestAnimationFrame(tick);
   }, []);
 
-  const roll = useCallback(async () => {
+  const roll = useCallback(async (): Promise<number | null> => {
     setOutcome(null);
     const data = await place(betAmount, { target });
-    if (!data) return;
+    if (!data) return null;
     const finalRoll = data.payload.roll;
-    if (reduced) setDisplay(finalRoll);
+    const skip = reduced || isAutoRunning('limbo');
+    if (skip) setDisplay(finalRoll);
     else animateTo(finalRoll);
     if (verdictTimer.current) clearTimeout(verdictTimer.current);
     verdictTimer.current = window.setTimeout(
       () => setOutcome({ won: data.won, roll: finalRoll, profit: data.payout - data.amount }),
-      reduced ? 0 : 700,
+      skip ? 0 : 700,
     );
+    return Math.round((data.payout - data.amount) * 100) / 100;
   }, [place, betAmount, target, reduced, animateTo]);
+
+  const auto = useAutoBet('limbo', roll);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+  const locked = busy || auto.running;
 
   return (
     <GameFrame
@@ -82,29 +89,30 @@ export function LimboGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy}
+          disabled={locked}
           action={
-            <BetButton onClick={roll} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy} repeatable>
-              {busy ? 'Rolling…' : 'Roll'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void roll(); }}
+              disabled={auto.running ? false : balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={autoMode ? auto.running : busy}
+              repeatable
+            >
+              {autoMode ? (auto.running ? 'Stop Auto' : 'Start Auto') : busy ? 'Rolling…' : 'Roll'}
             </BetButton>
           }
         >
           <div className="tols-field">
             <label htmlFor="limbo-target">Target multiplier</label>
-            <input
+            {/* Below MIN_WIN_MULTIPLIER a "win" would return less than the
+                stake, so the input floor is derived rather than guessed. */}
+            <NumberField
               id="limbo-target"
-              type="number"
-              inputMode="decimal"
               min={MIN_WIN_MULTIPLIER}
+              max={MAX_TARGET_MULTIPLIER}
               step={0.1}
               value={target}
-              disabled={busy}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                // Below MIN_WIN_MULTIPLIER a "win" would return less than the
-                // stake, so the input floor is derived rather than guessed.
-                setTarget(Number.isFinite(v) ? Math.max(MIN_WIN_MULTIPLIER, Math.min(1_000_000, v)) : MIN_WIN_MULTIPLIER);
-              }}
+              disabled={locked}
+              onCommit={(v) => setTarget(v)}
               className="tols-input font-mono"
             />
           </div>

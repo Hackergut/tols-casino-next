@@ -12,6 +12,7 @@ import {
 import Matter from 'matter-js';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { plinkoTable, type Risk, type PlinkoRows } from '@/lib/game-math';
@@ -53,23 +54,6 @@ function slotColor(mult: number): string {
   if (mult >= 1) return COL.blue;
   if (mult >= 0.5) return COL.pending;
   return COL.loss;
-}
-
-function getSlotColorVar(mult: number): string {
-  if (mult >= 10) return 'var(--color-lime)';
-  if (mult >= 5) return '#c2e600';
-  if (mult >= 2) return 'var(--color-win)';
-  if (mult >= 1) return '#a8a89e';
-  if (mult >= 0.5) return 'var(--color-pending)';
-  return 'var(--color-loss)';
-}
-function getSlotBgColorVar(mult: number): string {
-  if (mult >= 10) return 'color-mix(in oklab, var(--color-lime) 15%, transparent)';
-  if (mult >= 5) return 'rgba(34,211,238,0.15)';
-  if (mult >= 2) return 'color-mix(in oklab, var(--color-win) 15%, transparent)';
-  if (mult >= 1) return 'rgba(96,165,250,0.12)';
-  if (mult >= 0.5) return 'color-mix(in oklab, var(--color-pending) 12%, transparent)';
-  return 'color-mix(in oklab, var(--color-loss) 15%, transparent)';
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -495,19 +479,39 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
   const [rows, setRows] = useGameSetting<PlinkoRows>('plinko', 'rows', 12, [8, 12, 16]);
   const [risk, setRisk] = useGameSetting<Risk>('plinko', 'risk', 'medium', ['low', 'medium', 'high']);
   const [outcome, setOutcome] = useState<null | { won: boolean; multiplier: number; profit: number }>(null);
+  /*
+   * A ball in flight used to be erasable mid-fall: `busy` clears when the
+   * server answers, the button re-armed while the ball was still bouncing,
+   * and the next drop removes all live balls from the world. The player
+   * watched a ball vanish halfway down. `dropping` stays true until the ball
+   * actually lands.
+   */
+  const [dropping, setDropping] = useState(false);
 
   const boardRef = useRef<PlinkoBoardHandle | null>(null);
 
   const multipliers = useMemo(() => plinkoTable(rows, risk), [rows, risk]);
 
-  const dropBall = useCallback(async () => {
+  const dropBall = useCallback(async (): Promise<number | null> => {
+    if (dropping) return null;
     setOutcome(null);
-    const data = await place(betAmount, { rows, risk });
-    if (!data) return;
-    // Animate to the server-decided bin, then reveal.
-    await boardRef.current?.drop(data.payload.slot, skipAnim);
-    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
-  }, [place, betAmount, rows, risk, skipAnim]);
+    setDropping(true);
+    try {
+      const data = await place(betAmount, { rows, risk });
+      if (!data) return null;
+      // Animate to the server-decided bin, then reveal.
+      await boardRef.current?.drop(data.payload.slot, skipAnim || isAutoRunning('plinko'));
+      setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
+      return Math.round((data.payout - data.amount) * 100) / 100;
+    } finally {
+      setDropping(false);
+    }
+  }, [dropping, place, betAmount, rows, risk, skipAnim]);
+
+  const auto = useAutoBet('plinko', dropBall);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+  const working = busy || dropping;
+  const locked = working || auto.running;
 
   return (
     <GameFrame
@@ -525,10 +529,15 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy}
+          disabled={locked}
           action={
-            <BetButton onClick={dropBall} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy}>
-              {busy ? 'Dropping…' : 'Drop Ball'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void dropBall(); }}
+              disabled={auto.running ? false : balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={autoMode ? auto.running : working}
+              repeatable={autoMode}
+            >
+              {autoMode ? (auto.running ? 'Stop Auto' : 'Start Auto') : working ? 'Dropping…' : 'Drop Ball'}
             </BetButton>
           }
         >
@@ -536,7 +545,7 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
             label="Risk"
             value={risk}
             onChange={setRisk}
-            disabled={busy}
+            disabled={locked}
             options={[
               { value: 'low', label: 'Low' },
               { value: 'medium', label: 'Med' },
@@ -547,7 +556,7 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
             label="Rows"
             value={rows}
             onChange={setRows}
-            disabled={busy}
+            disabled={locked}
             options={[
               { value: 8, label: '8' },
               { value: 12, label: '12' },
@@ -565,7 +574,7 @@ export function PlinkoGame({ onBack, initialBalance, onPickGame }: Props) {
       <div className="plinko">
         <PlinkoBoard ref={boardRef} rows={rows} multipliers={multipliers} />
         <p className="plinko__verdict" data-won={outcome?.won || undefined}>
-          {busy
+          {working
             ? '…'
             : outcome
               ? outcome.won

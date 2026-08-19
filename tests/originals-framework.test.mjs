@@ -104,6 +104,30 @@ test("games place bets through the shared hook, not raw fetch", () => {
   }
 });
 
+test("every game implements the Auto mode its bet panel advertises", () => {
+  // The Auto tab used to persist the choice and do nothing — a dead control
+  // on every panel. Now that the loop is shared, no game may quietly ship
+  // without it again.
+  for (const f of GAME_FILES) {
+    const src = code(readFileSync(join(casino, f), "utf8"));
+    assert.match(
+      src,
+      /useAutoBet\(/,
+      `${f} renders the Auto tab (via BetPanel) but never wires useAutoBet`,
+    );
+  }
+});
+
+test("the auto-bet loop stops on an unsettled round instead of retrying forever", () => {
+  const auto = code(readFileSync(join(casino, "useAutoBet.ts"), "utf8"));
+  assert.match(auto, /if \(p === null \|\| stopRef\.current\) break;/);
+  assert.match(
+    auto,
+    /if \(useAutoStatus\.getState\(\)\.running\) return;/,
+    "one loop at a time — a second start must never double the betting",
+  );
+});
+
 test("the registry never hardcodes an RTP", () => {
   // RTP must reference an exported server-math constant so a card cannot
   // advertise a return the engine does not pay.

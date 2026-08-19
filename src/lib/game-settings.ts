@@ -30,11 +30,27 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export type BetMode = "manual" | "auto";
 
+/**
+ * Auto-bet configuration, shared by every game. Mirrors what players expect
+ * from the Auto tab: how many rounds to play automatically and when to stop
+ * early. 0 means "no limit" on every field.
+ */
+export interface AutoBetConfig {
+  /** Rounds to run; 0 = run until stopped (or until a stop limit hits). */
+  rounds: number;
+  /** Stop once the run is up by at least this much; 0 = off. */
+  stopOnProfit: number;
+  /** Stop once the run is down by at least this much; 0 = off. */
+  stopOnLoss: number;
+}
+
 export interface GlobalGameSettings {
   /** Stake, shared across games so it does not silently jump. */
   stake: number;
   /** Manual or auto betting. */
   mode: BetMode;
+  /** Auto-bet limits, applied when mode is "auto". */
+  auto: AutoBetConfig;
   soundEnabled: boolean;
   /** Skip result animations — faster play, and the accessible default when
    *  the OS asks for reduced motion. */
@@ -61,13 +77,17 @@ export interface PerGameSettings {
   target?: number;
   picks?: number[];
   choice?: string;
+  /** Roulette chip value. */
+  chip?: number;
 }
 
 interface GameSettingsState extends GlobalGameSettings {
   perGame: Record<string, PerGameSettings>;
   setStake: (v: number) => void;
   setMode: (v: BetMode) => void;
+  setAuto: (patch: Partial<AutoBetConfig>) => void;
   toggleSound: () => void;
+  setSound: (on: boolean) => void;
   setQuickPlay: (v: boolean) => void;
   setShowProfit: (v: boolean) => void;
   /** Merge a patch into one game's settings. */
@@ -76,9 +96,12 @@ interface GameSettingsState extends GlobalGameSettings {
   resetAll: () => void;
 }
 
+const DEFAULT_AUTO: AutoBetConfig = { rounds: 10, stopOnProfit: 0, stopOnLoss: 0 };
+
 const DEFAULTS: GlobalGameSettings = {
   stake: 1,
   mode: "manual",
+  auto: DEFAULT_AUTO,
   soundEnabled: true,
   quickPlay: false,
   showProfit: true,
@@ -97,7 +120,22 @@ export const useGameSettings = create<GameSettingsState>()(
           stake: Number.isFinite(v) && v >= 0 ? Math.round(v * 100) / 100 : DEFAULTS.stake,
         }),
       setMode: (mode) => set({ mode }),
+      setAuto: (patch) =>
+        set((s) => {
+          const next = { ...s.auto, ...patch };
+          // Sanitised here rather than at every input: a negative round count
+          // or a NaN limit would make the auto loop's stop checks meaningless.
+          next.rounds = Number.isFinite(next.rounds) ? Math.max(0, Math.floor(next.rounds)) : 0;
+          next.stopOnProfit = Number.isFinite(next.stopOnProfit)
+            ? Math.max(0, Math.round(next.stopOnProfit * 100) / 100)
+            : 0;
+          next.stopOnLoss = Number.isFinite(next.stopOnLoss)
+            ? Math.max(0, Math.round(next.stopOnLoss * 100) / 100)
+            : 0;
+          return { auto: next };
+        }),
       toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
+      setSound: (on) => set({ soundEnabled: Boolean(on) }),
       setQuickPlay: (quickPlay) => set({ quickPlay }),
       setShowProfit: (showProfit) => set({ showProfit }),
 
@@ -112,12 +150,37 @@ export const useGameSettings = create<GameSettingsState>()(
     }),
     {
       name: "tols_game_settings",
-      version: 1,
+      /*
+       * v2 adds the auto-bet config and takes over the sound preference from
+       * game-audio's old standalone localStorage key ("tols-sound-enabled").
+       * Two sound toggles kept two separate truths — the frame header switched
+       * this store while the audio engine read its own key, so muting in one
+       * place left sound playing. Honour the legacy choice once, then it is
+       * this store that speaks.
+       */
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Record<string, unknown>;
+        if (version < 2) {
+          if (!state.auto || typeof state.auto !== "object") state.auto = { ...DEFAULT_AUTO };
+          try {
+            const legacy = window.localStorage.getItem("tols-sound-enabled");
+            if (legacy !== null) {
+              state.soundEnabled = legacy !== "false";
+              window.localStorage.removeItem("tols-sound-enabled");
+            }
+          } catch {
+            // Storage unavailable (SSR or privacy mode) — keep the default.
+          }
+        }
+        return state as unknown as GameSettingsState;
+      },
       storage: createJSONStorage(() => localStorage),
       // Only the settings, never anything derived from the server.
       partialize: (s) => ({
         stake: s.stake,
         mode: s.mode,
+        auto: s.auto,
         soundEnabled: s.soundEnabled,
         quickPlay: s.quickPlay,
         showProfit: s.showProfit,
