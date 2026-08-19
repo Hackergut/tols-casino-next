@@ -11,17 +11,31 @@ export async function GET() {
     select: { amount: true, multiplier: true, payout: true, result: true, gameName: true, gameId: true, createdAt: true },
   });
 
-  const totalWagered = bets.reduce((s, b) => s + b.amount, 0);
-  const totalWon = bets.filter((b) => b.result === "win").reduce((s, b) => s + b.payout, 0);
-  const wins = bets.filter((b) => b.result === "win").length;
-  const losses = bets.filter((b) => b.result === "lose").length;
-  const biggestWin = Math.max(0, ...bets.map((b) => b.payout));
-  const winRate = bets.length > 0 ? (wins / bets.length) * 100 : 0;
-
+  let totalWagered = 0;
+  let totalWon = 0;
+  let wins = 0;
+  let losses = 0;
+  let biggestWin = 0;
   const gameCounts: Record<string, number> = {};
-  for (const b of bets) {
-    if (b.result === "win") gameCounts[b.gameId] = (gameCounts[b.gameId] || 0) + 1;
+
+  for (let i = 0; i < bets.length; i++) {
+    const b = bets[i];
+    totalWagered += b.amount;
+
+    if (b.result === "win") {
+      totalWon += b.payout;
+      wins++;
+      gameCounts[b.gameId] = (gameCounts[b.gameId] || 0) + 1;
+    } else if (b.result === "lose") {
+      losses++;
+    }
+
+    if (b.payout > biggestWin) {
+      biggestWin = b.payout;
+    }
   }
+
+  const winRate = bets.length > 0 ? (wins / bets.length) * 100 : 0;
 
   const cardsCount = 0;
   const mythicCount = 0;
