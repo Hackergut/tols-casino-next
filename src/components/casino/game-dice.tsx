@@ -23,6 +23,10 @@ export function DiceGame({ onBack, initialBalance }: Props) {
   const [showResult, setShowResult] = useState(false);
   const rollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("tols:game-params", { detail: { gameId: "dice", params: { target, isOver }, bet: betAmount } }));
+  }, [target, isOver, betAmount]);
+
   const winChance = useMemo(() => isOver ? (100 - target).toFixed(2) : target.toFixed(2), [target, isOver]);
   const potentialMultiplier = useMemo(() => winChance !== '0.00' ? (99 / Number(winChance)).toFixed(4) : '\u221e', [winChance]);
   const potentialPayout = useMemo(() => (betAmount * Number(potentialMultiplier === '\u221e' ? 0 : potentialMultiplier)).toFixed(2), [betAmount, potentialMultiplier]);
@@ -42,6 +46,8 @@ export function DiceGame({ onBack, initialBalance }: Props) {
         setResult(r); setAnimatedRoll(payload.roll); setBalance(data.data.newBalance);
         setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
         setHistory(prev => [{ roll: payload.roll, target, isOver, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 15));
+        window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
+        window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
         setTimeout(() => setShowResult(true), 50);
       }
     } catch { if (interval) clearInterval(interval); }

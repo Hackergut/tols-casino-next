@@ -50,6 +50,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
   const autoCashoutRef = useRef(autoCashout);
   const cashOutRef = useRef<(() => void) | undefined>(undefined);
   const betAmountRef = useRef(betAmount);
+  const roundIdRef = useRef<string | null>(null);
 
   useEffect(() => { autoCashoutRef.current = autoCashout; }, [autoCashout]);
   useEffect(() => { betAmountRef.current = betAmount; }, [betAmount]);
@@ -107,22 +108,33 @@ export function CrashGame({ onBack, initialBalance }: Props) {
   }, [chartPoints]);
 
   const cashOut = useCallback(async () => {
-    if (phase !== 'running') return;
+    if (phase !== 'running' || !roundIdRef.current) return;
     if (animRef.current) cancelAnimationFrame(animRef.current);
     const cashMult = Math.floor(multiplier * 100) / 100;
-    setPhase('cashed');
     try {
-      const res = await fetch('/api/bets', {
+      const res = await fetch('/api/games/crash/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'crash', amount: betAmountRef.current, payload: { cashOutAt: cashMult } }),
+        body: JSON.stringify({ roundId: roundIdRef.current, action: { type: 'cashout', cashOutAt: cashMult } }),
       });
       const data = await res.json();
       if (data.success) {
-        setPayout(data.data.payout);
+        const cp = Number((data.data.payload as { crashPoint?: number })?.crashPoint ?? 0);
+        setCrashPoint(cp);
+        currentCrashRef.current = cp || cashMult;
         setBalance(data.data.newBalance);
         setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
-        setHistory(prev => [{ multiplier: cashMult, result: 'win', payout: data.data.payout }, ...prev].slice(0, 10));
+        window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
+        window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
+        if (data.data.won) {
+          setPhase('cashed');
+          setPayout(data.data.payout);
+          setHistory(prev => [{ multiplier: cashMult, result: 'win', payout: data.data.payout }, ...prev].slice(0, 10));
+        } else {
+          setPhase('crashed');
+          setMultiplier(cp || cashMult);
+          setHistory(prev => [{ multiplier: cp || cashMult, result: 'lose', payout: 0 }, ...prev].slice(0, 10));
+        }
       }
     } catch { /* ignore */ }
   }, [phase, multiplier]);
@@ -146,10 +158,26 @@ export function CrashGame({ onBack, initialBalance }: Props) {
         });
       }
       frameCount++;
-      if (m >= currentCrashRef.current) {
+      if (elapsed > 30 || m >= currentCrashRef.current) {
         setPhase('crashed');
-        setMultiplier(currentCrashRef.current);
-        setChartPoints(prev => [...prev, { x: elapsed, y: currentCrashRef.current }]);
+        setMultiplier(Math.min(mFloor, currentCrashRef.current));
+        setChartPoints(prev => [...prev, { x: elapsed, y: Math.min(mFloor, currentCrashRef.current) }]);
+        if (roundIdRef.current) {
+          void fetch('/api/games/crash/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roundId: roundIdRef.current, action: { type: 'bust' } }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (data.success) {
+              const cp = Number((data.data.payload as { crashPoint?: number })?.crashPoint ?? mFloor);
+              setCrashPoint(cp);
+              setMultiplier(cp);
+              setBalance(data.data.newBalance);
+              setHistory(prev => [{ multiplier: cp, result: 'lose', payout: 0 }, ...prev].slice(0, 10));
+            }
+          }).catch(() => {});
+        }
         return;
       }
       if (autoCashoutRef.current > 0 && m >= autoCashoutRef.current) {
@@ -170,29 +198,36 @@ export function CrashGame({ onBack, initialBalance }: Props) {
     setChartPoints([{ x: 0, y: 1 }]);
     setPhase('running');
     startTimeRef.current = Date.now();
-    const cp = 1 + Math.random() * 15;
-    currentCrashRef.current = Math.max(1, cp);
+    currentCrashRef.current = 1000;
+    roundIdRef.current = null;
     try {
       const res = await fetch('/api/bets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'crash', amount: betAmount, payload: { cashOutAt: 0 } }),
+        body: JSON.stringify({ game: 'crash', amount: betAmount, mode: 'start', payload: {} }),
       });
       const data = await res.json();
       if (data.success) {
-        const serverCp = (data.data.payload as { crashPoint: number }).crashPoint;
-        setCrashPoint(serverCp);
-        currentCrashRef.current = serverCp;
+        roundIdRef.current = data.data.roundId ?? null;
+        setBalance(data.data.newBalance);
         setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
-        if (serverCp <= 1) {
-          setMultiplier(1);
-          setPhase('crashed');
-          setBalance(data.data.newBalance);
-          setChartPoints([{ x: 0, y: 1 }]);
-          setHistory(prev => [{ multiplier: 1, result: 'lose', payout: 0 }, ...prev].slice(0, 10));
+        window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
+        if (!data.data.pending) {
+          const serverCp = Number((data.data.payload as { crashPoint?: number })?.crashPoint ?? 1);
+          setCrashPoint(serverCp);
+          currentCrashRef.current = serverCp;
+          if (serverCp <= 1) {
+            setMultiplier(1);
+            setPhase('crashed');
+            setHistory(prev => [{ multiplier: 1, result: 'lose', payout: 0 }, ...prev].slice(0, 10));
+          }
         }
+      } else {
+        setPhase('betting');
       }
-    } catch { /* ignore */ }
+    } catch {
+      setPhase('betting');
+    }
   }, [betAmount, balance]);
 
   const reset = useCallback(() => {

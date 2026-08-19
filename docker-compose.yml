@@ -1,7 +1,14 @@
-﻿# Production-ish Postgres for TOLS Casino. Run with: docker compose up -d
+# Production-ish Postgres for TOLS Casino. Run with: docker compose up -d
 # Data persists in the named volume `tols-pgdata`. Matches the .env default
 # DATABASE_URL=postgresql://tols:tols_local_dev@localhost:5433/tols?schema=public
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: tols-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
   postgres:
     image: postgres:16-alpine
     container_name: tols-postgres

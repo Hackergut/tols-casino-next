@@ -1,0 +1,116 @@
+/* Originals rail + Blackjack — aligned to the modular game page layout. */
+
+.originals-stage {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .originals-stage {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+.originals-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.originals-rail-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid rgb(255 255 255 / 0.06);
+}
+.originals-rail-tabs button {
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.45);
+}
+.originals-rail-tabs button.active {
+  background: color-mix(in oklab, var(--color-lime) 16%, transparent);
+  color: var(--color-lime);
+}
+.originals-rail-card {
+  padding: 0.875rem;
+  border-radius: 1rem;
+  background: var(--color-surface);
+  border: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.bj-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 280px;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--color-lime) 10%, transparent), transparent 55%),
+    var(--color-surface);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 12%, transparent);
+}
+.bj-hand-label {
+  margin-bottom: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.4);
+}
+.bj-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 5.5rem;
+  align-items: center;
+}
+.bj-card {
+  width: 3.4rem;
+  height: 4.8rem;
+  border-radius: 0.45rem;
+  background: #f4f1ea;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgb(0 0 0 / 0.25);
+}
+.bj-card-back {
+  background:
+    repeating-linear-gradient(45deg, #1a3a28 0 6px, #0f2419 6px 12px);
+  border-color: color-mix(in oklab, var(--color-lime) 25%, transparent);
+}
+.bj-rank {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.bj-suit { font-size: 1.25rem; line-height: 1.1; }
+.bj-red { color: #c81e1e; }
+.bj-black { color: #141414; }
+.bj-banner {
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.bj-banner.win {
+  color: var(--color-lime);
+  background: color-mix(in oklab, var(--color-lime) 12%, transparent);
+}
+.bj-banner.loss {
+  color: var(--color-loss);
+  background: color-mix(in oklab, var(--color-loss) 12%, transparent);
+}

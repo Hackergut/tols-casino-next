@@ -50,6 +50,10 @@ export function LimboGame({ onBack, initialBalance }: Props) {
   const isAnimatingRef = useRef(false);
   const reduced = useReducedMotion();
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("tols:game-params", { detail: { gameId: "limbo", params: { target }, bet: betAmount } }));
+  }, [target, betAmount]);
+
   const winChance = target > 1 ? ((99 / target) * 100) : 99;
 
   // Cleanup animation on unmount
@@ -126,6 +130,8 @@ export function LimboGame({ onBack, initialBalance }: Props) {
           setResult(r);
           setBalance(data.data.newBalance);
           setHistory(prev => [{ roll: finalRoll, target, result: won ? 'win' : 'lose', payout: won ? data.data.payout : -betAmount }, ...prev].slice(0, 10));
+          window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
+          window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
           setRolling(false);
 
           if (won) {

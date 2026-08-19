@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
-  HomeIcon, Flame, Radio, LayoutGrid, Clock,
+  HomeIcon, Flame, Radio, LayoutGrid, Clock, Club,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -65,6 +65,7 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#22d3ee", desc: "Shoot a target and reveal its multiplier!" },
   { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
+  { id: "blackjack", name: "Blackjack", icon: Club, color: "#22c55e", desc: "Classic 21 — hit, stand or double. Blackjack pays 3:2." },
 ];
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [

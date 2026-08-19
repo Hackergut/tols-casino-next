@@ -111,7 +111,12 @@ export function MinesGame({ onBack, initialBalance }: Props) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [gameKey, setGameKey] = useState(0);
   const gridRef = useRef<HTMLDivElement>(null);
+  const roundIdRef = useRef<string | null>(null);
   const reduced = useReducedMotion();
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('tols:game-params', { detail: { gameId: 'mines', params: { mines: mineCount, tilesToReveal: 3 }, bet: betAmount } }));
+  }, [mineCount, betAmount]);
 
   const currentPicks = useMemo(() => Array.from(revealed), [revealed]);
 
@@ -159,9 +164,8 @@ export function MinesGame({ onBack, initialBalance }: Props) {
     return Math.min((displayMultiplier - 1) / (maxExpected - 1), 1);
   }, [displayMultiplier, mineCount]);
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
     if (betAmount <= 0 || betAmount > balance) return;
-    setPhase('playing');
     setRevealed(new Set());
     setMines(new Set());
     setPayout(0);
@@ -169,48 +173,64 @@ export function MinesGame({ onBack, initialBalance }: Props) {
     setDisplayMultiplier(0);
     setResult(null);
     setGameKey(k => k + 1);
-  }, [betAmount, balance]);
-
-  const revealTile = useCallback(async (idx: number) => {
-    if (phase !== 'playing' || revealed.has(idx)) return;
-
-    const newRevealed = new Set(revealed);
-    newRevealed.add(idx);
-    setRevealed(newRevealed);
-
-    const picks = Array.from(newRevealed);
-    const mult = mineMultiplier;
-    setCurrentMultiplier(mult);
-
     try {
       const res = await fetch('/api/bets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'mines', amount: betAmount, payload: { mines: mineCount, picks } }),
+        body: JSON.stringify({ game: 'mines', amount: betAmount, mode: 'start', payload: { mines: mineCount } }),
       });
       const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { layout: boolean[] };
+      if (!data.success) return;
+      roundIdRef.current = data.data.roundId ?? null;
+      setBalance(data.data.newBalance);
+      setPhase('playing');
+      window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
+    } catch { /* ignore */ }
+  }, [betAmount, balance, mineCount]);
+
+  const revealTile = useCallback(async (idx: number) => {
+    if (phase !== 'playing' || revealed.has(idx) || !roundIdRef.current) return;
+
+    try {
+      const res = await fetch('/api/games/mines/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roundId: roundIdRef.current, action: { type: 'reveal', cellIndex: idx } }),
+      });
+      const data = await res.json();
+      if (!data.success) return;
+      const payload = data.data.payload as { picks?: number[]; layout?: boolean[]; multiplier?: number };
+      const picks = payload.picks ?? [];
+      setRevealed(new Set(picks.filter((p) => !(payload.layout && payload.layout[p]))));
+      if (payload.layout) {
         const minePositions = new Set<number>();
         payload.layout.forEach((m, i) => { if (m) minePositions.add(i); });
         setMines(minePositions);
+      }
+      const mult = Number(payload.multiplier ?? data.data.multiplier ?? 0);
+      setCurrentMultiplier(mult);
+      setPayout(betAmount * mult);
+      setBalance(data.data.newBalance);
+      window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
+      window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
 
+      if (!data.data.pending) {
+        setPhase('done');
         if (!data.data.won) {
-          setPhase('done');
+          setRevealed(new Set(picks));
           setResult({ won: false, payout: 0, hitMine: true });
-          setBalance(data.data.newBalance);
-          setHistory(prev => [{ result: 'lose', payout: 0, mines: mineCount, picks: picks.length - 1 }, ...prev].slice(0, 10));
-          // Screen shake + red flash
+          setHistory(prev => [{ result: 'lose', payout: 0, mines: mineCount, picks: Math.max(0, picks.length - 1) }, ...prev].slice(0, 10));
           setShaking(true);
           setRedFlash(true);
           setTimeout(() => setShaking(false), 500);
           setTimeout(() => setRedFlash(false), 600);
         } else {
-          setPayout(betAmount * mult);
+          setResult({ won: true, payout: data.data.payout, hitMine: false });
+          setHistory(prev => [{ result: 'win', payout: data.data.payout, mines: mineCount, picks: picks.length }, ...prev].slice(0, 10));
         }
       }
     } catch { /* ignore */ }
-  }, [phase, revealed, betAmount, mineCount, mineMultiplier]);
+  }, [phase, revealed, betAmount, mineCount]);
 
   const cashOut = useCallback(async () => {
     if (phase !== 'playing' || revealed.size === 0) return;

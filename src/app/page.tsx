@@ -23,6 +23,7 @@ import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
+import { OriginalsRail } from "@/components/casino/OriginalsRail";
 import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
@@ -78,6 +79,10 @@ const RouletteGame = dynamic(
   () => import("@/components/casino/game-roulette").then((m) => ({ default: m.RouletteGame })),
   { ssr: false, loading: () => <GameLoading /> }
 );
+const BlackjackGame = dynamic(
+  () => import("@/components/casino/game-blackjack").then((m) => ({ default: m.BlackjackGame })),
+  { ssr: false, loading: () => <GameLoading /> }
+);
 
 /* ── Main Casino SPA ── */
 function CasinoPage() {
@@ -118,7 +123,15 @@ function CasinoPage() {
   useEffect(() => {
     refreshBalance();
     const interval = setInterval(refreshBalance, 15000);
-    return () => clearInterval(interval);
+    const onBal = (e: Event) => {
+      const n = Number((e as CustomEvent).detail);
+      if (Number.isFinite(n)) setBalance(n);
+    };
+    window.addEventListener("tols:balance", onBal);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("tols:balance", onBal);
+    };
   }, [refreshBalance]);
 
   // Fetch games
@@ -259,6 +272,7 @@ function CasinoPage() {
       case "shoot": return <ShootGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
+      case "blackjack": return <BlackjackGame {...props} />;
       default: return <p className="text-muted-foreground">Game not found</p>;
     }
   };
