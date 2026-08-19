@@ -25,12 +25,17 @@ import {
   crashPointFrom,
   limboRollFrom,
   TARGET_RTP,
+  PLINKO_ROWS,
+  WHEEL_SEGMENTS,
+  MINES_TILES,
   type Risk,
   type PlinkoRows,
   type WheelSegments,
   MAX_STAKE,
   normaliseTarget,
 } from "@/lib/game-math";
+
+const RISK_LEVELS: readonly string[] = ["low", "medium", "high"];
 
 // Game engines — provably fair, calibrated to TARGET_RTP
 type GameResult = { multiplier: number; payout: number; won: boolean; payload: Record<string, unknown> };
@@ -261,6 +266,9 @@ export async function POST(req: NextRequest) {
     case "dice": {
       const target = Number(payload?.target ?? 50);
       const isOver = Boolean(payload?.isOver ?? false);
+      // An out-of-range target is not a playable bet: `roll > 100` or
+      // `roll < 0` can never win, so accepting it would just take the stake.
+      if (!Number.isFinite(target) || target <= 0 || target >= 100) return err("Invalid target", 400);
       const roll = Math.floor(fairFloat(serverSeed, seed, nonce) * 10000) / 100; // 0..100 (2dp)
       const won = rollDice(roll, target, isOver);
       const winChance = isOver ? 100 - target : target;
@@ -301,8 +309,15 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "plinko": {
-      const risk = (payload?.risk as "low" | "medium" | "high") || "medium";
+      // Rows and risk index straight into the calibrated tables, so an
+      // out-of-range value used to throw a bare 500 (or worse, pay from a
+      // nonsense table). Reject with a clean 400 before anything moves.
+      const riskRaw = String(payload?.risk ?? "medium");
       const rows = Number(payload?.rows ?? 12);
+      if (!RISK_LEVELS.includes(riskRaw) || !(PLINKO_ROWS as readonly number[]).includes(rows)) {
+        return err("Invalid plinko configuration", 400);
+      }
+      const risk = riskRaw as Risk;
       const slot = plinkoSlot(serverSeed, seed, nonce, rows);
       const mult = plinkoMultiplier(slot, risk, rows);
       const won = mult > 0;
@@ -310,37 +325,67 @@ export async function POST(req: NextRequest) {
       break;
     }
     case "mines": {
-      const minesCount = Math.min(24, Math.max(1, Number(payload?.mines ?? 3)));
-      const picks = Array.isArray(payload?.picks) ? (payload.picks as number[]) : [];
+      const minesRaw = Number(payload?.mines ?? 3);
+      const minesCount = Number.isFinite(minesRaw) ? Math.min(24, Math.max(1, Math.trunc(minesRaw))) : 3;
+      /*
+       * Picks decide the payout multiplier, so they must be real, distinct,
+       * on-board tiles. Duplicates counted twice toward the multiplier —
+       * [7,7,7,7,7] paid as five safe reveals from a single tile — and an
+       * empty or oversized pick list was settled as a loss while still
+       * charging the stake. Both are rejected before any debit now.
+       */
+      const rawPicks = Array.isArray(payload?.picks) ? (payload.picks as unknown[]) : [];
+      const picks = [
+        ...new Set(
+          rawPicks.filter(
+            (p): p is number => typeof p === "number" && Number.isInteger(p) && p >= 0 && p < MINES_TILES,
+          ),
+        ),
+      ];
+      if (picks.length < 1) return err("Pick at least one tile", 400);
+      if (picks.length > MINES_TILES - minesCount) return err("More picks than safe tiles", 400);
       const layout = minesLayout(serverSeed, seed, nonce, minesCount);
       // check if any pick hit a mine
       const hitMine = picks.some((p) => layout[p]);
       const mult = hitMine ? 0 : nextMineMultiplier(picks.length, minesCount);
       const won = !hitMine && picks.length > 0;
-      result = { multiplier: mult, payout: stake * mult, won, payload: { mines: minesCount, picks, layout: won ? layout : layout.map((m, i) => (picks.includes(i) ? m : m)) } };
+      // The full layout is always returned: the round is over once the picks
+      // are revealed, so every tile can be shown (and verified).
+      result = { multiplier: mult, payout: stake * mult, won, payload: { mines: minesCount, picks, layout } };
       break;
     }
     case "wheel": {
       // Generated per (segments, risk) at exactly TARGET_RTP. The old hardcoded
       // tables returned 64% on low and 82% on high — risk was silently
       // changing the house edge instead of only the volatility.
-      const segments = Number(payload?.segments ?? 20) as WheelSegments;
-      const risk = (payload?.risk as Risk) || "medium";
-      const table = wheelTable(segments, risk);
+      const segments = Number(payload?.segments ?? 20);
+      const riskRaw = String(payload?.risk ?? "medium");
+      // Both index the generated tables directly; out-of-range values used to
+      // crash the route (negative Array length, undefined shape) with a 500.
+      if (!(WHEEL_SEGMENTS as readonly number[]).includes(segments) || !RISK_LEVELS.includes(riskRaw)) {
+        return err("Invalid wheel configuration", 400);
+      }
+      const table = wheelTable(segments as WheelSegments, riskRaw as Risk);
       const idx = Math.floor(fairFloat(serverSeed, seed, nonce) * table.length);
       const mult = table[idx % table.length] ?? 0;
-      result = { multiplier: mult, payout: stake * mult, won: mult > 0, payload: { segment: idx, mult, risk, segments } };
+      result = { multiplier: mult, payout: stake * mult, won: mult > 0, payload: { segment: idx, mult, risk: riskRaw, segments } };
       break;
     }
     case "keno": {
       // Player picks 1–10 numbers from 1..KENO_POOL; server draws KENO_DRAWN winners.
-      const picks: number[] = Array.isArray(payload?.picks)
-        ? (payload!.picks as number[]).filter((n) => Number.isInteger(n) && n >= 1 && n <= 40).slice(0, 10)
-        : [];
-      if (picks.length < 1) {
-        result = { multiplier: 0, payout: 0, won: false, payload: { error: "no picks", picks: [], drawn: [], hits: 0 } };
-        break;
-      }
+      //
+      // Duplicates must be removed BEFORE scoring: hits are counted by
+      // filtering the pick list against the draw, so a hand-rolled payload of
+      // [5,5,5,5,5,5,5,5,5,5] scored 10 hits from a single drawn number and
+      // paid the top row with a 25% chance. An empty pick list was likewise
+      // settled as a loss while still charging the stake.
+      const rawPicks = Array.isArray(payload?.picks) ? (payload!.picks as unknown[]) : [];
+      const picks: number[] = [
+        ...new Set(
+          rawPicks.filter((n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 40),
+        ),
+      ].slice(0, 10);
+      if (picks.length < 1) return err("Pick at least one number", 400);
       // Deterministic draw of 10 distinct numbers from the fair stream.
       const pool = Array.from({ length: 40 }, (_, i) => i + 1);
       for (let i = pool.length - 1; i > 0; i--) {
@@ -399,14 +444,50 @@ export async function POST(req: NextRequest) {
       // European single-zero roulette (0..36). RTP is the real game math
       // (2.7% house edge) — 0 loses outside bets, straight pays 35:1 over 37
       // pockets → 97.3% return. No scaling needed; fully server-decided.
-      const bets = Array.isArray(payload?.bets)
-        ? (payload!.bets as Array<{ type: string; value?: number; amount: number }>)
+      /*
+       * Every chip on the table is validated before settlement:
+       *
+       *  - a NEGATIVE bet amount used to pass the sum check (100 on red and
+       *    −99 on black sums to the 1.00 stake) and then pay 200× the stake
+       *    when red hit — the table paid out against money that was never
+       *    wagered.
+       *  - an unknown bet type lost to the default `win = false` branch but
+       *    still contributed to the stake sum, and a malformed table was
+       *    settled as a loss while charging the stake.
+       *
+       * All of it is rejected with 400 before anything is debited.
+       */
+      const ROULETTE_TYPES = new Set([
+        "straight", "red", "black", "odd", "even", "low", "high",
+        "dozen1", "dozen2", "dozen3", "col1", "col2", "col3",
+      ]);
+      const rawBets = Array.isArray(payload?.bets)
+        ? (payload!.bets as Array<{ type?: unknown; value?: unknown; amount?: unknown }>)
         : [];
-      const staked = bets.reduce((s, b) => s + (Number(b.amount) || 0), 0);
+      const bets: Array<{ type: string; value?: number; amount: number }> = [];
+      let invalid = rawBets.length === 0 || rawBets.length > 64;
+      for (const b of rawBets) {
+        const type = String(b?.type ?? "");
+        const amt = Number(b?.amount);
+        if (!ROULETTE_TYPES.has(type) || !Number.isFinite(amt) || amt <= 0) {
+          invalid = true;
+          break;
+        }
+        if (type === "straight") {
+          const v = Number(b.value);
+          if (!Number.isInteger(v) || v < 0 || v > 36) {
+            invalid = true;
+            break;
+          }
+          bets.push({ type, value: v, amount: Math.round(amt * 100) / 100 });
+        } else {
+          bets.push({ type, amount: Math.round(amt * 100) / 100 });
+        }
+      }
+      const staked = Math.round(bets.reduce((s, b) => s + b.amount, 0) * 100) / 100;
       // Guard: the sum of individual bets must match the deducted amount.
-      if (bets.length === 0 || (!practice && Math.abs(staked - stake) > 1e-6)) {
-        result = { multiplier: 0, payout: 0, won: false, payload: { error: "bad bets", winning: -1, bets } };
-        break;
+      if (invalid || (!practice && Math.abs(staked - stake) > 0.005)) {
+        return err("Invalid roulette bets", 400);
       }
       const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
       const winning = Math.floor(fairFloat(serverSeed, seed, nonce) * 37); // 0..36

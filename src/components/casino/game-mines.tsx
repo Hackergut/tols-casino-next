@@ -21,10 +21,11 @@
  * old flow, where the board could be reshuffled underneath you.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Gem, Bomb } from 'lucide-react';
-import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
+import { GameFrame, BetPanel, BetButton, StatRow, NumberField } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { minesMultiplier, minesSurvival, minesIsFloored } from '@/lib/game-math';
@@ -47,48 +48,88 @@ export function MinesGame({ onBack, initialBalance, onPickGame }: Props) {
   const betAmount = useGameSettings((st) => st.stake);
   const setBetAmount = useGameSettings((st) => st.setStake);
   const [mineCount, setMineCount] = useGameSetting<number>('mines', 'mines', 3);
-  const [picks, setPicks] = useState<Set<number>>(new Set());
+  /*
+   * The tile selection is remembered like every other setting: a player who
+   * leaves Mines and comes back finds their pattern, not an empty board.
+   * Restored picks are re-validated — a stale array could name tiles that no
+   * longer fit the current mine count.
+   */
+  const [pickedTiles, setPickedTiles] = useGameSetting<number[]>('mines', 'picks', []);
+  const maxPicks = TILES - mineCount;
+  const picks = useMemo(
+    () =>
+      new Set(
+        pickedTiles
+          .filter((t) => Number.isInteger(t) && t >= 0 && t < TILES)
+          .slice(0, maxPicks),
+      ),
+    [pickedTiles, maxPicks],
+  );
   const [layout, setLayout] = useState<boolean[] | null>(null);
   const [outcome, setOutcome] = useState<null | { won: boolean; profit: number }>(null);
+  const settleTimer = useRef<number | undefined>(undefined);
 
-  const maxPicks = TILES - mineCount;
   const n = picks.size;
 
   const multiplier = useMemo(() => (n > 0 ? minesMultiplier(n, mineCount) : 0), [n, mineCount]);
   const survival = useMemo(() => (n > 0 ? minesSurvival(n, mineCount) : 0), [n, mineCount]);
   const floored = useMemo(() => (n > 0 ? minesIsFloored(n, mineCount) : false), [n, mineCount]);
 
+  useEffect(() => () => { if (settleTimer.current) window.clearTimeout(settleTimer.current); }, []);
+
   const toggle = useCallback(
     (i: number) => {
       if (busy || layout) return;
-      setPicks((prev) => {
-        const next = new Set(prev);
-        if (next.has(i)) next.delete(i);
-        else if (next.size < TILES - mineCount) next.add(i);
-        return next;
-      });
+      const next = new Set(picks);
+      if (next.has(i)) next.delete(i);
+      else if (next.size < maxPicks) next.add(i);
+      setPickedTiles(Array.from(next));
     },
-    [busy, layout, mineCount],
+    [busy, layout, picks, maxPicks, setPickedTiles],
   );
 
-  const reveal = useCallback(async () => {
-    if (n < 1) return;
+  /**
+   * One round. Resolves to the net profit, or null when the bet did not
+   * settle (which is also the auto-bet stop signal).
+   */
+  const reveal = useCallback(async (): Promise<number | null> => {
+    if (n < 1) return null;
     setOutcome(null);
     const data = await place(betAmount, { mines: mineCount, picks: Array.from(picks) });
-    if (!data) return;
+    if (!data) return null;
     setLayout(data.payload.layout);
+    const net = Math.round((data.payout - data.amount) * 100) / 100;
     const finish = () => setOutcome({ won: data.won, profit: data.payout - data.amount });
-    if (reduced) finish();
-    else window.setTimeout(finish, 320);
+    if (settleTimer.current) window.clearTimeout(settleTimer.current);
+    if (reduced || isAutoRunning('mines')) finish();
+    else settleTimer.current = window.setTimeout(finish, 320);
+    return net;
   }, [n, place, betAmount, mineCount, picks, reduced]);
 
+  /*
+   * Auto replays the same pattern every round: clear the settled board, keep
+   * the picks, reveal again. Manual play keeps the pattern too on "New
+   * round" — clearing it used to force a full re-pick between every round.
+   */
+  const play = useCallback(async (): Promise<number | null> => {
+    if (picks.size < 1) return null;
+    if (layout) {
+      setLayout(null);
+      setOutcome(null);
+    }
+    return reveal();
+  }, [picks.size, layout, reveal]);
+
+  const auto = useAutoBet('mines', play);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+
   const reset = useCallback(() => {
-    setPicks(new Set());
     setLayout(null);
     setOutcome(null);
   }, []);
 
   const settled = layout !== null;
+  const locked = busy || auto.running;
 
   return (
     <GameFrame
@@ -106,33 +147,46 @@ export function MinesGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy || settled}
+          disabled={locked || settled}
           action={
-            settled ? (
+            // Auto drives whole rounds, so it owns the button even when the
+            // board is settled.
+            !autoMode && settled ? (
               <BetButton onClick={reset} tone="danger">New round</BetButton>
             ) : (
-              <BetButton onClick={reveal} disabled={n < 1 || balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy}>
-                {busy ? 'Revealing…' : n < 1 ? 'Pick tiles' : `Reveal ${n} tile${n > 1 ? '' : ''}`}
+              <BetButton
+                onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void play(); }}
+                disabled={auto.running ? false : n < 1 || balance > 0 && (betAmount <= 0 || betAmount > balance)}
+                busy={autoMode ? auto.running : busy}
+                repeatable={autoMode}
+              >
+                {autoMode
+                  ? auto.running
+                    ? 'Stop Auto'
+                    : 'Start Auto'
+                  : busy
+                    ? 'Revealing…'
+                    : n < 1
+                      ? 'Pick tiles'
+                      : `Reveal ${n} tile${n === 1 ? '' : 's'}`}
               </BetButton>
             )
           }
         >
           <div className="tols-field">
             <label htmlFor="mines-count">Mines</label>
-            <input
+            <NumberField
               id="mines-count"
-              type="number"
+              integer
               min={1}
               max={24}
               step={1}
               value={mineCount}
-              disabled={busy || settled}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                const next = Number.isFinite(v) ? Math.max(1, Math.min(24, v)) : 3;
-                setMineCount(next);
+              disabled={locked || settled}
+              onCommit={(v) => {
+                setMineCount(v);
                 // Picks that no longer fit the safe-tile budget are dropped.
-                setPicks((prev) => new Set(Array.from(prev).slice(0, TILES - next)));
+                if (picks.size > TILES - v) setPickedTiles(Array.from(picks).slice(0, TILES - v));
               }}
               className="tols-input font-mono"
             />
@@ -168,7 +222,7 @@ export function MinesGame({ onBack, initialBalance, onPickGame }: Props) {
                 type="button"
                 className="mines__tile"
                 onClick={() => toggle(i)}
-                disabled={busy || settled}
+                disabled={locked || settled}
                 data-picked={picked || undefined}
                 data-safe={settled && picked && !isMine ? true : undefined}
                 data-boom={settled && picked && isMine ? true : undefined}

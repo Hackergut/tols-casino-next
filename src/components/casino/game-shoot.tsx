@@ -15,10 +15,11 @@
  * chosen target is what the reveal animates to.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
 import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { shootBands } from '@/lib/game-math';
@@ -41,18 +42,22 @@ export function ShootGame({ onBack, initialBalance, onPickGame }: Props) {
   const setBetAmount = useGameSettings((st) => st.setStake);
   const [firing, setFiring] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<null | { won: boolean; multiplier: number; profit: number; idx: number }>(null);
+  const settleTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => { if (settleTimer.current) window.clearTimeout(settleTimer.current); }, []);
 
   // The payout ladder, straight from the calibrated bands so the odds shown
   // are the odds paid.
   const bands = useMemo(() => shootBands().filter((b) => b.multiplier > 0), []);
 
   const shoot = useCallback(
-    async (idx: number) => {
-      if (busy || firing !== null) return;
+    async (idx: number): Promise<number | null> => {
+      if (busy || firing !== null) return null;
       setOutcome(null);
       setFiring(idx);
       const data = await place(betAmount, { target: idx });
-      if (!data) { setFiring(null); return; }
+      if (!data) { setFiring(null); return null; }
+      const net = Math.round((data.payout - data.amount) * 100) / 100;
       const settle = () => {
         setOutcome({
           won: data.won,
@@ -62,13 +67,21 @@ export function ShootGame({ onBack, initialBalance, onPickGame }: Props) {
         });
         setFiring(null);
       };
-      if (reduced) settle();
-      else window.setTimeout(settle, 420);
+      if (settleTimer.current) window.clearTimeout(settleTimer.current);
+      if (reduced || isAutoRunning('shoot')) settle();
+      else settleTimer.current = window.setTimeout(settle, 420);
+      return net;
     },
     [busy, firing, place, betAmount, reduced],
   );
 
+  const randomShot = useCallback(() => shoot(Math.floor(Math.random() * TARGET_COUNT)), [shoot]);
+
+  const auto = useAutoBet('shoot', randomShot);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+
   const canPlay = balance <= 0 || (betAmount > 0 && betAmount <= balance);
+  const locked = busy || firing !== null || auto.running;
 
   return (
     <GameFrame
@@ -86,10 +99,21 @@ export function ShootGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy || firing !== null}
+          disabled={locked}
           action={
-            <BetButton onClick={() => shoot(Math.floor(Math.random() * TARGET_COUNT))} disabled={!canPlay} busy={busy || firing !== null}>
-              {busy || firing !== null ? 'Firing…' : 'Quick Shot'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void randomShot(); }}
+              disabled={auto.running ? false : !canPlay}
+              busy={autoMode ? auto.running : busy || firing !== null}
+              repeatable={autoMode}
+            >
+              {autoMode
+                ? auto.running
+                  ? 'Stop Auto'
+                  : 'Start Auto'
+                : busy || firing !== null
+                  ? 'Firing…'
+                  : 'Quick Shot'}
             </BetButton>
           }
         >
@@ -115,11 +139,11 @@ export function ShootGame({ onBack, initialBalance, onPickGame }: Props) {
               key={i}
               type="button"
               className="shoot__target"
-              disabled={!canPlay || busy || firing !== null}
+              disabled={!canPlay || locked}
               data-firing={firing === i || undefined}
               data-hit={outcome?.idx === i && outcome.won ? true : undefined}
               data-miss={outcome?.idx === i && !outcome.won ? true : undefined}
-              onClick={() => shoot(i)}
+              onClick={() => { void shoot(i); }}
               aria-label={`Target ${i + 1}`}
             >
               <Crosshair className="size-6" />

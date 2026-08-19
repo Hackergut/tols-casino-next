@@ -351,3 +351,66 @@ test("no cron runs more than once per day", () => {
     );
   }
 });
+
+/* ------------------------------------------------------------------ *
+ * Per-game payload validation.
+ *
+ * The route used to trust client-shaped payloads onto the payout path:
+ * duplicate keno picks scored 10 hits from one draw, duplicate mine picks
+ * stacked a multiplier on a single tile, a negative roulette chip summed
+ * away from the stake check while still paying out, and out-of-range
+ * wheel/plinko/dice configs either 500'd or settled as a paid loss. The
+ * guards below are asserted against the source (comments stripped first,
+ * like every other check here).
+ * ------------------------------------------------------------------ */
+
+test("keno dedupes picks before scoring and rejects an empty card before debiting", () => {
+  const keno = route.slice(route.indexOf('case "keno"'), route.indexOf('case "shoot"'));
+  assert.match(
+    keno,
+    /new Set\(/,
+    "duplicate picks inflate the hit count — [5,5,…] must be one pick, not ten",
+  );
+  assert.match(
+    keno,
+    /if \(picks\.length < 1\) return err\("Pick at least one number", 400\)/,
+    "an empty card was settled as a loss while still charging the stake",
+  );
+  assert.doesNotMatch(keno, /error: "no picks"/, "no silent loss path may remain");
+});
+
+test("mines dedupes and bounds picks against the safe-tile budget", () => {
+  const mines = route.slice(route.indexOf('case "mines"'), route.indexOf('case "wheel"'));
+  assert.match(mines, /new Set\(/, "[7,7,7] must never pay as three reveals");
+  assert.match(mines, /return err\("Pick at least one tile", 400\)/);
+  assert.match(
+    mines,
+    /picks\.length > MINES_TILES - minesCount\) return err\("More picks than safe tiles", 400\)/,
+  );
+});
+
+test("roulette rejects negative or unknown table chips before debiting", () => {
+  const roul = route.slice(route.indexOf('case "roulette"'), route.indexOf('case "slots"'));
+  assert.match(
+    roul,
+    /!Number\.isFinite\(amt\) \|\| amt <= 0/,
+    "a negative chip used to dodge the stake sum check while paying real wins",
+  );
+  assert.match(roul, /ROULETTE_TYPES\.has\(type\)/, "unknown bet types must not settle at all");
+  assert.match(
+    roul,
+    /return err\("Invalid roulette bets", 400\)/,
+    "a malformed table was settled as a loss while still charging the stake",
+  );
+  assert.doesNotMatch(roul, /error: "bad bets"/, "no silent loss path may remain");
+});
+
+test("wheel, plinko and dice reject out-of-range configuration with 400, not a 500", () => {
+  assert.match(route, /\(WHEEL_SEGMENTS as readonly number\[\]\)\.includes\(segments\)/);
+  assert.match(route, /\(PLINKO_ROWS as readonly number\[\]\)\.includes\(rows\)/);
+  assert.match(
+    route,
+    /!Number\.isFinite\(target\) \|\| target <= 0 \|\| target >= 100\) return err\("Invalid target", 400\)/,
+    "an unplayable dice target (roll > 100) was charged as a guaranteed loss",
+  );
+});

@@ -18,9 +18,10 @@
  * configuration: KENO_POOL, KENO_DRAWN and the rows the bet route derives.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GameFrame, BetPanel, BetButton, StatRow, SegmentedControl } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { KENO_POOL, KENO_DRAWN, kenoHitProb } from '@/lib/game-math';
@@ -45,24 +46,55 @@ export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
   const betAmount = useGameSettings((st) => st.stake);
   const setBetAmount = useGameSettings((st) => st.setStake);
   const [risk, setRisk] = useGameSetting<Risk>('keno', 'risk', 'classic', ['classic', 'low', 'medium', 'high']);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  /*
+   * Picked numbers are remembered between sessions, like the stake and the
+   * risk level — a returning player used to face an empty grid. Restored
+   * picks are re-validated against the pool before use.
+   */
+  const [pickedNumbers, setPickedNumbers] = useGameSetting<number[]>('keno', 'picks', []);
+  const selected = useMemo(
+    () =>
+      new Set(
+        pickedNumbers
+          .filter((n) => Number.isInteger(n) && n >= 1 && n <= KENO_POOL)
+          .slice(0, MAX_PICKS),
+      ),
+    [pickedNumbers],
+  );
   const [drawn, setDrawn] = useState<Set<number>>(new Set());
   const [drawing, setDrawing] = useState(false);
   const [outcome, setOutcome] = useState<null | { won: boolean; hits: number; profit: number }>(null);
+  // Every reveal timeout is tracked so unmounting mid-draw (game switch)
+  // cannot fire a setState on a dead component.
+  const timers = useRef<number[]>([]);
+
+  const later = useCallback((fn: () => void, ms: number) => {
+    const id = window.setTimeout(() => {
+      timers.current = timers.current.filter((t) => t !== id);
+      fn();
+    }, ms);
+    timers.current.push(id);
+  }, []);
+
+  useEffect(
+    () => () => {
+      for (const t of timers.current) window.clearTimeout(t);
+      timers.current = [];
+    },
+    [],
+  );
 
   const toggle = useCallback(
     (n: number) => {
       if (busy || drawing) return;
-      setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(n)) next.delete(n);
-        else if (next.size < MAX_PICKS) next.add(n);
-        return next;
-      });
+      const next = new Set(selected);
+      if (next.has(n)) next.delete(n);
+      else if (next.size < MAX_PICKS) next.add(n);
+      setPickedNumbers(Array.from(next));
       setOutcome(null);
       setDrawn(new Set());
     },
-    [busy, drawing],
+    [busy, drawing, selected, setPickedNumbers],
   );
 
   const quickPick = useCallback(() => {
@@ -74,10 +106,10 @@ export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
     }
     // Presentation only — which numbers you pick cannot change the RTP, so a
     // client-side shuffle is safe here in a way the draw never was.
-    setSelected(new Set(pool.slice(0, Math.max(1, selected.size || 5))));
+    setPickedNumbers(pool.slice(0, Math.max(1, selected.size || 5)));
     setOutcome(null);
     setDrawn(new Set());
-  }, [busy, drawing, selected.size]);
+  }, [busy, drawing, selected.size, setPickedNumbers]);
 
   const hitChance = useMemo(() => {
     const k = selected.size;
@@ -87,35 +119,43 @@ export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
     return (1 - kenoHitProb(k, 0)) * 100;
   }, [selected.size]);
 
-  const play = useCallback(async () => {
-    if (selected.size < 1) return;
+  const play = useCallback(async (): Promise<number | null> => {
+    if (selected.size < 1) return null;
     setOutcome(null);
     setDrawn(new Set());
     setDrawing(true);
-    const picks = Array.from(selected);
-    const data = await place(betAmount, { picks, risk });
-    if (!data) { setDrawing(false); return; }
+    const data = await place(betAmount, { picks: Array.from(selected), risk });
+    if (!data) { setDrawing(false); return null; }
 
     const balls = data.payload.drawn ?? [];
+    const net = Math.round((data.payout - data.amount) * 100) / 100;
     const finish = () => {
       setDrawn(new Set(balls));
       setOutcome({ won: data.won, hits: data.payload.hits ?? 0, profit: data.payout - data.amount });
       setDrawing(false);
     };
 
-    if (reduced) {
+    if (reduced || isAutoRunning('keno')) {
       finish();
-      return;
+      return net;
     }
     // Reveal the server's draw one ball at a time. The result is already
     // decided; this is pacing, not suspense over an undetermined outcome.
-    balls.forEach((n, i) => {
-      window.setTimeout(() => setDrawn((prev) => new Set([...prev, n])), i * 90);
+    await new Promise<void>((resolve) => {
+      balls.forEach((n, i) => {
+        later(() => setDrawn((prev) => new Set([...prev, n])), i * 90);
+      });
+      later(() => {
+        finish();
+        resolve();
+      }, balls.length * 90 + 120);
     });
-    window.setTimeout(finish, balls.length * 90 + 120);
-  }, [selected, place, betAmount, risk, reduced]);
+    return net;
+  }, [selected, place, betAmount, risk, reduced, later]);
 
-  const busyAll = busy || drawing;
+  const auto = useAutoBet('keno', play);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+  const busyAll = busy || drawing || auto.running;
 
   return (
     <GameFrame
@@ -136,11 +176,20 @@ export function KenoGame({ onBack, initialBalance, onPickGame }: Props) {
           disabled={busyAll}
           action={
             <BetButton
-              onClick={play}
-              disabled={selected.size < 1 || balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void play(); }}
+              disabled={auto.running ? false : selected.size < 1 || balance > 0 && (betAmount <= 0 || betAmount > balance)}
               busy={busyAll}
+              repeatable={autoMode}
             >
-              {busyAll ? 'Drawing…' : selected.size < 1 ? 'Pick numbers' : 'Play'}
+              {autoMode
+                ? auto.running
+                  ? 'Stop Auto'
+                  : 'Start Auto'
+                : busyAll
+                  ? 'Drawing…'
+                  : selected.size < 1
+                    ? 'Pick numbers'
+                    : 'Play'}
             </BetButton>
           }
         >

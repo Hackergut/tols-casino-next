@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { GameFrame, BetButton, BetPanel, StatRow } from "@/components/casino/GameFrame";
 import { useBet } from "@/components/casino/useBet";
+import { useAutoBet, isAutoRunning } from "@/components/casino/useAutoBet";
 import { useGameSetting, useGameSettings, useSkipAnimation } from "@/lib/game-settings";
 import {
   POOL_RUSH_CONFIG,
@@ -59,8 +60,8 @@ export function PoolRushGame({ onBack, initialBalance, onPickGame }: Props) {
     if (revealTimer.current) window.clearTimeout(revealTimer.current);
   }, []);
 
-  const breakRack = useCallback(async () => {
-    if (locked) return;
+  const breakRack = useCallback(async (): Promise<number | null> => {
+    if (locked) return null;
     if (revealTimer.current) window.clearTimeout(revealTimer.current);
     setOutcome(null);
     setVisualBalls(0);
@@ -70,25 +71,34 @@ export function PoolRushGame({ onBack, initialBalance, onPickGame }: Props) {
     const data = await place(betAmount, { level });
     if (!data) {
       setPhase("idle");
-      return;
+      return null;
     }
 
     // The server result exists here, but no result copy is committed to the UI
     // until the table animation has completed.
     setVisualBalls(data.payload.balls);
     setPhase("breaking");
-    const duration = skipAnimation ? 320 : config.animationMs;
-    revealTimer.current = window.setTimeout(() => {
-      setOutcome({
-        balls: data.payload.balls,
-        multiplier: data.multiplier,
-        payout: data.payout,
-        won: data.won,
-        practice: Boolean(data.practice),
-      });
-      setPhase("result");
-    }, duration);
+    const duration = skipAnimation || isAutoRunning("poolrush") ? 320 : config.animationMs;
+    const net = Math.round((data.payout - data.amount) * 100) / 100;
+    await new Promise<void>((resolve) => {
+      revealTimer.current = window.setTimeout(() => {
+        setOutcome({
+          balls: data.payload.balls,
+          multiplier: data.multiplier,
+          payout: data.payout,
+          won: data.won,
+          practice: Boolean(data.practice),
+        });
+        setPhase("result");
+        resolve();
+      }, duration);
+    });
+    return net;
   }, [betAmount, config.animationMs, level, locked, place, skipAnimation]);
+
+  const auto = useAutoBet("poolrush", breakRack);
+  const autoMode = useGameSettings((state) => state.mode) === "auto";
+  const autoLocked = locked || auto.running;
 
   const payoutRows = useMemo(
     () => config.bands.map((band) => `${band.balls} balls  ${band.multiplier}×  ${(band.probability * 100).toFixed(band.probability < 0.01 ? 3 : 1)}%`).join("   ·   "),
@@ -96,7 +106,7 @@ export function PoolRushGame({ onBack, initialBalance, onPickGame }: Props) {
   );
 
   const updateAim = (element: HTMLDivElement, clientY: number) => {
-    if (locked) return;
+    if (autoLocked) return;
     const box = element.getBoundingClientRect();
     const relative = (clientY - (box.top + box.height / 2)) / box.height;
     setAim(Math.max(-8, Math.min(8, relative * 24)));
@@ -115,13 +125,22 @@ export function PoolRushGame({ onBack, initialBalance, onPickGame }: Props) {
       fairness={fairness}
       rtp={POOL_RUSH_RTP}
       controls={
-        <BetPanel amount={betAmount} setAmount={setBetAmount} balance={balance} disabled={locked} min={POOL_RUSH_MIN_BET} action={
+        <BetPanel amount={betAmount} setAmount={setBetAmount} balance={balance} disabled={autoLocked} min={POOL_RUSH_MIN_BET} action={
           <BetButton
-            onClick={breakRack}
-            disabled={balance > 0 && (betAmount < POOL_RUSH_MIN_BET || betAmount > POOL_RUSH_MAX_BET || betAmount > balance)}
-            busy={locked}
+            onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void breakRack(); }}
+            disabled={auto.running ? false : balance > 0 && (betAmount < POOL_RUSH_MIN_BET || betAmount > POOL_RUSH_MAX_BET || betAmount > balance)}
+            busy={autoMode ? auto.running : locked}
+            repeatable={autoMode}
           >
-            {phase === "requesting" ? "Preparing break…" : phase === "breaking" ? "Balls in motion…" : "BREAK"}
+            {autoMode
+              ? auto.running
+                ? "Stop Auto"
+                : "Start Auto"
+              : phase === "requesting"
+                ? "Preparing break…"
+                : phase === "breaking"
+                  ? "Balls in motion…"
+                  : "BREAK"}
           </BetButton>
         }>
           <div className="pool-levels" role="radiogroup" aria-label="Break difficulty">
@@ -134,7 +153,7 @@ export function PoolRushGame({ onBack, initialBalance, onPickGame }: Props) {
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  disabled={locked}
+                  disabled={autoLocked}
                   data-active={selected || undefined}
                   onClick={() => setLevel(id)}
                   style={{ "--pool-accent": item.accent } as CSSProperties}
@@ -167,9 +186,9 @@ export function PoolRushGame({ onBack, initialBalance, onPickGame }: Props) {
         <div
           className="pool-table"
           key={round}
-          data-aimable={!locked || undefined}
+          data-aimable={!autoLocked || undefined}
           onPointerDown={(event) => {
-            if (locked) return;
+            if (autoLocked) return;
             aiming.current = true;
             event.currentTarget.setPointerCapture(event.pointerId);
             updateAim(event.currentTarget, event.clientY);

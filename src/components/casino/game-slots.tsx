@@ -21,6 +21,7 @@ import {
 import { Application, Assets, Sprite, Container, Graphics, Texture } from 'pixi.js';
 import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
 import { slotPaytable, SLOTS_RTP } from '@/lib/game-math';
@@ -31,8 +32,6 @@ interface Props {
   /** Jump to a sibling Original from the rail under the canvas. */
   onPickGame?: (id: OriginalId) => void;
 }
-
-const QUICK_BETS = [1, 5, 10, 50, 100];
 
 /*
  * Paytable for display. Previously this was a hand-copied snapshot of the
@@ -267,16 +266,35 @@ export function SlotsGame({ onBack, initialBalance, onPickGame }: Props) {
   const betAmount = useGameSettings((st) => st.stake);
   const setBetAmount = useGameSettings((st) => st.setStake);
   const [outcome, setOutcome] = useState<null | { won: boolean; multiplier: number; profit: number }>(null);
+  /*
+   * `busy` clears when the server answers, but the reels keep turning. Without
+   * this guard a second Spin click stacked a second ticker-driven animation on
+   * the same reels while both wrote to the same sprites — and charged a second
+   * stake for a spin the player could not follow.
+   */
+  const [spinning, setSpinning] = useState(false);
   const reelsRef = useRef<SlotsHandle | null>(null);
 
-  const spin = useCallback(async () => {
+  const spin = useCallback(async (): Promise<number | null> => {
+    if (spinning) return null;
     setOutcome(null);
-    const data = await place(betAmount);
-    if (!data) return;
-    // The reels animate to the grid the server already picked.
-    await reelsRef.current?.spin(data.payload.grid, data.payload.winSym, skipAnim);
-    setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
-  }, [place, betAmount, skipAnim]);
+    setSpinning(true);
+    try {
+      const data = await place(betAmount);
+      if (!data) return null;
+      // The reels animate to the grid the server already picked.
+      await reelsRef.current?.spin(data.payload.grid, data.payload.winSym, skipAnim || isAutoRunning('slots'));
+      setOutcome({ won: data.won, multiplier: data.multiplier, profit: data.payout - data.amount });
+      return Math.round((data.payout - data.amount) * 100) / 100;
+    } finally {
+      setSpinning(false);
+    }
+  }, [spinning, place, betAmount, skipAnim]);
+
+  const auto = useAutoBet('slots', spin);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
+  const working = busy || spinning;
+  const locked = working || auto.running;
 
   return (
     <GameFrame
@@ -295,10 +313,15 @@ export function SlotsGame({ onBack, initialBalance, onPickGame }: Props) {
           amount={betAmount}
           setAmount={setBetAmount}
           balance={balance}
-          disabled={busy}
+          disabled={locked}
           action={
-            <BetButton onClick={spin} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={busy}>
-              {busy ? 'Spinning…' : 'Spin'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void spin(); }}
+              disabled={auto.running ? false : balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={autoMode ? auto.running : working}
+              repeatable={autoMode}
+            >
+              {autoMode ? (auto.running ? 'Stop Auto' : 'Start Auto') : working ? 'Spinning…' : 'Spin'}
             </BetButton>
           }
         >
@@ -315,7 +338,7 @@ export function SlotsGame({ onBack, initialBalance, onPickGame }: Props) {
       <div className="slots">
         <SlotReels ref={reelsRef} />
         <p className="slots__verdict" data-won={outcome?.won || undefined}>
-          {busy
+          {working
             ? '…'
             : outcome
               ? outcome.won

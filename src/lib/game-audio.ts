@@ -12,19 +12,32 @@
  * to start audio before the user interacts with the page.
  */
 
+/*
+ * The on/off state used to live in its own localStorage key while the frame
+ * header's toggle wrote to the game-settings store — two truths, so muting in
+ * one place left cues playing. The preference now lives only in
+ * useGameSettings; these helpers are thin adapters kept so call sites do not
+ * change shape, and the master gain follows the store live.
+ */
+import { useGameSettings } from "@/lib/game-settings";
+
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 
-const STORAGE_KEY = "tols-sound-enabled";
-
 export function isSoundEnabled(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(STORAGE_KEY) !== "false";
+  return useGameSettings.getState().soundEnabled;
 }
 
 export function setSoundEnabled(on: boolean): void {
-  localStorage.setItem(STORAGE_KEY, String(on));
-  if (master) master.gain.value = on ? 0.5 : 0;
+  useGameSettings.getState().setSound(on);
+}
+
+// Keep a live master gain in step with the store, no matter which toggle
+// (frame header or floating button) the player used.
+if (typeof window !== "undefined") {
+  useGameSettings.subscribe((s) => {
+    if (master) master.gain.value = s.soundEnabled ? 0.5 : 0;
+  });
 }
 
 function audio(): AudioContext | null {

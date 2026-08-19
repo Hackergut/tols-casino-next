@@ -4,6 +4,7 @@ import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
   HomeIcon, Flame, Radio, LayoutGrid, Clock, Trophy,
 } from "lucide-react";
+import { getOriginal, type OriginalId } from "@/lib/originals-registry";
 
 export interface LobbyGame {
   id: string;
@@ -53,20 +54,39 @@ export interface OriginalGameDef {
   desc: string;
 }
 
-export const ORIGINAL_GAMES: OriginalGameDef[] = [
-  { id: "crash", name: "Crash", icon: TrendingUp, color: "#ef4444", desc: "Watch the multiplier rise — cash out before it crashes!" },
-  { id: "dice", name: "Dice", icon: Gamepad2, color: "#3b82f6", desc: "Roll over or under your target number for big multipliers." },
-  { id: "mines", name: "Mines", icon: Zap, color: "#f59e0b", desc: "Reveal safe tiles and avoid the mines." },
-  { id: "wheel", name: "Wheel", icon: CircleDot, color: "#8b5cf6", desc: "Spin the wheel for up to 9.9x multipliers." },
-  { id: "keno", name: "Keno", icon: Sparkles, color: "#ec4899", desc: "Pick 1-10 numbers from 80. Match to win!" },
-  { id: "limbo", name: "Limbo", icon: TrendingUp, color: "#14b8a6", desc: "Set your target multiplier — instant result." },
-  { id: "plinko", name: "Plinko", icon: RotateCcw, color: "#f97316", desc: "Drop the ball and watch it bounce to a win!" },
-  { id: "coinflip", name: "Coinflip", icon: Crown, color: "#eab308", desc: "Pick heads or tails — 1.98x payout." },
-  { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#22d3ee", desc: "Shoot a target and reveal its multiplier!" },
-  { id: "poolrush", name: "Pool Rush", icon: CircleDot, color: "#35d07f", desc: "Choose your break difficulty and sink up to seven balls." },
-  { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
-  { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
+/*
+ * Names and descriptions come from the Originals registry — the same source
+ * the game frames and lobby cards use. The previous hand-typed copy had
+ * drifted from the games themselves: Coinflip advertised "1.98x payout"
+ * while the server pays 1.88× (2 × TARGET_RTP at a 6% edge), and Keno said
+ * "numbers from 80" while the game draws from 40. Only the presentation
+ * bits (icon, accent colour) stay local.
+ */
+const ORIGINAL_STYLES: { id: OriginalId; icon: LucideIcon; color: string }[] = [
+  { id: "crash", icon: TrendingUp, color: "#ef4444" },
+  { id: "dice", icon: Gamepad2, color: "#3b82f6" },
+  { id: "mines", icon: Zap, color: "#f59e0b" },
+  { id: "wheel", icon: CircleDot, color: "#8b5cf6" },
+  { id: "keno", icon: Sparkles, color: "#ec4899" },
+  { id: "limbo", icon: TrendingUp, color: "#14b8a6" },
+  { id: "plinko", icon: RotateCcw, color: "#f97316" },
+  { id: "coinflip", icon: Crown, color: "#eab308" },
+  { id: "shoot", icon: Crosshair, color: "#22d3ee" },
+  { id: "poolrush", icon: CircleDot, color: "#35d07f" },
+  { id: "slots", icon: Sparkles, color: "#ccff00" },
+  { id: "roulette", icon: CircleDot, color: "#e0322f" },
 ];
+
+export const ORIGINAL_GAMES: OriginalGameDef[] = ORIGINAL_STYLES.map(({ id, icon, color }) => {
+  const meta = getOriginal(id);
+  return {
+    id,
+    icon,
+    color,
+    name: meta?.name ?? id,
+    desc: meta?.tagline ?? "",
+  };
+});
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "lobby", label: "Home", icon: HomeIcon },

@@ -22,11 +22,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { GameFrame, BetPanel, BetButton, StatRow } from '@/components/casino/GameFrame';
+import { GameFrame, BetPanel, BetButton, StatRow, NumberField } from '@/components/casino/GameFrame';
 import { useBet } from '@/components/casino/useBet';
+import { useAutoBet, isAutoRunning } from '@/components/casino/useAutoBet';
 import { useGameSettings, useGameSetting, useSkipAnimation } from '@/lib/game-settings';
 import type { OriginalId } from '@/lib/originals-registry';
-import { TARGET_RTP, MIN_WIN_MULTIPLIER } from '@/lib/game-math';
+import { TARGET_RTP, MIN_WIN_MULTIPLIER, MAX_TARGET_MULTIPLIER } from '@/lib/game-math';
 
 interface Props {
   onBack: () => void;
@@ -36,6 +37,13 @@ interface Props {
 }
 
 const GROWTH = 0.06; // multiplier = e^(GROWTH * seconds)
+/*
+ * The flight never runs longer than this. Without a cap, duration is
+ * log(stop)/GROWTH: a 100x round watched for 76 seconds, a 1000x round for
+ * nearly two minutes. Past the cap the curve time-compresses (the growth rate
+ * scales to fit), so the animation always lands exactly on the settled value.
+ */
+const MAX_FLIGHT_SECONDS = 6.5;
 
 export function CrashGame({ onBack, initialBalance, onPickGame }: Props) {
   const reduced = useSkipAnimation();
@@ -53,43 +61,57 @@ export function CrashGame({ onBack, initialBalance, onPickGame }: Props) {
 
   useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
 
-  const run = useCallback(async () => {
+  /**
+   * One round. Resolves to the net profit once the animation has settled, or
+   * null when the bet never settled (auto-bet stops on that signal).
+   */
+  const run = useCallback(async (): Promise<number | null> => {
     setOutcome(null);
     setMultiplier(1);
     setPoints([{ x: 0, y: 1 }]);
 
     const data = await place(betAmount, { cashOutAt: target });
-    if (!data) return;
+    if (!data) return null;
 
     const crashPoint = data.payload.crashPoint;
     // The round stops at whichever comes first: the committed cash-out or the
     // crash. Both are already decided server-side.
     const stopAt = data.won ? target : crashPoint;
+    const net = Math.round((data.payout - data.amount) * 100) / 100;
     const settle = () => {
       setMultiplier(stopAt);
       setPhase('done');
       setOutcome({ won: data.won, crashPoint, profit: data.payout - data.amount });
     };
 
-    if (reduced || stopAt <= 1) {
+    if (reduced || isAutoRunning('crash') || stopAt <= 1) {
       setPoints([{ x: 0, y: 1 }, { x: 1, y: stopAt }]);
       settle();
-      return;
+      return net;
     }
 
     setPhase('running');
-    const duration = Math.log(stopAt) / GROWTH; // seconds to reach stopAt
-    const start = performance.now();
-    const tick = (now: number) => {
-      const elapsed = (now - start) / 1000;
-      if (elapsed >= duration) { settle(); return; }
-      const m = Math.exp(GROWTH * elapsed);
-      setMultiplier(Math.floor(m * 100) / 100);
-      setPoints((prev) => (prev.length > 300 ? prev.slice(-300) : prev).concat({ x: elapsed, y: m }));
+    // Natural flight time to stopAt, time-compressed past the cap so a high
+    // round does not hold the player (or the auto loop) for minutes.
+    const duration = Math.min(MAX_FLIGHT_SECONDS, Math.log(stopAt) / GROWTH);
+    const growth = Math.log(stopAt) / duration;
+    await new Promise<void>((resolve) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const elapsed = (now - start) / 1000;
+        if (elapsed >= duration) { settle(); resolve(); return; }
+        const m = Math.exp(growth * elapsed);
+        setMultiplier(Math.floor(Math.min(m, stopAt) * 100) / 100);
+        setPoints((prev) => (prev.length > 300 ? prev.slice(-300) : prev).concat({ x: elapsed, y: m }));
+        raf.current = requestAnimationFrame(tick);
+      };
       raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
+    });
+    return net;
   }, [place, betAmount, target, reduced]);
+
+  const auto = useAutoBet('crash', run);
+  const autoMode = useGameSettings((st) => st.mode) === 'auto';
 
   // Chart path in a 0..100 viewBox.
   const maxX = Math.max(2, ...points.map((p) => p.x));
@@ -98,7 +120,7 @@ export function CrashGame({ onBack, initialBalance, onPickGame }: Props) {
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${(p.x / maxX) * 100} ${100 - (p.y / maxY) * 100}`)
     .join(' ');
 
-  const running = phase === 'running' || busy;
+  const running = phase === 'running' || busy || auto.running;
 
   return (
     <GameFrame
@@ -118,25 +140,32 @@ export function CrashGame({ onBack, initialBalance, onPickGame }: Props) {
           balance={balance}
           disabled={running}
           action={
-            <BetButton onClick={run} disabled={balance > 0 && (betAmount <= 0 || betAmount > balance)} busy={running}>
-              {running ? 'In flight…' : 'Bet'}
+            <BetButton
+              onClick={autoMode ? (auto.running ? auto.stop : () => { void auto.start(); }) : () => { void run(); }}
+              disabled={auto.running ? false : busy || balance > 0 && (betAmount <= 0 || betAmount > balance)}
+              busy={running}
+              repeatable={autoMode}
+            >
+              {autoMode
+                ? auto.running
+                  ? 'Stop Auto'
+                  : 'Start Auto'
+                : running
+                  ? 'In flight…'
+                  : 'Bet'}
             </BetButton>
           }
         >
           <div className="tols-field">
             <label htmlFor="crash-target">Auto cash-out at</label>
-            <input
+            <NumberField
               id="crash-target"
-              type="number"
-              inputMode="decimal"
               min={MIN_WIN_MULTIPLIER}
+              max={MAX_TARGET_MULTIPLIER}
               step={0.1}
               value={target}
               disabled={running}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setTarget(Number.isFinite(v) ? Math.max(MIN_WIN_MULTIPLIER, Math.min(1_000_000, v)) : MIN_WIN_MULTIPLIER);
-              }}
+              onCommit={(v) => setTarget(v)}
               className="tols-input font-mono"
             />
           </div>
