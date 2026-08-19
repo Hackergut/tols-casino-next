@@ -87,8 +87,12 @@ export async function watchDeposits(limit = 50): Promise<WatchResult> {
     take: limit,
   });
 
+  const passAChains = Array.from(new Set(withHash.map((d) => d.chain)));
+  const passAAddrRows = await db.depositAddress.findMany({ where: { chain: { in: passAChains } } });
+  const passAAddrByChain = new Map(passAAddrRows.map((r) => [r.chain, r]));
+
   for (const dep of withHash) {
-    const addrRow = await db.depositAddress.findUnique({ where: { chain: dep.chain } });
+    const addrRow = passAAddrByChain.get(dep.chain);
     if (!addrRow || !addrRow.enabled || !addrRow.address) {
       details.push({ txHash: dep.txHash, chain: dep.chain, status: "address not configured" });
       continue;
@@ -145,8 +149,12 @@ export async function watchDeposits(limit = 50): Promise<WatchResult> {
     byChain.set(d.chain, arr);
   }
 
+  const passBChains = Array.from(byChain.keys());
+  const passBAddrRows = await db.depositAddress.findMany({ where: { chain: { in: passBChains } } });
+  const passBAddrByChain = new Map(passBAddrRows.map((r) => [r.chain, r]));
+
   for (const [chain, deps] of byChain) {
-    const addrRow = await db.depositAddress.findUnique({ where: { chain } });
+    const addrRow = passBAddrByChain.get(chain);
     if (!addrRow || !addrRow.enabled || !addrRow.address) {
       for (const d of deps) details.push({ txHash: d.txHash, chain, status: "address not configured" });
       continue;
