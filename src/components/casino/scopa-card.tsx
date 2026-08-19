@@ -118,21 +118,29 @@ const GOLD = '#d7a10f';
 function ReFigure({ color }: { color: string }) {
   return (
     <g>
-      {/* crown */}
-      <path d="M -8 -33 L -8 -36.5 L -4 -33.5 L 0 -38.5 L 4 -33.5 L 8 -36.5 L 8 -33 Z" fill={GOLD} />
-      <rect x="-8.4" y="-33" width="16.8" height="2.8" rx="1.3" fill={GOLD} />
-      {/* head + beard */}
-      <circle cx="0" cy="-24" r="5.4" fill={color} />
-      <path d="M -4.8 -20.5 Q 0 -12 4.8 -20.5 Z" fill={color} />
+      {/* crown with central jewel */}
+      <path d="M -8 -33 L -8 -37 L -4 -33.5 L 0 -39 L 4 -33.5 L 8 -37 L 8 -33 Z" fill={GOLD} />
+      <rect x="-8.6" y="-33" width="17.2" height="2.8" rx="1.3" fill={GOLD} />
+      <circle cx="0" cy="-39.6" r="1.4" fill={GOLD} />
+      {/* head + hair */}
+      <circle cx="0" cy="-24" r="5.6" fill={color} />
+      <path d="M -5.4 -26 Q -6.8 -20 -4.6 -15.5 L -3.6 -15.5 Q -4.9 -19 -3.9 -24 Z" fill={color} />
+      <path d="M 5.4 -26 Q 6.8 -20 4.6 -15.5 L 3.6 -15.5 Q 4.9 -19 3.9 -24 Z" fill={color} />
+      {/* beard */}
+      <path d="M -5 -20.5 Q 0 -11 5 -20.5 Z" fill={color} />
       {/* robe */}
-      <path d="M -9.5 -13.5 L 9.5 -13.5 L 12.5 21 L -12.5 21 Z" fill={color} />
-      <path d="M -3 -13.5 L 3 -13.5 L 4.8 21 L -4.8 21 Z" fill="#000000" opacity="0.28" />
-      {/* mantle */}
-      <path d="M -9.5 -13.5 L -2 -13.5 L -4.5 21 L -12.5 21 Z" fill="#000000" opacity="0.18" />
-      {/* sword */}
-      <rect x="10" y="-30" width="2.2" height="44" rx="1.1" fill={GOLD} />
-      <rect x="8.1" y="-18" width="6" height="1.7" rx="0.85" fill={GOLD} />
-      <circle cx="11.1" cy="-31" r="2" fill={GOLD} />
+      <path d="M -10 -13.5 L 10 -13.5 L 13.5 22 L -13.5 22 Z" fill={color} />
+      <path d="M -3.2 -13.5 L 3.2 -13.5 L 5 22 L -5 22 Z" fill="#000000" opacity="0.3" />
+      {/* ermine-trimmed hem + belt */}
+      <path d="M -13.5 22 L 13.5 22 L 13.5 19.4 L -13.5 19.4 Z" fill={GOLD} opacity="0.92" />
+      <rect x="-10" y="1.5" width="20" height="2.4" rx="1.1" fill={GOLD} opacity="0.85" />
+      {/* sword in hand */}
+      <rect x="10.6" y="-30" width="2.2" height="42" rx="1.1" fill={GOLD} />
+      <rect x="8.6" y="-19" width="6.2" height="1.8" rx="0.9" fill={GOLD} />
+      <circle cx="11.7" cy="-31" r="2" fill={GOLD} />
+      {/* feet */}
+      <path d="M -13.5 22 L -9 22 L -9 25.2 L -14 25.2 Z" fill="#000000" opacity="0.25" />
+      <path d="M 9 22 L 13.5 22 L 14 25.2 L 9 25.2 Z" fill="#000000" opacity="0.25" />
     </g>
   );
 }
@@ -141,16 +149,25 @@ function DonnaFigure({ color }: { color: string }) {
   return (
     <g>
       {/* hair */}
-      <path d="M -5.2 -25 C -8 -20 -8.6 -12 -6.4 -5.5 L -3.6 -5.5 C -4.6 -10 -4.6 -17 -3.8 -23 Z" fill={color} />
-      <path d="M 5.2 -25 C 8 -20 8.6 -12 6.4 -5.5 L 3.6 -5.5 C 4.6 -10 4.6 -17 3.8 -23 Z" fill={color} />
+      <path d="M -5.4 -25 C -8.4 -20 -9 -12 -6.6 -5.5 L -3.6 -5.5 C -4.8 -10 -4.8 -17 -4 -23 Z" fill={color} />
+      <path d="M 5.4 -25 C 8.4 -20 9 -12 6.6 -5.5 L 3.6 -5.5 C 4.8 -10 4.8 -17 4 -23 Z" fill={color} />
+      {/* diadem */}
+      <rect x="-4.6" y="-27.6" width="9.2" height="2.2" rx="1.1" fill={GOLD} />
       {/* head */}
       <circle cx="0" cy="-23" r="5.2" fill={color} />
       {/* necklace */}
-      <circle cx="0" cy="-15.6" r="1" fill="none" stroke={GOLD} strokeWidth="0.9" />
+      <circle cx="0" cy="-15.4" r="1" fill="none" stroke={GOLD} strokeWidth="0.9" />
       {/* dress */}
-      <path d="M -8.5 -14 L 8.5 -14 L 14 21 L -14 21 Z" fill={color} />
-      <path d="M -3 -14 L 3 -14 L 5 21 L -5 21 Z" fill="#000000" opacity="0.26" />
-      <path d="M -8.5 -14 L -3 -14 L -5 21 L -14 21 Z" fill="#000000" opacity="0.16" />
+      <path d="M -9 -14 L 9 -14 L 14.5 21 L -14.5 21 Z" fill={color} />
+      <path d="M -3.2 -14 L 3.2 -14 L 5.5 21 L -5.5 21 Z" fill="#000000" opacity="0.26" />
+      <path d="M -14.5 21 L 14.5 21 L 14.5 18.6 L -14.5 18.6 Z" fill={GOLD} opacity="0.6" />
+      {/* arm holding a flower */}
+      <path d="M -9 -14 L -13 -7.5 L -10 -3.5 L -7.5 -5.5 L -6.5 -13 Z" fill={color} />
+      <path d="M -13.4 -8.2 L -16.2 -9.2 L -15 -5.8 Z" fill={color} />
+      <circle cx="-16.4" cy="-10.6" r="1.6" fill={GOLD} />
+      <circle cx="-16.4" cy="-10.6" r="0.65" fill={color} />
+      <path d="M -16.4 -9 L -16.4 -6.2" stroke="#2f7a3a" strokeWidth="0.9" fill="none" />
+      <path d="M -16.4 -7.6 L -14.2 -7" stroke="#2f7a3a" strokeWidth="0.8" fill="none" />
     </g>
   );
 }
@@ -159,21 +176,30 @@ function CavalloFigure({ color }: { color: string }) {
   return (
     <g fill={color}>
       {/* horse legs */}
-      <rect x="-10.4" y="15" width="2" height="7.4" rx="0.9" />
-      <rect x="-6.2" y="15" width="2" height="7.4" rx="0.9" />
-      <rect x="4.4" y="15" width="2" height="7.4" rx="0.9" />
-      <rect x="8.4" y="15" width="2" height="7.4" rx="0.9" />
+      <rect x="-11" y="15" width="2" height="8" rx="0.9" />
+      <rect x="-6.6" y="15" width="2" height="8" rx="0.9" />
+      <rect x="4.6" y="15" width="2" height="8" rx="0.9" />
+      <rect x="9" y="15" width="2" height="8" rx="0.9" />
       {/* body */}
-      <path d="M -13 15 Q -14 7.5 -4 7.5 L 9 7.5 Q 14 7.5 12.6 15 Z" />
+      <path d="M -13.5 15 Q -15 6 -4 6 L 9.5 6 Q 15 6 13 15 Z" />
       {/* neck + head */}
-      <path d="M 9.5 11 L 13.5 4.5 L 15.4 5.6 L 14.6 0.4 L 12.4 0.4 L 11.4 3.6 L 8.2 6.4 Z" />
-      <path d="M 12.6 0.4 L 13.6 -2.8 L 14.8 0.4 Z" />
+      <path d="M 10 11 L 13.5 2.5 L 15.6 3.6 L 14.8 -1.6 L 12.2 -1.6 L 11 2.6 L 8 6.5 Z" />
+      <path d="M 13 -1.6 L 14.2 -5.6 L 15.6 -1.6 Z" />
+      {/* mane */}
+      <path d="M 10 9 L 13.4 5 L 12.8 1.5 L 10.2 4.5 Z" opacity="0.5" />
       {/* tail */}
-      <path d="M -13 12.5 Q -17 12.5 -15.8 6.5 Q -14.8 9.5 -11.6 9.5 Z" />
-      {/* rider torso + head + arm */}
-      <path d="M -3.4 7.5 L 3.2 7.5 L 2.2 -0.5 L -2.2 -0.5 Z" />
-      <circle cx="0" cy="-3.6" r="2.7" />
-      <path d="M -2.8 1 L -5.4 4.2 L -2.8 5.2 Z" />
+      <path d="M -13.5 12 Q -18 12 -16.5 5.5 Q -15.5 9 -11.5 9.5 Z" />
+      {/* eye */}
+      <circle cx="13" cy="-0.6" r="0.55" fill="#f7f2e4" />
+      {/* rider torso + head */}
+      <path d="M -3.4 6 L 3.2 6 L 2.4 -1.5 L -2.4 -1.5 Z" />
+      <circle cx="0" cy="-4.6" r="2.8" />
+      {/* plumed hat */}
+      <path d="M -2.2 -6.8 L 2.2 -6.8 L 1.4 -8.8 L -1.4 -8.8 Z" />
+      <path d="M -1 -7.6 L -3.6 -10.2 L -0.6 -9 Z" fill={GOLD} />
+      {/* arm + reins */}
+      <path d="M -2.8 0 L -6 3 L -3 4.4 Z" />
+      <path d="M -6 3.6 L -8.6 5.4 L -7.6 6.6 L -5 4.8 Z" opacity="0.7" />
     </g>
   );
 }
@@ -222,6 +248,7 @@ function CornerIndices({ suit, value }: { suit: number; value: number }) {
 export function SicilianCard({ card, style }: { card: Card; style?: CSSProperties }) {
   const c = SCOPA_SUIT_COLOR[card.suit];
   const gradId = useId();
+  const grainId = useId();
   return (
     <svg
       viewBox="0 0 100 140"
@@ -237,8 +264,14 @@ export function SicilianCard({ card, style }: { card: Card; style?: CSSPropertie
           <stop offset="0" stopColor="#fbf7ec" />
           <stop offset="1" stopColor="#e8e1cc" />
         </linearGradient>
+        <pattern id={grainId} width="4" height="4" patternUnits="userSpaceOnUse">
+          <rect width="4" height="4" fill="transparent" />
+          <circle cx="0.6" cy="0.6" r="0.35" fill="#8a6d0b" opacity="0.05" />
+          <circle cx="2.8" cy="2.6" r="0.3" fill="#000000" opacity="0.035" />
+        </pattern>
       </defs>
       <rect x="0.5" y="0.5" width="99" height="139" rx="8" fill={`url(#${gradId})`} stroke="#00000022" />
+      <rect x="0.5" y="0.5" width="99" height="139" rx="8" fill={`url(#${grainId})`} />
       <rect x="3.5" y="3.5" width="93" height="133" rx="6" fill="none" stroke={c} strokeOpacity="0.22" />
       <CornerIndices suit={card.suit} value={card.value} />
       {card.value >= 8 ? (
