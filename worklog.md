@@ -2395,3 +2395,17 @@ interfaces) as the design system:
 - Shared Carousel child entrance switched to a critically damped spring.
 - Detail hero, "More promotions" rail and the Promotions list all reuse the
   same PromoCard / static hero chrome — one material language everywhere.
+
+## Promo cards: faded glassmorphism (2026-08-20)
+
+Cards were hard to read over the artwork — the translucent chrome was too
+transparent. Made the glass FADED (opaque, frosted):
+
+- Pills: rgba(12,13,17/.5) → rgb(9,10,14/.82), blur 16→18px, border white/.12→.18,
+  added drop shadow + brighter inner top edge
+- Play circle: .45 → .72 opacity, blur 14px, lime ring 60%
+- Bottom bar: gradient now 96% → 80% → 35% (was 92% → 55% → 0), blur 10px
+- New card-level veil (::after, z-index 0): bottom-weighted fade so the art
+  still glows at the top but every label sits on a quiet surface
+- Chrome (pills/play/bar) raised to z-index 1 above the veil
+- reduced-transparency variants bumped to match (≥94% opacity)
