@@ -51,24 +51,93 @@ export interface OriginalGameDef {
   icon: LucideIcon;
   color: string;
   desc: string;
+  rtp: number;
+  isNew?: boolean;
 }
 
 export const ORIGINAL_GAMES: OriginalGameDef[] = [
-  { id: "crash", name: "Crash", icon: TrendingUp, color: "#ef4444", desc: "Watch the multiplier rise — cash out before it crashes!" },
-  { id: "dice", name: "Dice", icon: Gamepad2, color: "#3b82f6", desc: "Roll over or under your target number for big multipliers." },
-  { id: "mines", name: "Mines", icon: Zap, color: "#f59e0b", desc: "Reveal safe tiles and avoid the mines." },
-  { id: "wheel", name: "Wheel", icon: CircleDot, color: "#8b5cf6", desc: "Spin the wheel for up to 9.9x multipliers." },
-  { id: "keno", name: "Keno", icon: Sparkles, color: "#ec4899", desc: "Pick 1-10 numbers from 40. Match 10 draws to win!" },
-  { id: "limbo", name: "Limbo", icon: TrendingUp, color: "#14b8a6", desc: "Set your target multiplier — instant result." },
-  { id: "plinko", name: "Plinko", icon: RotateCcw, color: "#f97316", desc: "Drop the ball and watch it bounce to a win!" },
-  { id: "coinflip", name: "Coinflip", icon: Crown, color: "#eab308", desc: "Pick heads or tails — 1.98x payout." },
-  { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#22d3ee", desc: "Shoot a target and reveal its multiplier!" },
-  { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
-  { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
-  { id: "blackjack", name: "Blackjack", icon: Club, color: "#22c55e", desc: "Classic 21 — hit, stand or double. Blackjack pays 3:2." },
-  { id: "pool-rush", name: "Pool Rush", icon: Disc, color: "#4ade80", desc: "Break the rack — pocket more balls for bigger multipliers." },
-  { id: "scopa", name: "Scopa", icon: Gem, color: "#f43f5e", desc: "Mini-scopa vs the house — capture, scopa, settebello." },
+  { id: "crash", name: "Crash", icon: TrendingUp, color: "#cdf32b", desc: "Watch the multiplier rise — cash out before it crashes!", rtp: 99 },
+  { id: "dice", name: "Dice", icon: Gamepad2, color: "#cdf32b", desc: "Roll over or under your target number for big multipliers.", rtp: 99 },
+  { id: "mines", name: "Mines", icon: Zap, color: "#cdf32b", desc: "Reveal safe tiles and avoid the mines.", rtp: 99 },
+  { id: "wheel", name: "Wheel", icon: CircleDot, color: "#cdf32b", desc: "Spin the wheel for up to 9.9x multipliers.", rtp: 97 },
+  { id: "keno", name: "Keno", icon: Sparkles, color: "#cdf32b", desc: "Pick 1-10 numbers from 40. Match 10 draws to win!", rtp: 96 },
+  { id: "limbo", name: "Limbo", icon: TrendingUp, color: "#cdf32b", desc: "Set your target multiplier — instant result.", rtp: 99 },
+  { id: "plinko", name: "Plinko", icon: RotateCcw, color: "#cdf32b", desc: "Drop the ball and watch it bounce to a win!", rtp: 97 },
+  { id: "coinflip", name: "Coinflip", icon: Crown, color: "#cdf32b", desc: "Pick heads or tails — 1.98x payout.", rtp: 99 },
+  { id: "shoot", name: "Target Shoot", icon: Crosshair, color: "#cdf32b", desc: "Shoot a target and reveal its multiplier!", rtp: 97 },
+  { id: "slots", name: "Slots", icon: Sparkles, color: "#cdf32b", desc: "Spin the reels — match symbols on the payline!", rtp: 97 },
+  { id: "roulette", name: "Roulette", icon: CircleDot, color: "#cdf32b", desc: "European single-zero — bet numbers, colours, and more!", rtp: 97.3 },
+  { id: "blackjack", name: "Blackjack", icon: Club, color: "#cdf32b", desc: "Classic 21 — hit, stand or double. Blackjack pays 3:2.", rtp: 99.5, isNew: true },
+  { id: "pool-rush", name: "Pool Rush", icon: Disc, color: "#cdf32b", desc: "Break the rack — pocket more balls for bigger multipliers.", rtp: 96.3, isNew: true },
+  { id: "scopa", name: "Scopa", icon: Gem, color: "#cdf32b", desc: "Mini-scopa vs the house — capture, scopa, settebello.", rtp: 97, isNew: true },
 ];
+
+export const ORIGINAL_IDS = new Set(ORIGINAL_GAMES.map((g) => g.id));
+
+export function originalArtUrl(id: string): string {
+  return `/games/originals/${id}.jpg`;
+}
+
+export function originalArtCandidates(id: string, extra?: string | null): string[] {
+  const urls = [
+    `/games/originals/${id}.jpg`,
+    `/games/originals/${id}.png`,
+    `/games/originals/${id}.svg`,
+  ];
+  if (extra && !urls.includes(extra)) urls.push(extra);
+  return urls;
+}
+
+export function originalToLobbyGame(g: OriginalGameDef): LobbyGame {
+  const art = originalArtUrl(g.id);
+  return {
+    id: g.id,
+    slug: g.id,
+    name: g.name,
+    provider: "TOLS",
+    category: "originals",
+    imageUrl: art,
+    thumbnailUrl: art,
+    rtp: g.rtp,
+    volatility: "medium",
+    isLive: false,
+    isNew: Boolean(g.isNew),
+    featured: true,
+    description: g.desc,
+    gameType: "original",
+    popularity: g.isNew ? 88 : 80,
+  };
+}
+
+/** Catalogue originals + the 14 TOLS Originals, in a stable shelf order. */
+export function mergeOriginals(apiGames: LobbyGame[]): LobbyGame[] {
+  const fromApi = apiGames.filter((g) => g.gameType === "original");
+  const bySlug = new Map(fromApi.map((g) => [g.slug, g]));
+  const ordered = ORIGINAL_GAMES.map((def) => {
+    const existing = bySlug.get(def.id);
+    const fallback = originalToLobbyGame(def);
+    if (existing) bySlug.delete(def.id);
+    if (!existing) return fallback;
+    return {
+      ...existing,
+      name: existing.name || fallback.name,
+      provider: "TOLS",
+      category: "originals",
+      gameType: "original",
+      imageUrl: fallback.imageUrl,
+      thumbnailUrl: fallback.thumbnailUrl,
+      rtp: existing.rtp ?? fallback.rtp,
+      isNew: existing.isNew || fallback.isNew,
+      description: existing.description || fallback.description,
+      featured: true,
+    };
+  });
+  const extra = [...bySlug.values()].map((g) => ({
+    ...g,
+    imageUrl: g.imageUrl.replace(/\.(png|svg)$/i, ".jpg"),
+  }));
+  return [...ordered, ...extra];
+}
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "lobby", label: "Lobby", icon: HomeIcon },

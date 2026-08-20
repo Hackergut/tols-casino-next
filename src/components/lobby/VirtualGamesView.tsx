@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { Gamepad2 } from "lucide-react";
-import { LobbyGameCard } from "./GameCards";
+import { GamesShelfGrid, LobbyGameCard } from "./GameCards";
 import { GamesGridSkeleton, EmptyGames } from "./LobbyView";
 import type { LobbyGame } from "./lobby-types";
 
@@ -117,11 +117,11 @@ export function VirtualGamesView({
           EuroVirtuals · {games.length} giochi
         </h3>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+      <GamesShelfGrid>
         {games.map((g) => (
           <LobbyGameCard key={g.id} game={g} onClick={() => onGameSelect(g)} />
         ))}
-      </div>
+      </GamesShelfGrid>
     </section>
   );
 }

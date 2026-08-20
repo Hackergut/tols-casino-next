@@ -73,9 +73,9 @@ export function DiceGame({ onBack, initialBalance }: Props) {
               </div>
               {showResult && result && (
                 <div className="mt-1">
-                  <span className={'text-xs font-bold ' + (result.won ? 'text-[#00e701]' : 'text-[#ff3b3b]')}>{result.won ? 'WIN' : 'LOSE'}</span>
+                  <span className={'text-xs font-bold ' + (result.won ? 'text-win' : 'text-loss')}>{result.won ? 'WIN' : 'LOSE'}</span>
                   {result.won && !reduced && (
-                    <span className="dice-float-win absolute left-1/2 -translate-x-1/2 text-[#00e701] text-sm font-bold whitespace-nowrap">+{result.payout.toFixed(2)}</span>
+                    <span className="dice-float-win absolute left-1/2 -translate-x-1/2 text-win text-sm font-bold whitespace-nowrap">+{result.payout.toFixed(2)}</span>
                   )}
                 </div>
               )}
@@ -92,7 +92,7 @@ export function DiceGame({ onBack, initialBalance }: Props) {
                 {/* Roll result marker */}
                 {showResult && result && !rolling && (
                   <div className="absolute top-0 bottom-0 z-10" style={{ left: rollPct + '%', transform: 'translateX(-50%)' }}>
-                    <div className={'w-0.5 h-full ' + (result.won ? 'bg-[#00e701]' : 'bg-[#ff3b3b]')} />
+                    <div className={'w-0.5 h-full ' + (result.won ? 'bg-win' : 'bg-loss')} />
                   </div>
                 )}
               </div>

@@ -17,13 +17,14 @@ import { HIT_TARGET, SPACE, cardWidth, type CardSize } from "./design-tokens";
 
 interface CarouselProps {
   title?: string;
+  subtitle?: string;
   icon?: ReactNode;
   action?: ReactNode;
   size?: CardSize;
   children: ReactNode[];
 }
 
-export function Carousel({ title, icon, action, size = "medium", children }: CarouselProps) {
+export function Carousel({ title, subtitle, icon, action, size = "medium", children }: CarouselProps) {
   const reduced = useReducedMotion();
   const scroller = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
@@ -78,7 +79,10 @@ export function Carousel({ title, icon, action, size = "medium", children }: Car
         <header className="mb-4 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             {icon}
-            {title && <h2 className="font-display truncate text-base uppercase text-white">{title}</h2>}
+            <div className="min-w-0">
+              {title && <h2 className="font-display truncate text-base uppercase text-white">{title}</h2>}
+              {subtitle && <p className="mt-0.5 truncate text-xs text-white/40">{subtitle}</p>}
+            </div>
           </div>
           <div className="flex shrink-0 items-center" style={{ gap: SPACE.sm }}>
             {action}

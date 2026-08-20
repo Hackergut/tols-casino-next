@@ -4,7 +4,7 @@
 // Italian category tabs, a "TOLS GAMES" carousel, and the live-bets feed.
 import { useEffect, useState } from "react";
 import { Gamepad2, Home, Layers, Radio, LayoutGrid, Search } from "lucide-react";
-import { LobbyGameCard } from "./GameCards";
+import { GamesShelfGrid, LobbyGameCard } from "./GameCards";
 import { Carousel } from "./Carousel";
 import { VirtualGamesView } from "./VirtualGamesView";
 import { timeAgo, type CasinoStats, type LiveBet, type LobbyGame } from "./lobby-types";
@@ -67,7 +67,7 @@ export function LiveBetRow({ bet }: { bet: LiveBet }) {
 
 export function GamesGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+    <div className="tols-games-grid">
       {Array.from({ length: 10 }).map((_, i) => (
         <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
       ))}
@@ -215,11 +215,11 @@ export function LobbyView({ games, loading, stats, liveBets, onGameClick }: {
               Carosello
             </button>
           </header>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+          <GamesShelfGrid>
             {filteredGames.map((game, i) => (
               <LobbyGameCard key={game.id || i} game={game} onClick={() => onGameClick(game)} />
             ))}
-          </div>
+          </GamesShelfGrid>
         </section>
       ) : (
         <Carousel

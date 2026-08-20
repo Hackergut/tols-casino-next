@@ -1,3 +1,108 @@
+/* Unified lobby game card — same chrome for Originals, slots, live, virtuals. */
+.tols-game-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  background: #0f1015;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    transform var(--dur-base, 240ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    border-color var(--dur-fast, 120ms) ease,
+    box-shadow var(--dur-base, 240ms) ease;
+}
+.tols-game-card:hover,
+.tols-game-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--color-lime) 42%, transparent);
+  box-shadow:
+    0 14px 32px rgb(0 0 0 / 0.45),
+    0 0 0 1px color-mix(in oklab, var(--color-lime) 18%, transparent);
+  outline: none;
+}
+.tols-game-card:active {
+  transform: translateY(-1px);
+}
+.tols-game-pill {
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  line-height: 1.2;
+}
+.tols-game-pill-original {
+  background: var(--color-lime);
+  color: var(--color-bg);
+}
+.tols-game-pill-new {
+  background: rgb(0 0 0 / 0.7);
+  color: var(--color-lime);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 55%, transparent);
+}
+.tols-game-pill-hot {
+  background: rgb(0 0 0 / 0.7);
+  color: #ffb52e;
+  border: 1px solid rgb(255 181 46 / 0.45);
+}
+.tols-game-pill-live {
+  background: rgb(0 0 0 / 0.7);
+  color: var(--color-lime);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 55%, transparent);
+}
+.tols-game-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--color-lime);
+  color: var(--color-bg);
+  opacity: 0;
+  transform: scale(0.78);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--color-lime) 35%, transparent);
+  transition: opacity 160ms ease, transform 200ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.tols-game-card:hover .tols-game-play,
+.tols-game-card:focus-visible .tols-game-play {
+  opacity: 1;
+  transform: scale(1);
+}
+.tols-games-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 640px) {
+  .tols-games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .tols-games-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1536px) {
+  .tols-games-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tols-game-card,
+  .tols-game-card:hover,
+  .tols-game-play {
+    transform: none;
+    transition: none;
+  }
+  .tols-game-card:hover .tols-game-play,
+  .tols-game-card:focus-visible .tols-game-play {
+    opacity: 1;
+  }
+}
+
 /* Originals rail + Blackjack — aligned to the modular game page layout. */
 
 .originals-stage {
@@ -36,8 +141,8 @@
   color: rgb(255 255 255 / 0.45);
 }
 .originals-rail-tabs button.active {
-  background: color-mix(in oklab, var(--color-lime) 16%, transparent);
-  color: var(--color-lime);
+  background: var(--color-lime);
+  color: var(--color-bg);
 }
 .originals-rail-card {
   padding: 0.875rem;
@@ -87,8 +192,9 @@
 }
 .bj-card-back {
   background:
-    repeating-linear-gradient(45deg, #1a3a28 0 6px, #0f2419 6px 12px);
-  border-color: color-mix(in oklab, var(--color-lime) 25%, transparent);
+    repeating-linear-gradient(45deg, #1a1a16 0 6px, #0d0d0b 6px 12px);
+  border-color: color-mix(in oklab, var(--color-lime) 35%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--color-lime) 18%, transparent);
 }
 .bj-rank {
   font-size: 1.15rem;
@@ -121,9 +227,11 @@
   border-radius: 1.25rem;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 50% 40%, #1a5c32, #0d3a1e 70%);
-  border: 10px solid #5c3a1e;
-  box-shadow: inset 0 0 40px rgb(0 0 0 / 0.35);
+    radial-gradient(ellipse at 50% 40%, #1c1e18, #0c0d0b 70%);
+  border: 10px solid #141412;
+  box-shadow:
+    inset 0 0 0 3px color-mix(in oklab, var(--color-lime) 55%, transparent),
+    inset 0 0 40px rgb(0 0 0 / 0.45);
 }
 .pool-pocket {
   position: absolute;
@@ -159,9 +267,9 @@
   width: 38%;
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #d4a574, #f5e6c8 40%, #fff 100%);
+  background: linear-gradient(90deg, #2a2a24, #e8ff00 85%, #fff 100%);
   transform: rotate(-8deg);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 .pool-banner {
   position: absolute;
@@ -171,7 +279,7 @@
 }
 .scopa-table {
   background:
-    radial-gradient(circle at 50% 0%, color-mix(in oklab, #1a5c32 35%, transparent), transparent 55%),
+    radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--color-lime) 12%, transparent), transparent 55%),
     var(--color-surface);
 }
 .scopa-card.scopa-playable {

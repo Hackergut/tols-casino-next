@@ -21,7 +21,13 @@ import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
 import { motion, useReducedMotion } from "framer-motion";
 import { LobbyGameCard } from "./GameCards";
-import type { LobbyGame } from "./lobby-types";
+import {
+  ORIGINAL_IDS,
+  mergeOriginals,
+  originalToLobbyGame,
+  ORIGINAL_GAMES,
+  type LobbyGame,
+} from "./lobby-types";
 
 interface Props {
   games: LobbyGame[];
@@ -298,14 +304,23 @@ function MegaJackpot() {
 }
 
 /* ── Page ── */
-export function HomeView({ games, loading, onGameClick, onNavigate, authenticated }: Props) {
-  const originals = games.filter((g) => g.gameType === "original");
+export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
+  const originals = mergeOriginals(games);
   const slots = games.filter((g) => g.gameType === "external_slot");
   const live = games.filter((g) => g.isLive);
 
-  const row = (title: string, icon: React.ReactNode, list: LobbyGame[], emptyLabel: string, target: string) =>
+  const onHero = (target: string) => {
+    if (ORIGINAL_IDS.has(target)) {
+      const def = ORIGINAL_GAMES.find((g) => g.id === target);
+      if (def) onGameClick(originalToLobbyGame(def));
+      return;
+    }
+    onNavigate(target);
+  };
+
+  const row = (title: string, icon: React.ReactNode, list: LobbyGame[], emptyLabel: string, target: string, subtitle?: string) =>
     list.length > 0 ? (
-      <Carousel title={title} size="large" icon={icon} action={<ViewAll onClick={() => onNavigate(target)} />}>
+      <Carousel title={title} subtitle={subtitle} size="large" icon={icon} action={<ViewAll onClick={() => onNavigate(target)} />}>
         {list.map((g) => <LobbyGameCard key={g.id} game={g} onClick={() => onGameClick(g)} />)}
       </Carousel>
     ) : (
@@ -321,18 +336,18 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
     <div className="space-y-7">
       <PromoStrip onNavigate={onNavigate} />
       <CategoryNav active="lobby" onNavigate={onNavigate} />
-      <HeroCarousel onSelect={onNavigate} />
+      <HeroCarousel onSelect={onHero} />
       <MegaJackpot />
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="tols-games-grid">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
           ))}
         </div>
       ) : (
         <>
-          {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
+          {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals", "Provably fair · same card on every title")}
           {row("Slots", <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, "slots", "slots")}
           {row("Live Casino", <Radio className="h-5 w-5 shrink-0 text-lime" />, live, "live tables", "live")}
 

@@ -24,12 +24,12 @@ export interface Promo {
 }
 
 export const PROMOS: Promo[] = [
-  { id: "dice-duel", title: "Dice Duel", subtitle: "New TOLS Original · 1.9% edge", cta: "Play", image: "/games/originals/dice.jpg", target: "dice" },
+  { id: "dice-duel", title: "Dice Duel", subtitle: "TOLS Original · 99% RTP", cta: "Play", image: "/games/originals/dice.jpg", target: "dice" },
+  { id: "blackjack", title: "Blackjack", subtitle: "Classic 21 · blackjack pays 3:2", cta: "Deal", image: "/games/originals/blackjack.jpg", target: "blackjack" },
+  { id: "pool-rush", title: "Pool Rush", subtitle: "New Original · break the rack for multipliers", cta: "Break", image: "/games/originals/pool-rush.jpg", target: "pool-rush" },
   { id: "tols-roulette", title: "TOLS Roulette", subtitle: "European single zero · 97.3% RTP", cta: "Play", image: "/games/originals/roulette.jpg", target: "roulette" },
   { id: "neon-sevens", title: "Neon Sevens", subtitle: "Three reels, one payline · 97% RTP", cta: "Spin", image: "/games/originals/slots.jpg", target: "slots" },
-  { id: "black-deck", title: "Black Deck", subtitle: "Table games, dealt in TOLS black", cta: "Play", image: "/games/originals/baccarat.jpg", target: "originals" },
   { id: "chip-storm", title: "Chip Storm", subtitle: "Flip a chip, double your stake", cta: "Play", image: "/games/originals/coinflip.jpg", target: "coinflip" },
-  { id: "weekly-race", title: "$100,000 Weekly Race", subtitle: "Climb the leaderboard — resets Monday", cta: "Enter", image: "/brand/hero-table.jpg", target: "rewards" },
 ];
 
 const INTERVAL = 5200;

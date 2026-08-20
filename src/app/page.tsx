@@ -6,13 +6,12 @@ import React, { useState, useCallback, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { Gamepad2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 import { CasinoHeader } from "@/components/lobby/CasinoHeader";
 import { CasinoSidebar } from "@/components/lobby/CasinoSidebar";
 import { CasinoFooter } from "@/components/lobby/CasinoFooter";
-import { GameLoading, LobbyGameCard } from "@/components/lobby/GameCards";
+import { GameLoading, GamesShelfGrid, LobbyGameCard } from "@/components/lobby/GameCards";
 import { GameDetailModal } from "@/components/lobby/GameDetailModal";
 import { VirtualGameModal } from "@/components/lobby/VirtualGameModal";
 import { LobbyView, GamesGridSkeleton, EmptyGames } from "@/components/lobby/LobbyView";
@@ -350,11 +349,11 @@ function CasinoPage() {
                 {loading ? (
                   <GamesGridSkeleton />
                 ) : displayedGames.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  <GamesShelfGrid>
                     {displayedGames.map((game, i) => (
                       <LobbyGameCard key={game.id || i} game={game} onClick={() => handleGameClick(game)} />
                     ))}
-                  </div>
+                  </GamesShelfGrid>
                 ) : (
                   <EmptyGames label="No games available" />
                 )}

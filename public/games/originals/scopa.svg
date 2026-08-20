@@ -7,23 +7,30 @@
       <stop offset="0" stop-color="#e8ff00" stop-opacity="0.18"/>
       <stop offset="1" stop-color="#e8ff00" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="vig" cx="0.5" cy="0.45" r="0.75">
+      <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+    </radialGradient>
+    <linearGradient id="obj" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#3a3a34"/><stop offset="1" stop-color="#0f0f0d"/>
+    </linearGradient>
   </defs>
   <rect width="1280" height="880" fill="url(#bg)"/>
   <rect width="1280" height="880" fill="url(#uglow)"/>
   <g transform="translate(430,250) rotate(-12)">
-    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#c81e1e" stroke-width="4"/>
-    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#c81e1e">7</text>
-    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#c81e1e">♦</text>
+    <rect width="150" height="210" rx="16" fill="url(#obj)" stroke="#e8ff00" stroke-width="3"/>
+    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#e8ff00">7</text>
+    <circle cx="75" cy="140" r="18" fill="#e8b84a"/>
   </g>
   <g transform="translate(560,230) rotate(-4)">
-    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#141414" stroke-width="4"/>
-    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#141414">A</text>
-    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#141414">♠</text>
+    <rect width="150" height="210" rx="16" fill="url(#obj)" stroke="#e8ff00" stroke-width="3"/>
+    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#e8ff00">A</text>
+    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#e8ff00">♠</text>
   </g>
   <g transform="translate(700,250) rotate(10)">
-    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#c81e1e" stroke-width="4"/>
-    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#c81e1e">3</text>
-    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#c81e1e">♥</text>
+    <rect width="150" height="210" rx="16" fill="url(#obj)" stroke="#e8ff00" stroke-width="3"/>
+    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#e8ff00">3</text>
+    <circle cx="75" cy="140" r="18" fill="#e8b84a"/>
   </g>
-  <text x="640" y="780" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="42" fill="#e8ff00">SCOPA</text>
+  <rect width="1280" height="880" fill="url(#vig)"/>
 </svg>
