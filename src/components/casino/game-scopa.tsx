@@ -6,6 +6,7 @@ import { PostedAmount } from "@/casino/components/casino/PostedAmount";
 import { GameBetControls } from "@/components/casino/game-shared";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { useOriginalsSession } from "@/lib/originals-client";
+import { PlayingCard } from "@/components/casino/playing-card";
 
 type ScopaCard = { r: number; s: number };
 
@@ -19,18 +20,15 @@ const SUIT_NAME = ["Denari", "Coppe", "Bastoni", "Spade"];
 const RANKS = ["", "A", "2", "3", "4", "5", "6", "7", "F", "C", "R"];
 
 function ScopaCardView({ card, onClick, disabled }: { card: ScopaCard; onClick?: () => void; disabled?: boolean }) {
-  const red = card.s === 0 || card.s === 1;
   return (
-    <button
-      type="button"
+    <PlayingCard
+      rank={RANKS[card.r]}
+      suit={SUITS[card.s]}
+      red={card.s === 0 || card.s === 1}
       onClick={onClick}
       disabled={disabled || !onClick}
-      className={`bj-card scopa-card ${red ? "bj-red" : "bj-black"} ${onClick && !disabled ? "scopa-playable" : ""}`}
       title={SUIT_NAME[card.s]}
-    >
-      <span className="bj-rank">{RANKS[card.r]}</span>
-      <span className="bj-suit">{SUITS[card.s]}</span>
-    </button>
+    />
   );
 }
 

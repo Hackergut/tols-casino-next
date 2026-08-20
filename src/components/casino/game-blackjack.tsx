@@ -6,6 +6,7 @@ import { PostedAmount } from "@/casino/components/casino/PostedAmount";
 import { GameBetControls } from "@/components/casino/game-shared";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { useOriginalsSession } from "@/lib/originals-client";
+import { PlayingCard } from "@/components/casino/playing-card";
 
 type BjCard = { r: number; s: number };
 
@@ -18,15 +19,13 @@ const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 function CardView({ card, hidden }: { card?: BjCard; hidden?: boolean }) {
-  if (hidden || !card) {
-    return <div className="bj-card bj-card-back" />;
-  }
-  const red = card.s === 1 || card.s === 2;
+  if (hidden || !card) return <PlayingCard hidden />;
   return (
-    <div className={`bj-card ${red ? "bj-red" : "bj-black"}`}>
-      <span className="bj-rank">{RANKS[card.r]}</span>
-      <span className="bj-suit">{SUITS[card.s]}</span>
-    </div>
+    <PlayingCard
+      rank={RANKS[card.r]}
+      suit={SUITS[card.s]}
+      red={card.s === 1 || card.s === 2}
+    />
   );
 }
 

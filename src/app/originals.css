@@ -208,36 +208,82 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  min-height: 5.5rem;
+  min-height: 5.8rem;
   align-items: center;
 }
 .bj-card {
-  width: 3.55rem;
-  height: 5rem;
-  border-radius: 0.4rem;
-  background: url("/games/props/card-face.jpg") center / cover no-repeat;
-  border: 1px solid rgb(0 0 0 / 0.18);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 16px rgb(0 0 0 / 0.25);
-  padding-top: 0.15rem;
+  position: relative;
+  width: 3.85rem;
+  height: 5.4rem;
+  border-radius: 0.42rem;
+  border: none;
+  padding: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 30% 18%, #ffffff, transparent 42%),
+    linear-gradient(165deg, #fffef8 0%, #f4efe4 100%);
+  box-shadow:
+    inset 0 0 0 1.5px #cdf32b,
+    inset 0 0 0 3.4px #fffef8,
+    0 10px 18px rgb(0 0 0 / 0.4);
+  color: #141414;
 }
+.bj-card::after {
+  content: "TOLS";
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, -50%);
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: rgb(20 20 16 / 0.08);
+  pointer-events: none;
+}
+button.bj-card {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: default;
+  font: inherit;
+}
+button.bj-card.scopa-playable { cursor: pointer; }
 .bj-card-back {
   background:
     url("/games/props/card-back.jpg") center / cover no-repeat;
-  border-color: color-mix(in oklab, var(--color-lime) 40%, transparent);
   box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, var(--color-lime) 22%, transparent),
-    0 8px 16px rgb(0 0 0 / 0.35);
+    inset 0 0 0 1.5px color-mix(in oklab, var(--color-lime) 75%, #111),
+    0 10px 18px rgb(0 0 0 / 0.4);
 }
+.bj-card-back::after { content: none; }
+.bj-corner {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.92;
+}
+.bj-corner-tl { top: 0.28rem; left: 0.26rem; }
+.bj-corner-br { right: 0.26rem; bottom: 0.28rem; transform: rotate(180deg); }
 .bj-rank {
-  font-size: 1.15rem;
+  font-size: 0.78rem;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -0.03em;
 }
-.bj-suit { font-size: 1.25rem; line-height: 1.1; }
+.bj-rank-wide { font-size: 0.62rem; letter-spacing: -0.05em; }
+.bj-suit { font-size: 0.72rem; line-height: 1; }
+.bj-pip {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  line-height: 1;
+  padding-bottom: 0.15rem;
+}
 .bj-red { color: #c81e1e; }
 .bj-black { color: #141414; }
 .bj-banner {
