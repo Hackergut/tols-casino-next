@@ -48,7 +48,7 @@ export function PoolRushGame({ onBack, initialBalance }: Props) {
         multiplier: data.multiplier,
         payout: data.payout,
       });
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory((prev) =>
         [{ count: Number((data.payload as { count?: number }).count ?? 0), result: data.won ? "win" : "lose", payout: data.payout }, ...prev].slice(0, 10),
       );

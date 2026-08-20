@@ -110,6 +110,8 @@ function CasinoPage() {
    * with the pre-bet snapshot it read before the bet existed.
    */
   const balance = useBalanceStore((s) => s.balance);
+  const bonusBalance = useBalanceStore((s) => s.bonusBalance);
+  const wageringRemaining = useBalanceStore((s) => s.wageringRemaining);
   const [games, setGames] = useState<LobbyGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CasinoStats | null>(null);
@@ -182,6 +184,7 @@ function CasinoPage() {
       if (me?.data) {
         setAuthed(true);
         useBalanceStore.getState().applyPoll(Number(me.data.balance ?? 0), token);
+        useBalanceStore.getState().applyBonus(Number(me.data.bonusBalance ?? 0), Number(me.data.wageringRemaining ?? 0));
         setSessionUser({
           id: me.data.id, username: me.data.username, email: me.data.email,
           avatarColor: me.data.avatarColor, level: me.data.level ?? 1,
@@ -203,7 +206,10 @@ function CasinoPage() {
     setSessionUser(null);
     try {
       const w = await (await fetch("/api/wallet")).json();
-      if (w?.success) useBalanceStore.getState().applyPoll(Number(w.data.balance ?? 0), token);
+      if (w?.success) {
+        useBalanceStore.getState().applyPoll(Number(w.data.balance ?? 0), token);
+        useBalanceStore.getState().applyBonus(Number(w.data.bonusBalance ?? 0), Number(w.data.wageringRemaining ?? 0));
+      }
     } catch { /* ignore */ }
   }, [setSessionUser, setSessionWallet]);
 
@@ -383,7 +389,8 @@ function CasinoPage() {
     // the outgoing game may have settled bets.
     const props = {
       onBack: handleBackFromGame,
-      initialBalance: balance,
+      // Playable balance = real + locked bonus, so a bonus-only player can bet.
+      initialBalance: balance + bonusBalance,
       onPickGame: handleSwitchGame,
     };
     switch (activeGame) {
@@ -418,6 +425,8 @@ function CasinoPage() {
       <VideoLoader ready={routeReady && authed !== null && !loading} />
       <CasinoHeader
         balance={balance}
+        bonusBalance={bonusBalance}
+        wageringRemaining={wageringRemaining}
         onMenuToggle={() => setMenuOpen(!menuOpen)}
         menuOpen={menuOpen}
         onProfileNavigate={handleProfileNavigate}

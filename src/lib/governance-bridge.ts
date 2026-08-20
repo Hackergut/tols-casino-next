@@ -185,6 +185,7 @@ export type BridgeEventType =
   | "casino.health"
   | "casino.support_message"
   | "casino.support_ticket"
+  | "casino.bonus_released"
   | "bridge.sync_request";
 
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
@@ -234,10 +235,11 @@ export type InboundBridgeEvent =
   | { type: "governance.player_block"; payload: { userId: string; blocked: boolean } }
   | { type: "governance.support_reply"; payload: { ticketId: string; userId: string; content: string; agentName?: string } }
   | { type: "governance.support_close"; payload: { ticketId: string; userId: string } }
+  | { type: "governance.bonus_credit"; payload: { userId: string; amount: number; multiplier?: number; reason?: string; expiresAt?: string } }
   | { type: "ping"; payload: Record<string, unknown> };
 
 export function isKnownInboundType(t: string): boolean {
-  return ["governance.rtp_update","governance.limits_update","governance.feature_flag","governance.session_invalidate","governance.wallet_adjust","governance.player_block","governance.support_reply","governance.support_close","ping"].includes(t);
+  return ["governance.rtp_update","governance.limits_update","governance.feature_flag","governance.session_invalidate","governance.wallet_adjust","governance.player_block","governance.support_reply","governance.support_close","governance.bonus_credit","ping"].includes(t);
 }
 
 // ── SSO: cross-domain token (Tower ↔ Casino) — .tols.fun subdomains ─────

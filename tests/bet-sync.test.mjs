@@ -254,12 +254,14 @@ test("rapid bets are serialised instead of dropped or settled out of order", () 
 
 test("the hook reserves queued stakes and compares them in cents", () => {
   assert.match(hook, /const stakeCents = toCents\(stake\)/);
-  assert.match(hook, /stakeCents \+ reservedCents\.current > toCents\(currentBalance\)/);
+  // The guard compares against the playable balance (real + locked bonus),
+  // so bonus-only players can bet.
+  assert.match(hook, /stakeCents \+ reservedCents\.current > toCents\(available\)/);
   assert.match(hook, /reservedCents\.current \+= stakeCents/);
 });
 
 test("an empty client wallet requests a zero-value practice round", () => {
-  assert.match(hook, /const practice = toCents\(currentBalance\) <= 0/);
+  assert.match(hook, /const practice = toCents\(available\) <= 0/);
   assert.match(hook, /const stake = practice \? 0 : Math\.round\(amount \* 100\) \/ 100/);
 });
 

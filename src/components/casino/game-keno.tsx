@@ -164,7 +164,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
       const hitCount = Number((data.payload as { hits?: number }).hits ?? 0);
       setPhase('done');
       setResult({ won: data.won, payout: data.payout, hits: hitCount });
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory(prev => [{ result: data.won ? 'win' : 'lose', picks: selected.size, hits: hitCount, payout: data.payout }, ...prev].slice(0, 10));
     } catch {
       setPhase('betting');

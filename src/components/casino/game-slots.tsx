@@ -265,7 +265,7 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
       await reelsRef.current?.spin(payload.grid, payload.winSym);
       const r = { won: data.won, multiplier: data.multiplier, payout: data.payout };
       setResult(r);
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory((prev) =>
         [{ multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
       );

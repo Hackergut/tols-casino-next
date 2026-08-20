@@ -4,6 +4,8 @@ import { getEngine } from "@/lib/game-engines";
 import { BetError } from "@/lib/settle-bet";
 import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
+import { debitBet } from "@/lib/bonus";
+import { pushBridgeEvent } from "@/lib/governance-bridge";
 import { after } from "next/server";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import type { BetResponse, InteractiveRoundState } from "@/shared/types";
@@ -26,17 +28,17 @@ function asPayload(raw: string): RoundPayload {
 }
 
 async function debit(userId: string, amount: number): Promise<number> {
-  const debited = await db.casinoWallet.updateMany({
-    where: { userId, balance: { gte: amount } },
-    data: {
-      balance: { decrement: amount },
-      totalWagered: { increment: amount },
-      xp: { increment: Math.floor(amount) },
-    },
-  });
-  if (debited.count === 0) throw new BetError("Insufficient balance", 400);
-  const w = await db.casinoWallet.findUnique({ where: { userId }, select: { balance: true } });
-  return w?.balance ?? 0;
+  const d = await debitBet(userId, amount);
+  if (d.insufficient) throw new BetError("Insufficient balance", 400);
+  if (d.released > 0) {
+    after(() => pushBridgeEvent("casino.bonus_released", { userId, amount: d.released, balance: d.balance }).catch(() => {}));
+  }
+  return d.balance;
+}
+
+async function walletBonus(userId: string): Promise<{ bonusBalance: number; wageringRemaining: number }> {
+  const w = await db.casinoWallet.findUnique({ where: { userId }, select: { bonusBalance: true, wageringRemaining: true } });
+  return { bonusBalance: w?.bonusBalance ?? 0, wageringRemaining: w?.wageringRemaining ?? 0 };
 }
 
 async function creditPayout(userId: string, payout: number, won: boolean): Promise<number> {
@@ -114,7 +116,7 @@ export async function startRound(opts: {
 
   const wallet = await db.casinoWallet.findUnique({ where: { userId: opts.userId } });
   if (!wallet) throw new BetError("No wallet", 400);
-  const check = engine.validateBet(opts.payload ?? {}, wallet.balance, opts.amount);
+  const check = engine.validateBet(opts.payload ?? {}, wallet.balance + wallet.bonusBalance, opts.amount);
   if (!check.valid) throw new BetError(check.error || "Invalid bet", 400);
 
   await expireStaleRounds(opts.userId, opts.game);
@@ -182,6 +184,8 @@ export async function startRound(opts: {
 
   publish({ event: "round:started", userId: opts.userId, data: { gameId: opts.game, roundId: row.id } });
   publish({ event: "balance:update", userId: opts.userId, data: { balance: newBalance } });
+  const bonus = await walletBonus(opts.userId);
+  publish({ event: "bonus:update", userId: opts.userId, data: bonus });
 
   return {
     betId: row.id,
@@ -196,6 +200,9 @@ export async function startRound(opts: {
     clientSeed: seed,
     nonce,
     newBalance,
+    bonusBalance: bonus.bonusBalance,
+    wageringRemaining: bonus.wageringRemaining,
+    availableBalance: newBalance + bonus.bonusBalance,
     controlApplied: null,
     pending: state.status === "pending",
   };
@@ -278,6 +285,8 @@ export async function applyAction(opts: {
   }
 
   publish({ event: "balance:update", userId: opts.userId, data: { balance: newBalance } });
+  const bonus = await walletBonus(opts.userId);
+  publish({ event: "bonus:update", userId: opts.userId, data: bonus });
 
   return {
     betId: row.id,
@@ -292,6 +301,9 @@ export async function applyAction(opts: {
     clientSeed: row.clientSeed,
     nonce: row.nonce,
     newBalance,
+    bonusBalance: bonus.bonusBalance,
+    wageringRemaining: bonus.wageringRemaining,
+    availableBalance: newBalance + bonus.bonusBalance,
     controlApplied: null,
     pending: state.status === "pending",
   };

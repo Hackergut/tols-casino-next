@@ -46,7 +46,7 @@ export function BlackjackGame({ onBack, initialBalance }: Props) {
 
   useEffect(() => {
     const latest = result ?? round;
-    if (latest?.newBalance != null) setBalance(latest.newBalance);
+    if (latest?.newBalance != null) setBalance(latest.availableBalance ?? latest.newBalance);
   }, [result, round]);
 
   const deal = useCallback(() => {

@@ -119,7 +119,7 @@ export function LimboGame({ onBack, initialBalance }: Props) {
         setTimeout(() => {
           const r = { won, roll: finalRoll, payout: data.payout, multiplier: data.multiplier };
           setResult(r);
-          setBalance(data.newBalance);
+          setBalance(data.availableBalance ?? data.newBalance);
           setHistory(prev => [{ roll: finalRoll, target, result: won ? 'win' : 'lose', payout: won ? data.payout : -betAmount }, ...prev].slice(0, 10));
           setRolling(false);
 

@@ -86,28 +86,50 @@ function Money({ n }: { n: number }) {
 
 /* ── Wallet ── */
 function WalletSection({ onBack }: { onBack: () => void }) {
-  const wallet = useJson<{ balance: number; currency: string; vipLevel: number; totalWagered: number; totalWon: number; depositAddresses: string }>("/api/wallet");
+  const wallet = useJson<{ balance: number; bonusBalance?: number; wageringRemaining?: number; availableBalance?: number; currency: string; vipLevel: number; totalWagered: number; totalWon: number; depositAddresses: string }>("/api/wallet");
   const deposits = useJson<Array<{ id: string; amount?: number; status?: string; createdAt?: string }>>("/api/deposits");
   const w = wallet.data;
+  const bonus = w?.bonusBalance ?? 0;
+  const wagering = w?.wageringRemaining ?? 0;
   let addresses: Record<string, string> = {};
   try { addresses = w?.depositAddresses ? JSON.parse(w.depositAddresses) : {}; } catch { /* ignore */ }
 
   return (
-    <Shell title="Wallet" subtitle="Balance, deposit addresses and history" icon={Wallet} onBack={onBack}>
+    <Shell title="Wallet" subtitle="Balance, bonus money and history" icon={Wallet} onBack={onBack}>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className={CARD} style={CARD_STYLE}>
           <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Balance</p>
           <p className="mt-1 text-2xl font-bold text-lime"><Money n={w?.balance ?? 0} /></p>
         </div>
         <div className={CARD} style={CARD_STYLE}>
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Total Wagered</p>
-          <p className="mt-1 text-2xl font-bold text-white"><Money n={w?.totalWagered ?? 0} /></p>
+          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Bonus</p>
+          <p className="mt-1 text-2xl font-bold text-vip"><Money n={bonus} /></p>
         </div>
         <div className={CARD} style={CARD_STYLE}>
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Total Won</p>
-          <p className="mt-1 text-2xl font-bold text-white"><Money n={w?.totalWon ?? 0} /></p>
+          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Playable</p>
+          <p className="mt-1 text-2xl font-bold text-white"><Money n={w?.availableBalance ?? (w?.balance ?? 0) + bonus} /></p>
         </div>
       </div>
+
+      {bonus > 0 && (
+        <div className={CARD} style={CARD_STYLE}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>Bonus money</p>
+              <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
+                <span className="font-bold text-vip">${bonus.toFixed(2)}</span> locked bonus
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Wagering remaining</p>
+              <p className="mt-1 text-sm font-semibold" style={{ color: "rgba(255,255,255,0.75)" }}>${wagering.toFixed(2)}</p>
+            </div>
+          </div>
+          <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Bonus money is real value, but for TOLS it is locked until you have wagered the required amount. It is still playable — every bet counts toward release — and winnings are always credited as real, withdrawable balance.
+          </p>
+        </div>
+      )}
 
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Deposit Addresses</p>

@@ -120,7 +120,7 @@ export function DiceGame({ onBack, initialBalance }: Props) {
       if (interval) clearInterval(interval);
       const payload = data.payload as { roll: number; target: number; isOver: boolean };
       const r = { won: data.won, roll: payload.roll, payout: data.payout, multiplier: data.multiplier };
-      setResult(r); setAnimatedRoll(payload.roll); setBalance(data.newBalance);
+      setResult(r); setAnimatedRoll(payload.roll); setBalance(data.availableBalance ?? data.newBalance);
       setPfData({ serverSeedHash: data.serverSeedHash, clientSeed: data.clientSeed, nonce: data.nonce });
       setHistory(prev => [{ roll: payload.roll, target, isOver, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 15));
       setTimeout(() => setShowResult(true), 50);

@@ -269,7 +269,7 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
       const payload = data.payload as { winning: number };
       await wheelRef.current?.spin(payload.winning);
       setResult({ winning: payload.winning, won: data.won, payout: data.payout });
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory((prev) =>
         [{ winning: payload.winning, result: data.won ? 'win' : 'lose', payout: data.payout }, ...prev].slice(0, 12),
       );

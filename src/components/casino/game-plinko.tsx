@@ -492,7 +492,7 @@ export function PlinkoGame({ onBack, initialBalance }: Props) {
         payout: data.payout,
       };
       setResult(r);
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory((prev) =>
         [{ slot: payload.slot, multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
       );

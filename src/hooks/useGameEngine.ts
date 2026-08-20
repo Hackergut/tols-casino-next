@@ -17,7 +17,12 @@ export function useGameEngine(gameId: string) {
 
   const emit = (data: BetResponse) => {
     window.dispatchEvent(new CustomEvent("tols:bet", { detail: data }));
-    window.dispatchEvent(new CustomEvent("tols:balance", { detail: data.newBalance }));
+    window.dispatchEvent(new CustomEvent("tols:balance", { detail: data.availableBalance ?? data.newBalance }));
+    window.dispatchEvent(
+      new CustomEvent("tols:bonus", {
+        detail: { bonusBalance: data.bonusBalance ?? 0, wageringRemaining: data.wageringRemaining ?? 0 },
+      }),
+    );
   };
 
   const placeBet = useCallback(

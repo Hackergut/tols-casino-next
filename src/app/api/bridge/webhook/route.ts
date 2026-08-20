@@ -3,6 +3,7 @@ import { verifyRuntimeBridgeSignature, isKnownInboundType } from "@/lib/governan
 import { db } from "@/lib/db";
 import { publish } from "@/lib/realtime";
 import { serializeSupportMessage } from "@/lib/support";
+import { creditBonus } from "@/lib/bonus";
 
 /**
  * POST /api/bridge/webhook — Governance Tower → Casino
@@ -176,6 +177,29 @@ export async function POST(req: NextRequest) {
           publish({ event: "support:ticket", userId: ticket.userId, data: { ticket: { id: ticket.id, status: "closed" } } });
         }
         break;
+      }
+      case "governance.bonus_credit": {
+        // Governance credits bonus money to a player. It is real value, but for
+        // the casino it is locked until the wagering requirement is met.
+        const { userId, amount, multiplier, reason, expiresAt } = payload as {
+          userId?: string;
+          amount?: number;
+          multiplier?: number;
+          reason?: string;
+          expiresAt?: string;
+        };
+        if (!userId || typeof amount !== "number" || amount <= 0) {
+          return NextResponse.json({ success: false, error: "userId and a positive amount are required" }, { status: 400 });
+        }
+        const credited = await creditBonus({
+          userId: String(userId),
+          amount,
+          multiplier,
+          source: "governance",
+          reason: reason ?? "Governance bonus credit",
+          expiresAt: expiresAt ?? null,
+        });
+        return NextResponse.json({ success: true, ok: true, type, credited, ts: new Date().toISOString() });
       }
       case "governance.feature_flag": {
         // Just audited; actual flag store is future work

@@ -11,6 +11,7 @@ export type RealtimeEvent =
   | { event: "auto-bet:status"; userId: string; data: Record<string, unknown> | object }
   | { event: "support:message"; userId: string; data: { ticketId: string; message: unknown } }
   | { event: "support:ticket"; userId: string; data: { ticket: unknown } }
+  | { event: "bonus:update"; userId: string; data: { bonusBalance: number; wageringRemaining: number } }
   | { event: "error"; userId: string; data: { code: string; message?: string } };
 
 type Handler = (e: RealtimeEvent) => void;

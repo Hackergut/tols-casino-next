@@ -305,6 +305,11 @@ model CasinoWallet {
   userId           String     @unique
   user             CasinoUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   balance          Float      @default(1000)
+  // Bonus money: real value credited by Governance/operators, but locked (not
+  // withdrawable) until the wagering requirement is met. `wageringRemaining`
+  // is the total stake still to be wagered before the bonus releases.
+  bonusBalance      Float      @default(0)
+  wageringRemaining Float      @default(0)
   currency         String     @default("USDT")
   vipLevel         Int        @default(1)
   xp               Int        @default(0)
@@ -472,6 +477,28 @@ model CasinoWithdrawal {
   processedDate DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+}
+
+// ==================== BONUS MONEY / WAGERING ====================
+// Bonus grants credited by Governance (or operators). The principal is real
+// value but is held as non-withdrawable bonus until `amount * multiplier` has
+// been wagered. Wagering progress is aggregated on CasinoWallet.wageringRemaining;
+// when it reaches zero, every active credit releases into `balance`.
+
+model BonusCredit {
+  id         String    @id @default(cuid())
+  userId     String
+  amount     Float
+  multiplier Float     @default(20) // playthrough: wagered must reach amount * multiplier
+  status     String    @default("active") // active | released | forfeited
+  source     String    @default("governance") // governance | operator | promo
+  reason     String    @default("")
+  expiresAt  DateTime?
+  releasedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId, status])
 }
 
 // ==================== CASINO CHAT ====================

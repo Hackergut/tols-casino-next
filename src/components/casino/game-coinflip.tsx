@@ -101,7 +101,7 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
       const payload = data.payload as { flip: string };
       const r = { won: data.won, flip: payload.flip, payout: data.payout, multiplier: data.multiplier };
       setResult(r);
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory(prev => [{ result: r.won ? 'win' : 'lose', payout: r.payout, choice, flip: payload.flip }, ...prev].slice(0, 10));
     } catch { /* ignore */ }
     setTimeout(() => setFlipping(false), 2800);
