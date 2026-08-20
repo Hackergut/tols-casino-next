@@ -41,7 +41,7 @@ import ts from "typescript";
 function loadStore() {
   const src = read("src/lib/balance-store.ts");
   const js = ts.transpileModule(src, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: 1, target: 9 },
   }).outputText;
 
   // Minimal zustand: create(fn) -> a store object exposing getState-like access.
@@ -56,16 +56,16 @@ function loadStore() {
     return { getState: get };
   };
 
-  const module = { exports: {} };
-  new Function("require", "module", "exports", js)(
+  const testModule = { exports: {} };
+  new Function("require", "testModule", "exports", js)(
     (name) => {
       if (name === "zustand") return { create };
       throw new Error(`unexpected import: ${name}`);
     },
-    module,
-    module.exports,
+    testModule,
+    testModule.exports,
   );
-  return module.exports;
+  return testModule.exports;
 }
 
 const { useBalanceStore } = loadStore();

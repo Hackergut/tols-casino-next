@@ -7,7 +7,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 function loadPoolMath() {
   const js = ts.transpileModule(read("src/lib/pool-rush.ts"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: 1, target: 9 },
   }).outputText;
   const common = { exports: {} };
   new Function("module", "exports", js)(common, common.exports);

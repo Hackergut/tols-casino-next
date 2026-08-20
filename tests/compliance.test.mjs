@@ -23,7 +23,7 @@ const source = readFileSync(join(here, "../src/lib/compliance.ts"), "utf8");
 // the types with the compiler the repo already depends on is enough to import
 // it — no bundler, no test framework, no new dependency.
 const js = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  compilerOptions: { module: 99, target: 9 },
 }).outputText;
 
 const mod = await import(

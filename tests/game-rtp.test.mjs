@@ -23,7 +23,7 @@ import ts from "typescript";
 const here = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(here, "../src/lib/game-math.ts"), "utf8");
 const js = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  compilerOptions: { module: 99, target: 9 },
 }).outputText;
 const M = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
 
