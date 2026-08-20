@@ -2498,6 +2498,8 @@ The platform CSP `frame-ancestors` allowed only 'self', Telegram and the
 Governance Tower — correct for production, but it also blocked Arena/E2B's
 live preview, which embeds the dev server in an iframe: the server answered
 200 while the browser refused to render the frame. `DEV_FRAME_ANCESTORS` now
-appends `https://arena.ai https://*.arena.ai https://*.e2b.app` only when
-NODE_ENV=development (i.e. `next dev`); production keeps the strict list.
+appends `https:` (any secure embedder, since the parent origin of Arena's
+viewer iframe is not enumerable from inside the sandbox) plus the explicit
+Arena/E2B and localhost hosts, only when NODE_ENV=development (i.e.
+`next dev`); production keeps the strict Telegram/Tower-only list.
 Existing CSP tests still pass (tests/telegram.test.mjs).

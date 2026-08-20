@@ -40,7 +40,7 @@ const BRIDGE_CONNECT = TOWER_HOST ? ` ${TOWER_HOST}` : "";
  */
 const DEV_FRAME_ANCESTORS =
   process.env.NODE_ENV === "development"
-    ? " https://arena.ai https://*.arena.ai https://*.e2b.app"
+    ? " https: https://arena.ai https://*.arena.ai https://*.e2b.app http://localhost:* http://127.0.0.1:*"
     : "";
 
 const securityHeaders = [
