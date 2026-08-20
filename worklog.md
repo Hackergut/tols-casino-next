@@ -2421,3 +2421,15 @@ Real cause of low visibility was the over-darkened art. Fixed both:
   blur 16px + bright inner top edge, play circle /0.45, bar = classic scrim
   (92% bottom → 60% mid → 15% top, blur 8px), whole-card veil reduced to a
   light legibility gradient (5% → 38%)
+
+## Promo cards: glass no longer cuts the card in half (2026-08-20)
+
+The bottom glass bar was too tall (44px top padding + 2 lines ≈ half the 16:9
+card) and its backdrop-blur band visually bisected the artwork.
+
+- Bar compacted: padding 2.75rem → 0.8rem/0.72rem, align-items center — now
+  occupies only the bottom ~30% of the card
+- Removed backdrop-filter from the bar (the blur band was the "cut"); the
+  gradient alone keeps text legible (transparent 0% → 55% → 94% bottom)
+- Removed the ::before top hairline (another visible horizontal cut line)
+- Whole-card veil lightened slightly (bottom 30%)
