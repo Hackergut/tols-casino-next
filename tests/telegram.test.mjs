@@ -30,7 +30,7 @@ const root = join(here, "..");
 async function load(rel) {
   const src = readFileSync(join(root, rel), "utf8");
   const js = ts.transpileModule(src, {
-    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: 99, target: 9 },
   }).outputText;
   return import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
 }

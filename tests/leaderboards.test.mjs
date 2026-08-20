@@ -7,7 +7,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 
 function loadEngine() {
   const js = ts.transpileModule(read("src/lib/leaderboard-engine.ts"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: { module: 1, target: 9 },
   }).outputText;
   const exports = {};
   const common = { exports };

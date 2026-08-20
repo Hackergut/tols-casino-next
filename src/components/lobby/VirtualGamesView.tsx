@@ -26,7 +26,7 @@ export function VirtualGamesView({
     // Standard "fetch on mount" pattern: set loading then start the request.
     // Lint is wrong here — there's no cascade; this is the documented use of
     // a one-shot effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true);
     setError(null);
     fetch("/api/eurovirtuals/games")

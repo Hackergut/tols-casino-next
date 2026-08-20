@@ -229,7 +229,7 @@ function MentionAutocomplete({
       .slice(0, 8);
   }, [members, query]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset selection when query changes
+
   useEffect(() => { setSelectedIndex(0); }, [query]);
 
   useEffect(() => {
@@ -1145,13 +1145,13 @@ export function CrmChatPage() {
   const directList = filteredChannels.filter((c) => c.type === 'direct');
 
   // Auto-select first channel when channels become available
-  /* eslint-disable react-hooks/set-state-in-effect */
+
   useEffect(() => {
     if (channels.length > 0 && !activeChannelId) {
       setActiveChannelId(channels[0].id);
     }
   }, [channels, activeChannelId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+
 
   // Scroll to bottom on new messages
   useEffect(() => {

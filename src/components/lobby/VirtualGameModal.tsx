@@ -49,10 +49,10 @@ export function VirtualGameModal({
     // We launch a provider iframe on mount and on game change. The async
     // launch() function calls setState inside the .then chain (not
     // synchronously), but the lint rule still flags the entry point.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     void launch();
     // launch depends on game.id; we intentionally only fire once per game.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [game.id]);
 
   useEffect(() => {

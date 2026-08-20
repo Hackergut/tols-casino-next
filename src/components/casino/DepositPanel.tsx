@@ -264,7 +264,7 @@ export default function DepositPanel() {
             {/* QR */}
             <div className="relative rounded-2xl bg-white p-3" style={{ boxShadow: `0 0 0 2px ${color}55, 0 12px 30px rgba(0,0,0,.4)` }}>
               {intent?.qr ? (
-                // eslint-disable-next-line @next/next/no-img-element
+
                 <img src={intent.qr} alt="Deposit QR" className="h-44 w-44 sm:h-52 sm:w-52" style={{ opacity: loading ? 0.5 : 1, transition: "opacity .2s" }} />
               ) : (
                 <div className="h-44 w-44 animate-pulse rounded-lg bg-black/10 sm:h-52 sm:w-52" />
