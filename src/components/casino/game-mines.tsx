@@ -14,74 +14,12 @@ interface Props {
 
 const MINE_OPTIONS = [1, 3, 5, 10, 15, 24];
 
-/* ── SVG Icons ── */
 function GemIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 40 40" className={className} fill="none">
-      <defs>
-        <linearGradient id="gem-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#dcff6b" />
-          <stop offset="50%" stopColor="var(--color-win)" />
-          <stop offset="100%" stopColor="#b8e600" />
-        </linearGradient>
-        <linearGradient id="gem-shine" x1="0.2" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-        </linearGradient>
-      </defs>
-      <polygon points="20,4 36,16 28,36 12,36 4,16" fill="url(#gem-grad)" stroke="#b8e600" strokeWidth="0.5" />
-      <polygon points="20,4 36,16 20,18 4,16" fill="url(#gem-shine)" opacity="0.7" />
-      <line x1="20" y1="4" x2="20" y2="36" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" />
-      <line x1="4" y1="16" x2="36" y2="16" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-      <line x1="20" y1="18" x2="12" y2="36" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
-      <line x1="20" y1="18" x2="28" y2="36" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
-      <polygon points="20,8 26,14 20,16 14,14" fill="rgba(255,255,255,0.3)" />
-    </svg>
-  );
+  return <img src="/games/props/gem.jpg" alt="" draggable={false} className={`mines-prop ${className ?? ""}`} />;
 }
 
 function BombIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 40 40" className={className} fill="none">
-      <defs>
-        <radialGradient id="bomb-grad" cx="0.4" cy="0.35" r="0.6">
-          <stop offset="0%" stopColor="#555" />
-          <stop offset="100%" stopColor="#141412" />
-        </radialGradient>
-        <radialGradient id="bomb-highlight" cx="0.3" cy="0.25" r="0.3">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-        </radialGradient>
-      </defs>
-      {/* Spikes */}
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => (
-        <line
-          key={i}
-          x1={20 + 12 * Math.cos((angle * Math.PI) / 180)}
-          y1={22 + 12 * Math.sin((angle * Math.PI) / 180)}
-          x2={20 + 16 * Math.cos((angle * Math.PI) / 180)}
-          y2={22 + 16 * Math.sin((angle * Math.PI) / 180)}
-          stroke="var(--color-loss)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-      ))}
-      {/* Body */}
-      <circle cx="20" cy="22" r="12" fill="url(#bomb-grad)" stroke="#333" strokeWidth="1" />
-      <circle cx="20" cy="22" r="11" fill="url(#bomb-highlight)" />
-      {/* Fuse */}
-      <path d="M20,10 Q22,6 25,8 Q27,5 24,3" stroke="#888" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-      {/* Spark */}
-      <circle cx="24" cy="3" r="2" fill="var(--color-pending)">
-        <animate attributeName="r" values="1.5;3;1.5" dur="0.4s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="1;0.5;1" dur="0.4s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="24" cy="3" r="3" fill="none" stroke="var(--color-pending)" strokeWidth="0.5" opacity="0.5">
-        <animate attributeName="r" values="2;5;2" dur="0.6s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.6;0;0.6" dur="0.6s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
+  return <img src="/games/props/mine.jpg" alt="" draggable={false} className={`mines-prop ${className ?? ""}`} />;
 }
 
 /* ── Confetti Particle ── */
@@ -378,8 +316,8 @@ export function MinesGame({ onBack, initialBalance }: Props) {
                                   }
                           }
                         >
-                          {showSafe && <GemIcon className="mines-gem-sparkle h-7 w-7 sm:h-8 sm:w-8" />}
-                          {(hitMine || showMine) && <BombIcon className="h-6 w-6 sm:h-7 sm:w-7" />}
+                          {showSafe && <GemIcon className="mines-gem-sparkle" />}
+                          {(hitMine || showMine) && <BombIcon />}
                           {/* gem sparkle burst */}
                           {showSafe && !reduced && (
                             <span className="pointer-events-none absolute inset-0">

@@ -101,7 +101,7 @@ export function PoolRushGame({ onBack, initialBalance }: Props) {
                 style={{
                   left: `${b.x}%`,
                   top: `${b.y}%`,
-                  background: BALL_COLORS[b.id],
+                  backgroundColor: BALL_COLORS[b.id],
                   color: b.id === 7 ? "#fff" : "#141412",
                 }}
               >

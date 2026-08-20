@@ -42,15 +42,14 @@ function HitRing({ hits, total }: { hits: number; total: number }) {
 function DrawBall({ number, isHit, delay }: { number: number; isHit: boolean; delay: number }) {
   return (
     <div
-      className="flex items-center justify-center rounded-full font-bold text-xs"
+      className="keno-ball-art flex items-center justify-center rounded-full font-bold text-xs"
       style={{
         width: 32,
         height: 32,
-        background: isHit ? 'linear-gradient(135deg, var(--color-pending), #ca8a04)' : 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))',
-        border: isHit ? '1.5px solid color-mix(in oklab, var(--color-pending) 50%, transparent)' : '1px solid rgba(255,255,255,0.1)',
-        color: isHit ? 'var(--color-bg)' : 'rgba(255,255,255,0.6)',
+        border: isHit ? '1.5px solid var(--color-lime)' : '1px solid transparent',
+        color: isHit ? 'var(--color-lime)' : '#fff',
         animation: 'keno-ball-drop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ' + delay + 'ms both',
-        boxShadow: isHit ? '0 0 12px color-mix(in oklab, var(--color-pending) 30%, transparent)' : 'none',
+        boxShadow: isHit ? '0 0 12px color-mix(in oklab, var(--color-lime) 40%, transparent)' : 'none',
       }}
     >
       {number}
@@ -92,10 +91,9 @@ const KENO_STYLES = [
   '.keno-num-drawn { animation: keno-drawn-fadein 0.35s ease-out both; }',
   '.keno-bounce { animation: keno-bounce-ball 0.6s ease-in-out infinite; }',
   '.keno-number-tile:hover:not(:disabled) {',
-  '  background: linear-gradient(135deg, color-mix(in oklab, var(--color-lime) 6%, transparent), color-mix(in oklab, var(--color-lime) 2%, transparent)) !important;',
-  '  box-shadow: 0 0 12px color-mix(in oklab, var(--color-lime) 10%, transparent);',
+  '  box-shadow: 0 0 14px color-mix(in oklab, var(--color-lime) 28%, transparent);',
   '  transform: translateY(-1px);',
-  '  border-color: color-mix(in oklab, var(--color-lime) 20%, transparent) !important;',
+  '  border-color: color-mix(in oklab, var(--color-lime) 45%, transparent) !important;',
   '}',
 ].join('\n');
 
@@ -202,11 +200,10 @@ export function KenoGame({ onBack, initialBalance }: Props) {
             <div className="flex items-center gap-2">
               {phase === 'drawing' && currentDrawBall && (
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm keno-bounce"
+                  className="keno-ball-art keno-bounce w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
                   style={{
-                    background: 'linear-gradient(135deg, var(--color-pending), #ca8a04)',
-                    color: 'var(--color-bg)',
-                    boxShadow: '0 0 20px color-mix(in oklab, var(--color-pending) 40%, transparent), 0 0 40px color-mix(in oklab, var(--color-pending) 15%, transparent)',
+                    color: 'var(--color-lime)',
+                    boxShadow: '0 0 20px color-mix(in oklab, var(--color-lime) 40%, transparent)',
                   }}
                 >
                   {currentDrawBall}
@@ -279,34 +276,31 @@ export function KenoGame({ onBack, initialBalance }: Props) {
 
                 if (isHit) {
                   tileStyle = {
-                    background: 'linear-gradient(135deg, color-mix(in oklab, var(--color-pending) 30%, transparent), color-mix(in oklab, var(--color-pending) 12%, transparent))',
-                    border: '1.5px solid color-mix(in oklab, var(--color-pending) 50%, transparent)',
-                    color: 'var(--color-pending)',
-                    boxShadow: '0 0 15px color-mix(in oklab, var(--color-pending) 20%, transparent), inset 0 0 8px color-mix(in oklab, var(--color-pending) 10%, transparent)',
+                    border: '2px solid var(--color-lime)',
+                    color: 'var(--color-lime)',
+                    boxShadow: '0 0 16px color-mix(in oklab, var(--color-lime) 40%, transparent)',
                   };
-                  tileClass = 'keno-num-hit';
+                  tileClass = 'keno-num-hit keno-ball-art';
                 } else if (isDrawnNotSelected) {
                   tileStyle = {
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
                     border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.6)',
+                    color: 'rgba(255,255,255,0.55)',
+                    opacity: 0.72,
                   };
-                  tileClass = 'keno-num-drawn';
+                  tileClass = 'keno-num-drawn keno-ball-art';
                 } else if (isSelected) {
                   tileStyle = {
-                    background: 'linear-gradient(135deg, color-mix(in oklab, var(--color-lime) 18%, transparent), color-mix(in oklab, var(--color-lime) 6%, transparent))',
-                    border: '1.5px solid color-mix(in oklab, var(--color-lime) 40%, transparent)',
+                    border: '2px solid var(--color-lime)',
                     color: 'var(--color-lime)',
-                    boxShadow: '0 0 10px color-mix(in oklab, var(--color-lime) 10%, transparent)',
+                    boxShadow: '0 0 12px color-mix(in oklab, var(--color-lime) 28%, transparent)',
                   };
-                  tileClass = 'keno-num-selected';
+                  tileClass = 'keno-num-selected keno-ball-art';
                 } else {
                   tileStyle = {
-                    background: 'linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    color: 'rgba(255,255,255,0.35)',
-                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)',
+                    border: '1px solid transparent',
+                    color: 'rgba(255,255,255,0.72)',
                   };
+                  tileClass = 'keno-ball-art';
                 }
 
                 return (
@@ -315,7 +309,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
                     onClick={() => toggleNumber(n)}
                     disabled={phase !== 'betting'}
                     className={
-                      'aspect-square rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 ' +
+                      'aspect-square rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 ' +
                       tileClass + ' ' +
                       (phase === 'betting' ? 'keno-number-tile cursor-pointer' : 'cursor-default')
                     }
@@ -388,15 +382,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
           )}
 
           {phase === 'done' && (
-            <button
-              onClick={reset}
-              className="w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-200"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                color: 'rgba(255,255,255,0.7)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
+            <button onClick={reset} className="g-btn g-btn-secondary">
               Play Again
             </button>
           )}

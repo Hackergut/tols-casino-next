@@ -335,12 +335,7 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
           {/* Spin Button */}
           <button onClick={spin}
             disabled={spinning || betAmount <= 0 || betAmount > balance}
-            className="w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-30"
-            style={{
-              background: spinning ? 'color-mix(in oklab, var(--color-lime) 30%, transparent)' : 'var(--color-lime)',
-              color: 'var(--color-bg)',
-              boxShadow: spinning ? 'none' : '0 0 20px color-mix(in oklab, var(--color-lime) 30%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}
+            className="g-btn g-btn-play"
           >
             {spinning ? (
               <span className="flex items-center justify-center gap-2">

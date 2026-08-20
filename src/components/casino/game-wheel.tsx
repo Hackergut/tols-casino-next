@@ -329,14 +329,7 @@ export function WheelGame({ onBack, initialBalance }: Props) {
           <button
             onClick={spin}
             disabled={spinning || betAmount <= 0 || betAmount > balance}
-            className="w-full py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all disabled:opacity-30 hover:shadow-lg"
-            style={{
-              background: spinning
-                ? 'rgba(255,255,255,0.05)'
-                : 'linear-gradient(135deg, var(--color-lime) 0%, #c2e600 100%)',
-              color: spinning ? 'rgba(255,255,255,0.3)' : 'var(--color-bg)',
-              boxShadow: spinning ? 'none' : '0 4px 24px color-mix(in oklab, var(--color-lime) 25%, transparent)',
-            }}
+            className="g-btn g-btn-play"
           >
             {spinning ? 'Spinning…' : 'Spin Wheel'}
           </button>

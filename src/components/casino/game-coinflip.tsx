@@ -34,8 +34,8 @@ function Coin3D({ flipping, result, choice, animKey }: {
         key={`coin-${animKey}`}
         className="relative"
         style={{
-          width: '180px',
-          height: '180px',
+          width: '200px',
+          height: '200px',
           transformStyle: 'preserve-3d',
           transform: !flipping || reduced ? `rotateX(${restRotation}deg)` : undefined,
           animation: flipping && !reduced ? `coinFlip3D ${result === 'heads' ? '2.2s' : '2.6s'} cubic-bezier(0.22, 0.61, 0.36, 1) forwards` : 'none',
@@ -116,7 +116,7 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
         <div className="lg:col-span-3">
           <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
             {/* Coin Stage */}
-            <div className="flex flex-col items-center justify-center py-10 relative">
+            <div className="coinflip-stage flex flex-col items-center justify-center py-10 relative">
               {/* Ambient light */}
               <div className="absolute inset-0" style={{
                 background: result && !flipping

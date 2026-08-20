@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { GameBetControls } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
@@ -66,6 +66,12 @@ export function DiceGame({ onBack, initialBalance }: Props) {
         <div className="space-y-2">
           {/* Result Display + Slider — main game element */}
           <div className={'dice-area ' + (showResult && result?.won ? 'win' : '') + (showResult && result && !result.won ? ' loss' : '')}>
+            <img
+              src="/games/props/die.jpg"
+              alt=""
+              draggable={false}
+              className={`dice-prop${rolling && !reduced ? ' rolling' : ''}`}
+            />
             {/* Result number */}
             <div className="mb-3 text-center">
               <div className={'dice-result ' + (rolling ? '' : showResult && result?.won ? 'win' : showResult && result && !result.won ? 'loss' : 'idle') + (showResult && result && !reduced ? ' dice-slam' : '')}>

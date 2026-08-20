@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { RotateCcw, Target } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
@@ -37,61 +37,19 @@ function TargetSVG({ multiplier, revealed, hit, isResult, won, shooting, index }
           animation: !revealed && !shooting && !reduced ? `targetBob ${2 + index * 0.15}s ease-in-out infinite` : 'none',
         } as React.CSSProperties}
       >
-        <svg width="120" height="120" viewBox="0 0 120 120" className="w-full h-full">
-          <defs>
-            <radialGradient id={`targetGlow-${index}`} cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={color} stopOpacity={isResult && won ? 0.4 : 0.15} />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </radialGradient>
-            <filter id={`targetFilter-${index}`}>
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-          </defs>
-
-          {/* Hit animation wrapper */}
-          <g style={{
+        <div
+          className="shoot-target-art"
+          style={{
             animation: reduced ? 'none' : hit ? 'targetShatter 0.5s ease-out forwards' : revealed && !hit ? 'targetReveal 0.4s ease-out forwards' : 'none',
-          }}>
-            {/* Glow */}
-            <circle cx="60" cy="60" r="55" fill={`url(#targetGlow-${index})`} />
-
-            {/* Outer ring */}
-            <circle cx="60" cy="60" r="50" fill="none" stroke={color} strokeWidth="2" strokeOpacity={revealed ? 0.6 : 0.2} />
-            <circle cx="60" cy="60" r="40" fill={revealed ? `${color}15` : 'rgba(255,255,255,0.03)'} stroke={color} strokeWidth="1.5" strokeOpacity={revealed ? 0.5 : 0.15} />
-            <circle cx="60" cy="60" r="28" fill={revealed ? `${color}22` : 'rgba(255,255,255,0.02)'} stroke={color} strokeWidth="1.5" strokeOpacity={revealed ? 0.4 : 0.1} />
-            <circle cx="60" cy="60" r="16" fill={revealed ? color : 'rgba(255,255,255,0.05)'} fillOpacity={revealed ? 0.3 : 1} />
-
-            {/* Bullseye center */}
-            <circle cx="60" cy="60" r="5" fill={revealed ? color : 'rgba(255,255,255,0.15)'} />
-
-            {/* Crosshair lines */}
-            {!revealed && (
-              <>
-                <line x1="60" y1="5" x2="60" y2="20" stroke={color} strokeWidth="1" strokeOpacity="0.3" />
-                <line x1="60" y1="100" x2="60" y2="115" stroke={color} strokeWidth="1" strokeOpacity="0.3" />
-                <line x1="5" y1="60" x2="20" y2="60" stroke={color} strokeWidth="1" strokeOpacity="0.3" />
-                <line x1="100" y1="60" x2="115" y2="60" stroke={color} strokeWidth="1" strokeOpacity="0.3" />
-              </>
-            )}
-
-            {/* Multiplier text or "?" */}
-            {revealed ? (
-              <text x="60" y="60" textAnchor="middle" dominantBaseline="central"
-                fill={color} fontSize="18" fontWeight="800" fontFamily="monospace"
-                filter={`url(#targetFilter-${index})`}
-              >
-                {multiplier}x
-              </text>
-            ) : (
-              <text x="60" y="60" textAnchor="middle" dominantBaseline="central"
-                fill="rgba(255,255,255,0.35)" fontSize="28" fontWeight="800"
-              >
-                ?
-              </text>
-            )}
-          </g>
-        </svg>
+            filter: revealed
+              ? `drop-shadow(0 0 18px ${color})`
+              : 'drop-shadow(0 10px 18px rgb(0 0 0 / 0.45))',
+          }}
+        >
+          <span className="shoot-target-label" style={{ color: revealed ? color : 'rgba(255,255,255,0.85)' }}>
+            {revealed ? `${multiplier}x` : '?'}
+          </span>
+        </div>
 
         {/* Impact particles */}
         {isResult && won && revealed && !reduced && (
@@ -225,14 +183,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
             <div className="py-8 px-4">
               {gameState === 'idle' ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-4">
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                    style={{
-                      background: 'color-mix(in oklab, var(--color-lime) 8%, transparent)',
-                      border: '2px solid color-mix(in oklab, var(--color-lime) 20%, transparent)',
-                    }}
-                  >
-                    <Target className="w-10 h-10" style={{ color: 'color-mix(in oklab, var(--color-lime) 50%, transparent)' }} />
-                  </div>
+                  <div className="shoot-target-art" aria-hidden />
                   <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
                     Set your target and press Start to begin
                   </p>
