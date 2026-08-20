@@ -9,7 +9,13 @@ export async function GET() {
   const guard = await requireAdmin();
   if ("response" in guard) return guard.response;
 
-  const rows = await db.depositAddress.findMany();
+  const rows = (await db.depositAddress.findMany()) as Array<{
+    chain: string;
+    address: string;
+    memo: string;
+    minConfirmations: number;
+    enabled: boolean;
+  }>;
   const byChain = new Map(rows.map((r) => [r.chain, r]));
 
   // Return every supported chain, filling in blanks for unconfigured ones.
@@ -25,7 +31,7 @@ export async function GET() {
         minConfirmations: r?.minConfirmations ?? 2,
         enabled: r?.enabled ?? false,
       };
-    })
+    }),
   );
 }
 

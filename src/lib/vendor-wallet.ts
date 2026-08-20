@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+
+function isPrismaUnique(e: unknown): boolean {
+  return typeof e === "object" && e !== null && "code" in e && (e as { code: unknown }).code === "P2002";
+}
 
 /*
  * Generic seamless-wallet core for external game vendors / aggregators.
@@ -111,10 +114,10 @@ export async function applyBet(input: TxInput): Promise<{ balance: number; txId:
       });
       return { balance: w!.balance, txId: row.id, replay: false };
     });
-  } catch (e) {
+  } catch (e: unknown) {
     // Concurrent duplicate: the unique insert lost the race and rolled the
     // debit back. Return the winner's stored result — no double debit.
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (isPrismaUnique(e)) {
       const r = await db.vendorTxn.findUnique({ where: { vendor_externalTxId: { vendor: input.vendor, externalTxId: input.externalTxId } } });
       if (r) return { balance: r.balanceAfter, txId: r.id, replay: true };
     }
@@ -144,8 +147,8 @@ export async function applyWin(input: TxInput): Promise<{ balance: number; txId:
       });
       return { balance: w!.balance, txId: row.id, replay: false };
     });
-  } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+  } catch (e: unknown) {
+    if (isPrismaUnique(e)) {
       const r = await db.vendorTxn.findUnique({ where: { vendor_externalTxId: { vendor: input.vendor, externalTxId: input.externalTxId } } });
       if (r) return { balance: r.balanceAfter, txId: r.id, replay: true };
     }
