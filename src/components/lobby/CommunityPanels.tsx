@@ -1,10 +1,10 @@
 "use client";
 
 /*
- * Shuffle-style overlay framework, TOLS-styled:
+ * Overlay framework for the community panels:
  *  - ChatPanel          → community chat, right-side drawer (real /api/casino-chat)
  *  - NotificationsPanel → notifications, right-side drawer (real /api/notifications)
- *  - VaultSheet         → Cassaforte, bottom sheet that slides up from the bottom
+ *  - VaultSheet         → Vault, bottom sheet that slides up from the bottom
  *
  * Panels are conditionally mounted (rendered only while open) with a keyframe
  * slide, which avoids Tailwind v4 transform/translate utility conflicts.
@@ -165,7 +165,7 @@ export function NotificationsPanel({ open, onClose }: { open: boolean; onClose: 
   );
 }
 
-/* ── Cassaforte (Vault) — bottom sheet ── */
+/* ── Vault — bottom sheet ── */
 export function VaultSheet({ open, onClose, balance }: { open: boolean; onClose: () => void; balance: number }) {
   const { t } = useLocale();
   const [vault, setVault] = useState(0);

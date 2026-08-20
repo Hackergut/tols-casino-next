@@ -1,5 +1,5 @@
 /*
- * Monte Carlo simulator for Scopa Siciliana Fast Bet.
+ * Monte Carlo simulator for Sicilian Scopa Fast Bet.
  *
  * Reuses the exact production engine (`src/lib/scopa.ts`) so the published
  * probabilities and payout table correspond 1:1 to what the server executes
@@ -36,9 +36,9 @@ const MARKETS = [
   "draw",
   "over",
   "under",
-  "settebello_player",
-  "settebello_bank",
-  "scopa_over",
+  "seven_of_coins_player",
+  "seven_of_coins_bank",
+  "sweep_over",
 ];
 
 const N = Number(process.argv[2] ?? 1_000_000);
@@ -53,14 +53,14 @@ const counts = {
   draw: 0,
   over: 0,
   under: 0,
-  settebello_player: 0,
-  settebello_bank: 0,
-  scopa_over: 0,
+  seven_of_coins_player: 0,
+  seven_of_coins_bank: 0,
+  sweep_over: 0,
 };
 
 // Reference stats (not bet markets) for sanity checks.
 let sumCards = 0;
-let sumDenari = 0;
+let sumCoins = 0;
 let sumPoints = 0;
 let minMoves = null;
 let maxMoves = null;
@@ -75,13 +75,13 @@ for (let round = 1; round <= N; round++) {
 
   // Invariant checks (cheap, always on).
   const cards = r.playerCards.length + r.bankCards.length;
-  const denari = r.playerDenari + r.bankDenari;
+  const coins = r.playerCoins + r.bankCoins;
   if (cards !== 40) throw new Error(`round ${round}: cards=${cards}`);
-  if (denari !== 10) throw new Error(`round ${round}: denari=${denari}`);
-  if (r.playerSettebello === r.bankSettebello) throw new Error(`round ${round}: settebello not unique`);
+  if (coins !== 10) throw new Error(`round ${round}: coins=${coins}`);
+  if (r.playerSevenOfCoins === r.bankSevenOfCoins) throw new Error(`round ${round}: sevenOfCoins not unique`);
   if (r.playerPoints + r.bankPoints !== r.totalPoints) throw new Error(`round ${round}: point mismatch`);
   sumCards += cards;
-  sumDenari += denari;
+  sumCoins += coins;
   sumPoints += r.totalPoints;
   if (r.moves.some((m) => m.sweep)) sweepRounds++;
   if (minMoves === null || r.moves.length < minMoves) minMoves = r.moves.length;
@@ -95,7 +95,7 @@ for (let round = 1; round <= N; round++) {
 
 const seconds = (Date.now() - t0) / 1000;
 console.log(`\nRounds: ${N.toLocaleString()}  ·  ${seconds.toFixed(1)}s  ·  ${Math.round(N / seconds).toLocaleString()} rounds/s`);
-console.log(`Sanity — avg cards/round ${(sumCards / N).toFixed(1)} (expect 40), avg denari ${(sumDenari / N).toFixed(1)} (expect 10), avg points ${(sumPoints / N).toFixed(3)}`);
+console.log(`Sanity — avg cards/round ${(sumCards / N).toFixed(1)} (expect 40), avg coins ${(sumCoins / N).toFixed(1)} (expect 10), avg points ${(sumPoints / N).toFixed(3)}`);
 console.log(`Rounds with leftover-table sweep: ${((sweepRounds / N) * 100).toFixed(1)}%  ·  moves/round ${minMoves}..${maxMoves}`);
 
 // ── Probabilities + confidence intervals ────────────────────────────────
@@ -141,4 +141,4 @@ console.log("{\n" + MARKETS.map((m) => `  ${m}: ${floor2(RTP / stats[m].upper).t
 console.log("\n— Complementary sums (sanity) —");
 console.log(`1X2 : ${(stats.player.p + stats.bank.p + stats.draw.p).toFixed(5)} (expect 1)`);
 console.log(`O/U : ${(stats.over.p + stats.under.p).toFixed(5)} (expect 1)`);
-console.log(`Sett: ${(stats.settebello_player.p + stats.settebello_bank.p).toFixed(5)} (expect 1)`);
+console.log(`Sett: ${(stats.seven_of_coins_player.p + stats.seven_of_coins_bank.p).toFixed(5)} (expect 1)`);

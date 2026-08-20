@@ -5,7 +5,7 @@ import { requirePlatformAuth, hasScope } from "@/lib/platform-auth";
 /**
  * POST /api/platform/withdrawals/:id/reject — JWT RS256, scope withdrawals:write
  * Body: { reason?: string }
- * Rigetta un prelievo pending e rimborsa il wallet (atomico)
+ * Rejects a pending withdrawal and refunds the wallet (atomic).
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const auth = requirePlatformAuth(req);
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!w) return NextResponse.json({ success: false, error: "Withdrawal not found" }, { status: 404 });
   if (w.status !== "pending") return NextResponse.json({ success: false, error: `Already ${w.status}` }, { status: 409 });
 
-  // Rimborsa
+  // Refund
   const wallet = await db.casinoWallet.findUnique({ where: { userId: w.userId } });
   if (wallet) {
     await db.casinoWallet.update({ where: { userId: w.userId }, data: { balance: wallet.balance + w.amount } });

@@ -1,21 +1,21 @@
-# TOLS — Ponte Casino ↔ Governance (hackguts-projects)
+# TOLS — Casino ↔ Governance Bridge (hackguts-projects)
 
-> **2 progetti Vercel REALI, team `hackguts-projects`**
+> **2 REAL Vercel projects, team `hackguts-projects`**
 > - **Casino** → `tols-casino-next` → https://vercel.com/hackguts-projects/tols-casino-next
 > - **Governance** → `tolsgovernz` → https://vercel.com/hackguts-projects/tolsgovernz
 >
-> Repo git separati, deploy separati. Il ponte è **service-to-service HTTPS** (HMAC + JWT RS256), NON via admin panel.
+> Separate git repos, separate deploys. The bridge is **service-to-service HTTPS** (HMAC + JWT RS256), NOT via the admin panel.
 
-## Prendi i domini REALI da Vercel (non inventare)
+## Get the REAL domains from Vercel (do not invent them)
 
-Vai su ogni progetto → **Settings → Domains** e copia il dominio mostrato da Vercel:
+Go to each project → **Settings → Domains** and copy the domain Vercel shows:
 
-- **Casino** → es. `https://www.tols.fun` (ufficiale) 
-- **Governance** → `https://gov.tols.fun` (o `https://tolsgovernz-hackguts-projects.vercel.app`, o custom se configurato)
+- **Casino** → e.g. `https://www.tols.fun` (official)
+- **Governance** → `https://gov.tols.fun` (or `https://tolsgovernz-hackguts-projects.vercel.app`, or custom if configured)
 
-Userai quei 2 URL come `APP_URL` (Casino) e `GOVERNANCE_TOWER_URL` (Governance). **Non usare `tower.dev.fun` / `tower.tols.fun` inventati.**
+You will use those 2 URLs as `APP_URL` (Casino) and `GOVERNANCE_TOWER_URL` (Governance). **Do not use invented `tower.dev.fun` / `tower.tols.fun`.**
 
-## Architettura
+## Architecture
 
 ```
   Vercel hackguts-projects/tols-casino-next        Vercel hackguts-projects/tolsgovernz
@@ -23,87 +23,86 @@ Userai quei 2 URL come `APP_URL` (Casino) e `GOVERNANCE_TOWER_URL` (Governance).
        │                                                   │
   Tower ──POST /api/bridge/webhook (HMAC)─────────────► Casino
        │  governance.rtp_update → OperationControl
-  Casino ──POST /api/platform/* (JWT RS256)─────────► Tower mostra dati reali (no mockup)
+  Casino ──POST /api/platform/* (JWT RS256)─────────► Tower shows real data (no mockups)
        │  GET /api/platform/deposits, /withdrawals, /payments, /stats
        │  POST /api/platform/withdrawals/:id/approve|reject
 ```
 
-Il JWT RS256 è ciò che **elimina i mockup**: la Governance firma con `PLATFORM_JWT_PRIVATE_KEY`, il Casino verifica con `PLATFORM_JWT_PUBLIC_KEY`.
+The RS256 JWT is what **removes the mockups**: Governance signs with `PLATFORM_JWT_PRIVATE_KEY`, the Casino verifies with `PLATFORM_JWT_PUBLIC_KEY`.
 
-## Env — su ENTRAMBI i progetti Vercel (stesso secret, chiavi diverse)
+## Env — on BOTH Vercel projects (same secret, different keys)
 
-Genera secret UNA volta:
+Generate the secret ONCE:
 ```bash
 openssl rand -hex 32
 # → a1b2c3... (64 hex)
-# Coppia RS256 già generata in .env.bridge-keys (PRIVATE su Governance, PUBLIC su Casino)
+# RS256 keypair already generated in .env.bridge-keys (PRIVATE on Governance, PUBLIC on Casino)
 ```
 
-| Var | Dove | Esempio reale | Note |
-|-----|------|---------------|------|
-| `GOVERNANCE_TOWER_URL` | **entrambi** | `https://gov.tols.fun` | Copia da Vercel → tolsgovernz → Domains. Alias `TOWER_URL`. |
-| `APP_URL` | **entrambi** | `https://www.tols.fun` o `https://www.tols.fun` | Copia da Vercel → tols-casino-next → Domains. Su Governance serve per CORS. |
-| `GOVERNANCE_BRIDGE_SECRET` | **entrambi** | `a1b2c3...` | **Stesso valore** su entrambi. Alias `GOVERNANCE_WEBHOOK_SECRET`. |
-| `PLATFORM_JWT_PRIVATE_KEY` | **solo tolsgovernz** | `LS0t...` (base64 PEM) | Da `.env.bridge-keys` BLOCCO 1 — solo Governance firma. |
-| `PLATFORM_JWT_PUBLIC_KEY` | **solo tols-casino-next** | `LS0t...` (base64 PEM) | Da `.env.bridge-keys` BLOCCO 2 — solo Casino verifica. |
-| `PLATFORM_JWT_ISSUER` / `AUDIENCE` | entrambi | `tols-governance` / `tols-casino` | Default già ok. |
-| `DATABASE_URL` / `DIRECT_URL` | solo Casino | `...pooler.supabase.com...` | Supabase. |
+| Var | Where | Real example | Notes |
+|-----|-------|--------------|-------|
+| `GOVERNANCE_TOWER_URL` | **both** | `https://gov.tols.fun` | Copy from Vercel → tolsgovernz → Domains. Alias `TOWER_URL`. |
+| `APP_URL` | **both** | `https://www.tols.fun` | Copy from Vercel → tols-casino-next → Domains. On Governance it is used for CORS. |
+| `GOVERNANCE_BRIDGE_SECRET` | **both** | `a1b2c3...` | **Same value** on both. Alias `GOVERNANCE_WEBHOOK_SECRET`. |
+| `PLATFORM_JWT_PRIVATE_KEY` | **tolsgovernz only** | `LS0t...` (base64 PEM) | From `.env.bridge-keys` BLOCK 1 — only Governance signs. |
+| `PLATFORM_JWT_PUBLIC_KEY` | **tols-casino-next only** | `LS0t...` (base64 PEM) | From `.env.bridge-keys` BLOCK 2 — only Casino verifies. |
+| `PLATFORM_JWT_ISSUER` / `AUDIENCE` | both | `tols-governance` / `tols-casino` | Defaults already fine. |
+| `DATABASE_URL` / `DIRECT_URL` | Casino only | `...pooler.supabase.com...` | Supabase. |
 
-Su Vercel: **Project → Settings → Environment Variables → Production → Add → Save → Redeploy**.
+On Vercel: **Project → Settings → Environment Variables → Production → Add → Save → Redeploy**.
 
-## Creazione della connessione runtime (Admin)
+## Runtime connection creation (Admin)
 
-Il Casino non dipende più esclusivamente dalle env. In **Admin → Governance Bridge** è disponibile una procedura reale di creazione:
+The Casino no longer depends exclusively on env vars. In **Admin → Governance Bridge** there is a real creation flow:
 
-1. configura `CONNECTION_ENCRYPTION_KEY` (oppure un `ADMIN_SESSION_SECRET` stabile di almeno 16 caratteri);
-2. inserisci Governance origin/API base, Casino origin, API key, App key e bridge secret condiviso;
-3. premi **Crea connessione**: la configurazione viene cifrata AES-256-GCM e salvata server-side in `PlatformSetting`;
-4. premi **Test + registra**: il Casino verifica il vero health endpoint Governance e tenta la registrazione del callback Casino sugli endpoint supportati dalla Tower;
-5. dopo il test, eventi, sync, webhook e SSO usano automaticamente la connessione DB attiva. Le env restano solo come fallback di recovery.
+1. configure `CONNECTION_ENCRYPTION_KEY` (or a stable `ADMIN_SESSION_SECRET` of at least 16 characters);
+2. enter Governance origin/API base, Casino origin, API key, App key and the shared bridge secret;
+3. press **Create connection**: the config is encrypted AES-256-GCM and saved server-side in `PlatformSetting`;
+4. press **Test + register**: the Casino verifies the real Governance health endpoint and attempts to register the Casino callback on the endpoints supported by the Tower;
+5. after the test, events, sync, webhook and SSO automatically use the active DB connection. Env vars remain only as a recovery fallback.
 
-Lifecycle API admin-only:
+Admin-only API lifecycle:
 - `GET|POST|DELETE /api/bridge/connection`
 - `POST /api/bridge/connection/test`
 
-Le chiavi e il secret non vengono mai restituiti al browser; l'API espone soltanto presenza e ultime quattro cifre delle API key.
+The keys and secret are never returned to the browser; the API exposes only presence and the last four digits of the API keys.
 
-## Deploy — già creati, verifica solo
+## Deploy — already created, just verify
 
-1. **Casino** `tols-casino-next` → Vercel mostra già deploy. Se verde, ok. Se rosso, controlla `DATABASE_URL` e `PLATFORM_JWT_PUBLIC_KEY`.
-2. **Governance** `tolsgovernz` → stesso. Verifica che `PLATFORM_JWT_PRIVATE_KEY` sia base64 corretto (senza newline).
+1. **Casino** `tols-casino-next` → Vercel already shows the deploy. If green, fine. If red, check `DATABASE_URL` and `PLATFORM_JWT_PUBLIC_KEY`.
+2. **Governance** `tolsgovernz` → same. Verify that `PLATFORM_JWT_PRIVATE_KEY` is correct base64 (without newlines).
 
-### Verifica ponte (dopo aver messo env + mergiato PR)
+### Bridge verification (after setting env + merging the PR)
 
 ```bash
-# 1. Health Casino (pubblico)
-curl https://www.tols.fun/api/platform/health | jq .
-# o se hai tols.fun:
+# 1. Casino health (public)
 curl https://www.tols.fun/api/platform/health | jq .
 
-# 2. Health con probe Governance
+# 2. Health with Governance probe
 curl "https://www.tols.fun/api/bridge/health?probe=true" | jq .
 
-# 3. JWT whoami (con token firmato da tolsgovernz)
-# Genera token sulla Governance (node con PLATFORM_JWT_PRIVATE_KEY) poi:
+# 3. JWT whoami (with a token signed by tolsgovernz)
+# Generate a token on Governance (node with PLATFORM_JWT_PRIVATE_KEY) then:
 curl -H "Authorization: Bearer <jwt>" https://www.tols.fun/api/platform/whoami | jq .
 curl -H "Authorization: Bearer <jwt>" "https://www.tols.fun/api/platform/deposits?limit=5" | jq .
 curl -H "Authorization: Bearer <jwt>" "https://www.tols.fun/api/platform/withdrawals?status=pending" | jq .
 ```
-Se tornano dati reali, mockup eliminati.
 
-## Endpoint Casino (questo repo)
+If real data comes back, the mockups are gone.
 
-**JWT RS256 (`Authorization: Bearer <jwt>`) — dati reali:**
-- `GET /api/platform/health` (pubblico)
+## Casino endpoints (this repo)
+
+**JWT RS256 (`Authorization: Bearer <jwt>`) — real data:**
+- `GET /api/platform/health` (public)
 - `GET /api/platform/whoami`, `/deposits`, `/withdrawals`, `/payments`, `/stats`
 - `POST /api/platform/withdrawals/:id/approve`, `.../reject`
 
-**HMAC (`X-Bridge-Signature`) — bridge sottodominio:**
+**HMAC (`X-Bridge-Signature`) — subdomain bridge:**
 - `POST /api/bridge/webhook`, `GET /api/bridge/health?probe=true`, `POST /api/bridge/sync`
 
 ## Troubleshooting
 
-- `PLATFORM_JWT_PUBLIC_KEY not configured` → incolla BLOCCO 2 su **tols-casino-next** (non su tolsgovernz).
-- `Invalid signature` → PRIVATE e PUBLIC non sono coppia: rigenera coppia RS256 e rimetti BLOCCO 1 (PRIVATE) su tolsgovernz e BLOCCO 2 (PUBLIC) su casino, stesso `GOVERNANCE_BRIDGE_SECRET`.
-- `Tower unreachable` → `GOVERNANCE_TOWER_URL` deve essere **l'URL reale di tolsgovernz** da Vercel Domains, non `tower.tols.fun` inventato.
-- `Invalid iss/aud` → controlla `PLATFORM_JWT_ISSUER=tols-governance` e `AUDIENCE=tols-casino` su entrambi.
+- `PLATFORM_JWT_PUBLIC_KEY not configured` → paste BLOCK 2 on **tols-casino-next** (not on tolsgovernz).
+- `Invalid signature` → PRIVATE and PUBLIC are not a pair: regenerate the RS256 keypair and put BLOCK 1 (PRIVATE) on tolsgovernz and BLOCK 2 (PUBLIC) on casino, with the same `GOVERNANCE_BRIDGE_SECRET`.
+- `Tower unreachable` → `GOVERNANCE_TOWER_URL` must be **the real tolsgovernz URL** from Vercel Domains, not an invented `tower.tols.fun`.
+- `Invalid iss/aud` → check `PLATFORM_JWT_ISSUER=tols-governance` and `AUDIENCE=tols-casino` on both.

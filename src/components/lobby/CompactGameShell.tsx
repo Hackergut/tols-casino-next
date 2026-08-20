@@ -47,8 +47,8 @@ export function CompactGameShell({ children, gameKey }: { children: React.ReactN
         type="button"
         onClick={() => setSheetOpen((o) => !o)}
         aria-expanded={sheetOpen}
-        aria-label={sheetOpen ? "Chiudi impostazioni" : "Impostazioni di gioco"}
-        title={sheetOpen ? "Chiudi impostazioni" : "Impostazioni di gioco"}
+        aria-label={sheetOpen ? "Close game settings" : "Game settings"}
+        title={sheetOpen ? "Close game settings" : "Game settings"}
         className="game-sheet-toggle"
       >
         {sheetOpen ? <X className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}

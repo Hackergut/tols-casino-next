@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       authenticated: true,
       claims: auth.claims,
       service: "tols-casino",
-      note: "JWT valido — la Tower è autenticata. Puoi chiamare /deposits, /withdrawals ecc.",
+      note: "JWT valid — the Tower is authenticated. You can call /deposits, /withdrawals etc.",
     },
   });
 }

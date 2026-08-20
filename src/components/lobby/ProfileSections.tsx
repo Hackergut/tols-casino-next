@@ -17,11 +17,13 @@ import { useLocale } from "@/lib/use-locale";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import { useGameSettings } from "@/lib/game-settings";
 import { setSoundEnabled } from "@/lib/game-audio";
+import { SupportChat } from "./SupportChat";
+import { PromotionsInfoSection, ChallengesInfoSection } from "./DiscoverInfo";
 
 const PROFILE_SECTIONS = new Set([
-  "wallet", "vip", "cassaforte", "token", "affiliate", "notifications",
-  "transactions", "riscatta-codice", "settings", "play-responsibly", "live-support",
-  "rewards",
+  "wallet", "vip", "vault", "token", "affiliate", "notifications",
+  "transactions", "redeem", "settings", "play-responsibly", "live-support",
+  "rewards", "promotions", "challenges",
 ]);
 export function isProfileSection(id: string): boolean {
   return PROFILE_SECTIONS.has(id);
@@ -56,7 +58,7 @@ function Shell({ title, subtitle, icon: Icon, onBack, children }: {
   onBack: () => void; children: React.ReactNode;
 }) {
   const { t } = useLocale();
-  const titleKeys: Record<string, string> = { Wallet: "nav.wallet", Cassaforte: "profile.vault", Token: "profile.token", "Affiliate Program": "profile.affiliate", Notifications: "header.notifications", Transactions: "profile.transactions", "Riscatta Codice": "profile.redeem", Settings: "nav.settings", "Play Responsibly": "profile.responsible", "Live Support": "profile.support", Rewards: "nav.rewards" };
+  const titleKeys: Record<string, string> = { Wallet: "nav.wallet", Vault: "profile.vault", Token: "profile.token", "Affiliate Program": "profile.affiliate", Notifications: "header.notifications", Transactions: "profile.transactions", "Redeem Code": "profile.redeem", Settings: "nav.settings", "Play Responsibly": "profile.responsible", "Live Support": "profile.support", Rewards: "nav.rewards" };
   const localizedTitle = titleKeys[title] ? t(titleKeys[title]) : title;
   return (
     <div className="space-y-6">
@@ -85,28 +87,50 @@ function Money({ n }: { n: number }) {
 
 /* ── Wallet ── */
 function WalletSection({ onBack }: { onBack: () => void }) {
-  const wallet = useJson<{ balance: number; currency: string; vipLevel: number; totalWagered: number; totalWon: number; depositAddresses: string }>("/api/wallet");
+  const wallet = useJson<{ balance: number; bonusBalance?: number; wageringRemaining?: number; availableBalance?: number; currency: string; vipLevel: number; totalWagered: number; totalWon: number; depositAddresses: string }>("/api/wallet");
   const deposits = useJson<Array<{ id: string; amount?: number; status?: string; createdAt?: string }>>("/api/deposits");
   const w = wallet.data;
+  const bonus = w?.bonusBalance ?? 0;
+  const wagering = w?.wageringRemaining ?? 0;
   let addresses: Record<string, string> = {};
   try { addresses = w?.depositAddresses ? JSON.parse(w.depositAddresses) : {}; } catch { /* ignore */ }
 
   return (
-    <Shell title="Wallet" subtitle="Balance, deposit addresses and history" icon={Wallet} onBack={onBack}>
+    <Shell title="Wallet" subtitle="Balance, bonus money and history" icon={Wallet} onBack={onBack}>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className={CARD} style={CARD_STYLE}>
           <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Balance</p>
           <p className="mt-1 text-2xl font-bold text-lime"><Money n={w?.balance ?? 0} /></p>
         </div>
         <div className={CARD} style={CARD_STYLE}>
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Total Wagered</p>
-          <p className="mt-1 text-2xl font-bold text-white"><Money n={w?.totalWagered ?? 0} /></p>
+          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Bonus</p>
+          <p className="mt-1 text-2xl font-bold text-vip"><Money n={bonus} /></p>
         </div>
         <div className={CARD} style={CARD_STYLE}>
-          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Total Won</p>
-          <p className="mt-1 text-2xl font-bold text-white"><Money n={w?.totalWon ?? 0} /></p>
+          <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Playable</p>
+          <p className="mt-1 text-2xl font-bold text-white"><Money n={w?.availableBalance ?? (w?.balance ?? 0) + bonus} /></p>
         </div>
       </div>
+
+      {bonus > 0 && (
+        <div className={CARD} style={CARD_STYLE}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>Bonus money</p>
+              <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
+                <span className="font-bold text-vip">${bonus.toFixed(2)}</span> locked bonus
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Wagering remaining</p>
+              <p className="mt-1 text-sm font-semibold" style={{ color: "rgba(255,255,255,0.75)" }}>${wagering.toFixed(2)}</p>
+            </div>
+          </div>
+          <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Bonus money is real value, but for TOLS it is locked until you have wagered the required amount. It is still playable — every bet counts toward release — and winnings are always credited as real, withdrawable balance.
+          </p>
+        </div>
+      )}
 
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>Deposit Addresses</p>
@@ -146,7 +170,7 @@ function WalletSection({ onBack }: { onBack: () => void }) {
 }
 
 /* ── VIP ── */
-const fmtPts = (n: number) => Math.floor(n).toLocaleString("it-IT");
+const fmtPts = (n: number) => Math.floor(n).toLocaleString("en-US");
 
 function VipSection({ onBack }: { onBack: () => void }) {
   const wallet = useJson<{ vipLevel: number; xp: number; totalWagered: number }>("/api/wallet");
@@ -160,12 +184,12 @@ function VipSection({ onBack }: { onBack: () => void }) {
   const pct = vipProgress(wagered);
 
   return (
-    <Shell title="Livello VIP" subtitle="Il tuo livello, i progressi e i vantaggi" icon={Crown} onBack={onBack}>
+    <Shell title="VIP Level" subtitle="Your level, progress and benefits" icon={Crown} onBack={onBack}>
       {/* Current tier + progress */}
       <div className={CARD} style={CARD_STYLE}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Livello attuale</p>
+            <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Current level</p>
             <p className="mt-1 text-3xl font-black" style={{ color: current.color }}>
               {current.level} · {current.name}
             </p>
@@ -174,8 +198,8 @@ function VipSection({ onBack }: { onBack: () => void }) {
         </div>
         <div className="mt-4">
           <div className="mb-1 flex justify-between text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            <span>{fmtPts(points)} punti</span>
-            <span>{next ? `Prossimo: ${next.name} · ${fmtPts(next.points)} pt` : "Livello massimo"}</span>
+            <span>{fmtPts(points)} points</span>
+            <span>{next ? `Next: ${next.name} · ${fmtPts(next.points)} pt` : "Max level"}</span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${current.color}, ${next?.color ?? "var(--color-lime)"})` }} />
@@ -186,7 +210,7 @@ function VipSection({ onBack }: { onBack: () => void }) {
       {/* Tier ladder with per-level benefits */}
       <div className={CARD} style={CARD_STYLE}>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Livelli e vantaggi
+          Tiers and benefits
         </p>
         <div className="flex flex-col gap-2">
           {VIP_TIERS.map((t) => {
@@ -207,11 +231,11 @@ function VipSection({ onBack }: { onBack: () => void }) {
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ background: t.color, color: "#0f1015" }}>{t.level}</span>
                     <div className="min-w-0">
                       <p className="font-bold" style={{ color: t.color }}>{t.name}</p>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{fmtPts(t.points)} punti richiesti</p>
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{fmtPts(t.points)} points required</p>
                     </div>
                   </div>
                   {isCurrent
-                    ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: t.color, color: "#0f1015" }}>ATTUALE</span>
+                    ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: t.color, color: "#0f1015" }}>CURRENT</span>
                     : unlocked ? <Check className="h-4 w-4 shrink-0" style={{ color: t.color }} /> : null}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -224,7 +248,7 @@ function VipSection({ onBack }: { onBack: () => void }) {
           })}
         </div>
         <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-          I punti si guadagnano puntando (1 punto per ogni $1 giocato). Il livello si aggiorna automaticamente.
+          Points are earned by wagering (1 point per $1 wagered). Your level updates automatically.
         </p>
       </div>
     </Shell>
@@ -341,8 +365,8 @@ function PlayResponsiblySection({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* ── Riscatta Codice (redeem code) ── */
-function RiscattaCodiceSection({ onBack }: { onBack: () => void }) {
+/* ── Redeem Code ── */
+function RedeemCodeSection({ onBack }: { onBack: () => void }) {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -360,7 +384,7 @@ function RiscattaCodiceSection({ onBack }: { onBack: () => void }) {
     setBusy(false);
   }, [code]);
   return (
-    <Shell title="Riscatta Codice" subtitle="Redeem a bonus or promo code" icon={Ticket} onBack={onBack}>
+    <Shell title="Redeem Code" subtitle="Redeem a bonus or promo code" icon={Ticket} onBack={onBack}>
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Enter Code</p>
         <div className="flex items-center gap-2">
@@ -493,14 +517,8 @@ function LiveSupportSection({ onBack }: { onBack: () => void }) {
     ["How do I redeem a code?", "Use Redeem code in the profile menu."],
   ];
   return (
-    <Shell title="Live Support" subtitle="We're here to help" icon={LifeBuoy} onBack={onBack}>
-      <div className={CARD} style={CARD_STYLE}>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>Start a live chat with support, or reach us on Telegram.</p>
-        <div className="mt-3 flex gap-2">
-          <button className="rounded-lg px-4 py-2.5 text-sm font-bold" style={{ background: "var(--color-lime)", color: "var(--color-bg)" }}>Start Live Chat</button>
-          <button className="rounded-lg px-4 py-2.5 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>Telegram</button>
-        </div>
-      </div>
+    <Shell title="Live Support" subtitle="Chat with an agent in real time" icon={LifeBuoy} onBack={onBack}>
+      <SupportChat />
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>FAQ</p>
         <div className="space-y-3">
@@ -567,9 +585,9 @@ function TokenSection({ onBack }: { onBack: () => void }) {
     </Shell>
   );
 }
-function CassaforteSection({ onBack }: { onBack: () => void }) {
+function VaultSection({ onBack }: { onBack: () => void }) {
   return (
-    <Shell title="Cassaforte" subtitle="Vault — keep funds safe from play" icon={Vault} onBack={onBack}>
+    <Shell title="Vault" subtitle="Vault — keep funds safe from play" icon={Vault} onBack={onBack}>
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>Move funds into your vault to keep them out of gameplay. Vaulted funds don't appear in your play balance.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -609,20 +627,22 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export function ProfileSectionView({ section, onBack }: { section: string; onBack: () => void }) {
+export function ProfileSectionView({ section, onBack, onNavigate }: { section: string; onBack: () => void; onNavigate?: (section: string) => void }) {
   switch (section) {
     case "wallet": return <WalletSection onBack={onBack} />;
     case "vip": return <VipSection onBack={onBack} />;
-    case "cassaforte": return <CassaforteSection onBack={onBack} />;
+    case "vault": return <VaultSection onBack={onBack} />;
     case "token": return <TokenSection onBack={onBack} />;
     case "affiliate": return <AffiliateSection onBack={onBack} />;
     case "notifications": return <NotificationsSection onBack={onBack} />;
     case "transactions": return <TransactionsSection onBack={onBack} />;
-    case "riscatta-codice": return <RiscattaCodiceSection onBack={onBack} />;
+    case "redeem": return <RedeemCodeSection onBack={onBack} />;
     case "settings": return <SettingsSection onBack={onBack} />;
     case "play-responsibly": return <PlayResponsiblySection onBack={onBack} />;
     case "live-support": return <LiveSupportSection onBack={onBack} />;
     case "rewards": return <RewardsSection onBack={onBack} />;
+    case "promotions": return <PromotionsInfoSection onBack={onBack} onNavigate={onNavigate ?? ((s) => s)} />;
+    case "challenges": return <ChallengesInfoSection onBack={onBack} onNavigate={onNavigate ?? ((s) => s)} />;
     default: return null;
   }
 }

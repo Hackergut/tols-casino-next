@@ -4,31 +4,31 @@ import { createHmac, timingSafeEqual } from "crypto";
  * TOLS Casino ↔ Governance — Project-to-Project Bridge (hackguts-projects)
  *
  *   - Casino      → Vercel hackguts-projects/tols-casino-next → https://vercel.com/hackguts-projects/tols-casino-next
- *                   domini: prendi da Vercel → Settings → Domains (es. tols.fun o tols-casino-next.vercel.app)
+ *                   domains: copy from Vercel → Settings → Domains (e.g. tols.fun or tols-casino-next.vercel.app)
  *   - Governance  → Vercel hackguts-projects/tolsgovernz       → https://vercel.com/hackguts-projects/tolsgovernz
- *                   domini: prendi da Vercel → Settings → Domains (es. tolsgovernz.vercel.app)
+ *                   domains: copy from Vercel → Settings → Domains (e.g. tolsgovernz.vercel.app)
  *
- * Il ponte NON è via admin panel — è service-to-service via HTTPS + HMAC/JWT tra i 2 progetti.
+ * The bridge is NOT via the admin panel — it is service-to-service over HTTPS + HMAC/JWT between the two projects.
  *
- * Flusso:
- *   Casino → Governance: health, sync, deposits/withdrawals reali via /api/platform/* (JWT RS256)
+ * Flow:
+ *   Casino → Governance: health, sync, real deposits/withdrawals via /api/platform/* (JWT RS256)
  *   Governance → Casino: commands via /api/bridge/webhook (HMAC)
- *   SSO: token HMAC 10m
+ *   SSO: 10-minute HMAC token
  *
- * Env su ENTRAMBI i progetti (stesso secret):
- *   GOVERNANCE_TOWER_URL  — origin Governance, es. https://gov.tols.fun (alias: TOWER_URL) — copia da Vercel → tolsgovernz → Domains
- *   APP_URL               — origin Casino, es. https://www.tols.fun (alias: CASINO_URL) — copia da Vercel → tols-casino-next → Domains
- *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — HMAC condiviso (openssl rand -hex 32)
- *   TOLS_BASE_URL         — legacy base API Governance (es. https://gov.tols.fun/api)
- *   PLATFORM_JWT_*        — JWT RS256: PRIVATE su tolsgovernz, PUBLIC su tols-casino-next (vedi .env.bridge-keys)
+ * Env on BOTH projects (same secret):
+ *   GOVERNANCE_TOWER_URL  — Governance origin, e.g. https://gov.tols.fun (alias: TOWER_URL) — copy from Vercel → tolsgovernz → Domains
+ *   APP_URL               — Casino origin, e.g. https://www.tols.fun (alias: CASINO_URL) — copy from Vercel → tols-casino-next → Domains
+ *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — shared HMAC (openssl rand -hex 32)
+ *   TOLS_BASE_URL         — legacy Governance API base (e.g. https://gov.tols.fun/api)
+ *   PLATFORM_JWT_*        — JWT RS256: PRIVATE on tolsgovernz, PUBLIC on tols-casino-next (see .env.bridge-keys)
  */
 
 // ── Config ───────────────────────────────────────────────────────────────
 
 export interface BridgeConfig {
-  towerOrigin: string;        // es. https://gov.tols.fun
-  towerApiBase: string;       // es. https://gov.tols.fun/api
-  casinoOrigin: string;       // es. https://www.tols.fun
+  towerOrigin: string;        // e.g. https://gov.tols.fun
+  towerApiBase: string;       // e.g. https://gov.tols.fun/api
+  casinoOrigin: string;       // e.g. https://www.tols.fun
   hasBridgeSecret: boolean;
   hasTowerKeys: boolean;
   hasDb: boolean;
@@ -45,7 +45,7 @@ function pickEnv(...keys: string[]): string | undefined {
 }
 
 export function getBridgeConfig(): BridgeConfig {
-  // Tower origin: prefer GOVERNANCE_TOWER_URL / TOWER_URL, fallback to origin di TOLS_BASE_URL
+  // Tower origin: prefer GOVERNANCE_TOWER_URL / TOWER_URL, fall back to the origin of TOLS_BASE_URL
   const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
   const rawApiBase = pickEnv("TOLS_BASE_URL", "TOWER_API_BASE");
   const towerApiBase = stripTrailingSlash(rawApiBase || "https://gov.tols.fun/api");
@@ -76,7 +76,7 @@ function bridgeSecret(): string {
 
 export function signBridgePayload(payload: string, secretOverride?: string): string {
   const secret = secretOverride || bridgeSecret();
-  if (!secret) throw new Error("GOVERNANCE_BRIDGE_SECRET not configured — imposta lo stesso secret su Casino e Tower (Vercel → Settings → Environment Variables)");
+  if (!secret) throw new Error("GOVERNANCE_BRIDGE_SECRET not configured — set the same secret on Casino and Tower (Vercel → Settings → Environment Variables)");
   return createHmac("sha256", secret).update(payload).digest("hex");
 }
 
@@ -105,21 +105,21 @@ export async function verifyRuntimeBridgeSignature(rawBody: string, signature: s
 }
 
 // ── Outbound helper (Casino → Tower) ────────────────────────────────────
-// Funziona anche sottodominio: chiama direttamente l'altro progetto Vercel via HTTPS.
+// Works across subdomains too: it calls the other Vercel project directly over HTTPS.
 
 export interface BridgeFetchOpts {
-  path?: string;              // appende a towerApiBase, es. "/health" o "/bridge/webhook"
+  path?: string;              // appended to towerApiBase, e.g. "/health" or "/bridge/webhook"
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
-  // Se true usa towerOrigin invece di towerApiBase (utile quando la Tower non ha /api)
+  // When true, use towerOrigin instead of towerApiBase (useful when the Tower has no /api)
   useOrigin?: boolean;
 }
 
 /**
- * Chiama la Governance Tower (altro progetto Vercel su sottodominio).
- * Usa TOLS_API_KEY / TOLS_APP_KEY se la Tower li richiede.
+ * Call the Governance Tower (the other Vercel project on a subdomain).
+ * Uses TOLS_API_KEY / TOLS_APP_KEY if the Tower requires them.
  */
 export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
   const envConfig = getBridgeConfig();
@@ -183,12 +183,15 @@ export type BridgeEventType =
   | "casino.session_start"
   | "casino.session_end"
   | "casino.health"
+  | "casino.support_message"
+  | "casino.support_ticket"
+  | "casino.bonus_released"
   | "bridge.sync_request";
 
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
   const body = { type, payload, ts: new Date().toISOString(), source: "casino" };
-  // La Governance (gov.tols.fun) espone secondo UI: /api/platform/webhooks (events:write)
-  // Manteniamo fallback su /bridge/events per retrocompatibilità
+  // Governance (gov.tols.fun) exposes, per its UI: /api/platform/webhooks (events:write).
+  // We keep a fallback to /bridge/events for backward compatibility.
   let configuredWebhook: string | null = null;
   try {
     const { getGovernanceConnection } = await import("@/lib/governance-connection");
@@ -204,16 +207,16 @@ export async function pushBridgeEvent(type: BridgeEventType, payload: Record<str
   for (const c of candidates) {
     try {
       const res = await bridgeFetch({ path: c.path, method: "POST", body, useOrigin: c.useOrigin });
-      if (res.status === 404) continue; // prova prossimo
+      if (res.status === 404) continue; // try the next one
       const text = await res.text();
       let b: unknown = text; try { b = JSON.parse(text); } catch {}
-      // se 401/403 per scope, riporta subito (non provare altri)
+      // On 401/403 for scope, report immediately (do not try the others).
       if (res.status === 401 || res.status === 403) return { ok: res.ok, status: res.status, body: b };
       if (res.ok) return { ok: true, status: res.status, body: b };
-      // altro errore ma non 404: ritorna comunque per debug
+      // Any other error except 404: return it anyway for debugging.
       return { ok: res.ok, status: res.status, body: b };
     } catch (e) {
-      // network error: prova prossimo candidate se ce ne sono
+      // Network error: try the next candidate if there is one.
       if (c !== candidates[candidates.length - 1]) continue;
       return { ok: false, status: 0, body: { error: e instanceof Error ? e.message : String(e) } };
     }
@@ -230,14 +233,17 @@ export type InboundBridgeEvent =
   | { type: "governance.session_invalidate"; payload: { userId: string } }
   | { type: "governance.wallet_adjust"; payload: { userId: string; amount: number; reason?: string } }
   | { type: "governance.player_block"; payload: { userId: string; blocked: boolean } }
+  | { type: "governance.support_reply"; payload: { ticketId: string; userId: string; content: string; agentName?: string } }
+  | { type: "governance.support_close"; payload: { ticketId: string; userId: string } }
+  | { type: "governance.bonus_credit"; payload: { userId: string; amount: number; multiplier?: number; reason?: string; expiresAt?: string } }
   | { type: "ping"; payload: Record<string, unknown> };
 
 export function isKnownInboundType(t: string): boolean {
-  return ["governance.rtp_update","governance.limits_update","governance.feature_flag","governance.session_invalidate","governance.wallet_adjust","governance.player_block","ping"].includes(t);
+  return ["governance.rtp_update","governance.limits_update","governance.feature_flag","governance.session_invalidate","governance.wallet_adjust","governance.player_block","governance.support_reply","governance.support_close","governance.bonus_credit","ping"].includes(t);
 }
 
-// ── SSO: cross-domain token (Tower ↔ Casino) — sottodomini .tols.fun ────
-// Con cookie su .tols.fun i due progetti possono condividere sessione; il token HMAC è il fallback quando i cookie non bastano.
+// ── SSO: cross-domain token (Tower ↔ Casino) — .tols.fun subdomains ─────
+// With a cookie on .tols.fun the two projects can share a session; the HMAC token is the fallback when cookies are not enough.
 
 export interface BridgeSsoPayload {
   userId: string;

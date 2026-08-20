@@ -141,13 +141,15 @@ export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () 
         </span>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-3 pt-12">
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-3 pt-14">
         <div className="min-w-0">
           <p className="truncate font-bold text-white" style={TITLE_STYLE}>{game.name}</p>
-          <p className="truncate text-white/60" style={META_STYLE}>{catLabel(game)}</p>
+          <p className="truncate text-white/60" style={META_STYLE}>
+            {isOriginal ? catLabel(game) : `${catLabel(game)} · ${game.provider}`}
+          </p>
         </div>
         {rtp != null && (
-          <span className="shrink-0 font-semibold tabular-nums text-white/70" style={META_STYLE}>
+          <span className="shrink-0 rounded bg-black/55 px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-lime">
             {rtp.toFixed(1)}%
           </span>
         )}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
-import { GameBetControls } from "@/components/casino/game-shared";
+import { GameBetControls, SoundToggle } from "@/components/casino/game-shared";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { useOriginalsSession } from "@/lib/originals-client";
 import { PlayingCard } from "@/components/casino/playing-card";
@@ -46,7 +46,7 @@ export function BlackjackGame({ onBack, initialBalance }: Props) {
 
   useEffect(() => {
     const latest = result ?? round;
-    if (latest?.newBalance != null) setBalance(latest.newBalance);
+    if (latest?.newBalance != null) setBalance(latest.availableBalance ?? latest.newBalance);
   }, [result, round]);
 
   const deal = useCallback(() => {
@@ -78,6 +78,7 @@ export function BlackjackGame({ onBack, initialBalance }: Props) {
           <h1>Blackjack</h1>
           <p>Beat the dealer to 21 — blackjack pays 3:2</p>
         </div>
+        <SoundToggle className="g-sound ml-auto" />
       </div>
 
       <div className="game-grid">

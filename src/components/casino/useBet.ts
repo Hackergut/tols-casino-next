@@ -21,6 +21,12 @@ export interface BetResponse<P = Record<string, unknown>> {
   multiplier: number;
   payout: number;
   newBalance: number;
+  /** Locked bonus balance after settlement. */
+  bonusBalance?: number;
+  /** Wagering still required before the bonus releases. */
+  wageringRemaining?: number;
+  /** Total playable balance (real + bonus) after settlement. */
+  availableBalance?: number;
   /** The stake actually charged, snapped to whole cents by the server. */
   amount: number;
   payload: P;
@@ -44,8 +50,13 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
    * lobby poll updated one and not the other — and the stake guard below
    * compares against it, so the drift decided whether a bet was allowed.
    */
-  const balance = useBalanceStore((s) => s.balance);
+  const real = useBalanceStore((s) => s.balance);
+  const bonusBalance = useBalanceStore((s) => s.bonusBalance);
   const applyServer = useBalanceStore((s) => s.applyServer);
+  const applyBonus = useBalanceStore((s) => s.applyBonus);
+  // Playable balance = real + locked bonus. Bets are funded real-first, then
+  // bonus, so the stake guard and controls must operate on the combined figure.
+  const balance = real + bonusBalance;
 
   // Seed the store on first mount so a game opened directly (deep link) shows a
   // balance before the first poll returns. Never overwrites a settled value.
@@ -89,8 +100,9 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
    */
   const place = useCallback(
     (amount: number, payload?: Record<string, unknown>): Promise<BetResponse<P> | null> => {
-      const currentBalance = useBalanceStore.getState().balance;
-      const practice = toCents(currentBalance) <= 0;
+      const { balance: realNow, bonusBalance: bonusNow } = useBalanceStore.getState();
+      const available = realNow + bonusNow;
+      const practice = toCents(available) <= 0;
       const stake = practice ? 0 : Math.round(amount * 100) / 100;
       const stakeCents = toCents(stake);
 
@@ -101,7 +113,7 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
       // Reserve queued stakes immediately. Without this, ten quick clicks can
       // all validate against the same pre-bet balance and the last nine only
       // fail after travelling to the server.
-      if (!practice && stakeCents + reservedCents.current > toCents(currentBalance)) {
+      if (!practice && stakeCents + reservedCents.current > toCents(available)) {
         setError("Insufficient balance");
         return Promise.resolve(null);
       }
@@ -131,6 +143,7 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
           }
           const data = json.data as BetResponse<P>;
           applyServer(data.newBalance);
+          applyBonus(data.bonusBalance ?? 0, data.wageringRemaining ?? 0);
           setFairness({
             serverSeedHash: data.serverSeedHash,
             clientSeed: data.clientSeed,
@@ -151,6 +164,7 @@ export function useBet<P = Record<string, unknown>>(game: string, initialBalance
             const walletJson = await walletRes.json();
             if (walletRes.ok && Number.isFinite(walletJson?.data?.balance)) {
               applyServer(walletJson.data.balance);
+              applyBonus(walletJson.data.bonusBalance ?? 0, walletJson.data.wageringRemaining ?? 0);
               reconciled = true;
             }
           } catch {

@@ -10,10 +10,14 @@ import {
   ShieldCheck, LifeBuoy, LogOut, type LucideIcon,
 } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
+import { SearchBar } from "./SearchBar";
+import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
 
-export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false }: {
+export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false, games = [], onGameClick }: {
   balance: number;
+  bonusBalance?: number;
+  wageringRemaining?: number;
   inGame?: boolean;
   onMenuToggle: () => void;
   menuOpen: boolean;
@@ -22,6 +26,8 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
   onNotifToggle: () => void;
   onWalletClick: () => void;
   authed: boolean;
+  games?: LobbyGame[];
+  onGameClick?: (game: LobbyGame) => void;
 }) {
   const router = useRouter();
   const { t } = useLocale();
@@ -47,12 +53,12 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
   const menuItems: { id: string; label: string; icon: LucideIcon }[] = [
     { id: "wallet", label: t("nav.wallet"), icon: Wallet },
     { id: "vip", label: "VIP", icon: Crown },
-    { id: "cassaforte", label: t("profile.vault"), icon: Vault },
+    { id: "vault", label: t("profile.vault"), icon: Vault },
     { id: "token", label: t("profile.token"), icon: Coins },
     { id: "affiliate", label: t("profile.affiliate"), icon: Share2 },
     { id: "notifications", label: t("header.notifications"), icon: Bell },
     { id: "transactions", label: t("profile.transactions"), icon: Receipt },
-    { id: "riscatta-codice", label: t("profile.redeem"), icon: Ticket },
+    { id: "redeem", label: t("profile.redeem"), icon: Ticket },
     { id: "settings", label: t("nav.settings"), icon: Settings },
   ];
   const supportItems: { id: string; label: string; icon: LucideIcon }[] = [
@@ -75,7 +81,12 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
           </h1>
         </div>
 
-        <div className="flex-1" />
+        {/* Center: global search (desktop) */}
+        <div className="hidden min-w-0 flex-1 justify-center px-4 lg:flex">
+          {!inGame && onGameClick && (
+            <SearchBar games={games} onGameClick={onGameClick} className="w-full max-w-sm" />
+          )}
+        </div>
 
         {/* Right */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -86,14 +97,26 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
             <MessageCircle className="h-5 w-5" />
           </button>
 {authed ? (
-          <button onClick={onWalletClick} title={t("header.openWallet")} className="flex items-center gap-2 rounded-lg border border-lime/15 bg-lime/10 px-3 py-1.5 cursor-pointer transition-colors hover:bg-lime/20">
-            <Wallet className="h-4 w-4 text-lime" />
-            <PostedAmount
-              value={balance}
-              format={(n) => `$${n.toFixed(2)}`}
-              className="text-sm font-semibold text-lime"
-            />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {bonusBalance > 0 && (
+              <button
+                onClick={onWalletClick}
+                title={`Bonus ${bonusBalance.toFixed(2)} — ${wageringRemaining.toFixed(2)} wagering remaining`}
+                className="hidden items-center gap-1.5 rounded-lg border border-vip/30 bg-vip/10 px-2.5 py-1.5 cursor-pointer transition-colors hover:bg-vip/20 sm:flex"
+              >
+                <Coins className="h-4 w-4 text-vip" />
+                <span className="text-xs font-semibold text-vip">${bonusBalance.toFixed(2)}</span>
+              </button>
+            )}
+            <button onClick={onWalletClick} title={t("header.openWallet")} className="flex items-center gap-2 rounded-lg border border-lime/15 bg-lime/10 px-3 py-1.5 cursor-pointer transition-colors hover:bg-lime/20">
+              <Wallet className="h-4 w-4 text-lime" />
+              <PostedAmount
+                value={balance}
+                format={(n) => `$${n.toFixed(2)}`}
+                className="text-sm font-semibold text-lime"
+              />
+            </button>
+          </div>
           ) : (
           <div className="flex items-center gap-1.5">
             <button onClick={() => onProfileNavigate("login")} className="rounded-lg border border-white/12 px-2.5 py-1.5 text-[11px] font-bold text-white/75 transition-colors hover:border-lime/40 hover:text-white sm:px-3 sm:text-xs">

@@ -43,7 +43,12 @@ export function useAutoBet(gameId: string) {
     if (json.data.bet) {
       setLastBet(json.data.bet);
       window.dispatchEvent(new CustomEvent("tols:bet", { detail: json.data.bet }));
-      window.dispatchEvent(new CustomEvent("tols:balance", { detail: json.data.bet.newBalance }));
+      window.dispatchEvent(new CustomEvent("tols:balance", { detail: json.data.bet.availableBalance ?? json.data.bet.newBalance }));
+      window.dispatchEvent(
+        new CustomEvent("tols:bonus", {
+          detail: { bonusBalance: json.data.bet.bonusBalance ?? 0, wageringRemaining: json.data.bet.wageringRemaining ?? 0 },
+        }),
+      );
     }
     if (json.data.status.status === "running") {
       timer.current = setTimeout(() => void tick(), 420);

@@ -8,6 +8,9 @@ export async function GET() {
     if (!wallet) return err("Wallet not found", 404);
     return ok({
       balance: wallet.balance,
+      bonusBalance: wallet.bonusBalance,
+      wageringRemaining: wallet.wageringRemaining,
+      availableBalance: wallet.balance + wallet.bonusBalance,
       currency: wallet.currency,
       vipLevel: wallet.vipLevel,
       xp: wallet.xp,

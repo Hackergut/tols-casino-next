@@ -30,8 +30,12 @@
 import { create } from "zustand";
 
 interface BalanceState {
-  /** The balance to display. Always the newest authoritative value. */
+  /** The real (withdrawable) balance to display. Always the newest authoritative value. */
   balance: number;
+  /** Locked bonus money (playable, not withdrawable until wagered). */
+  bonusBalance: number;
+  /** Wagering still required before the bonus releases into real balance. */
+  wageringRemaining: number;
   /** Monotonic counter, bumped on every accepted write. */
   seq: number;
   /**
@@ -50,6 +54,8 @@ interface BalanceState {
    * read from the database before that write existed.
    */
   applyPoll: (balance: number, token: number) => void;
+  /** Apply bonus money state (locked balance + remaining wagering). */
+  applyBonus: (bonusBalance: number, wageringRemaining: number) => void;
 }
 
 /** Reject values that would poison the display (NaN from a failed parse). */
@@ -64,6 +70,8 @@ export function toCents(n: number): number {
 
 export const useBalanceStore = create<BalanceState>((set, get) => ({
   balance: 0,
+  bonusBalance: 0,
+  wageringRemaining: 0,
   seq: 0,
 
   begin: () => get().seq,
@@ -78,5 +86,12 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
     // A newer authoritative write happened while this read was in flight.
     if (get().seq !== token) return;
     set((s) => ({ balance: Math.round(balance * 100) / 100, seq: s.seq + 1 }));
+  },
+
+  applyBonus: (bonusBalance, wageringRemaining) => {
+    set((s) => ({
+      bonusBalance: usable(bonusBalance) ? Math.round(bonusBalance * 100) / 100 : s.bonusBalance,
+      wageringRemaining: usable(wageringRemaining) ? Math.round(wageringRemaining * 100) / 100 : s.wageringRemaining,
+    }));
   },
 }));

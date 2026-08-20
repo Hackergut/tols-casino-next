@@ -11,9 +11,15 @@ export function emitOriginalsParams(gameId: string, params: Record<string, unkno
 export function emitOriginalsResult(data: BetResponse) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("tols:bet", { detail: data }));
-  if (typeof data.newBalance === "number") {
-    window.dispatchEvent(new CustomEvent("tols:balance", { detail: data.newBalance }));
+  const playable = data.availableBalance ?? data.newBalance;
+  if (typeof playable === "number") {
+    window.dispatchEvent(new CustomEvent("tols:balance", { detail: playable }));
   }
+  window.dispatchEvent(
+    new CustomEvent("tols:bonus", {
+      detail: { bonusBalance: data.bonusBalance ?? 0, wageringRemaining: data.wageringRemaining ?? 0 },
+    }),
+  );
 }
 
 export async function placeOriginalsBet(

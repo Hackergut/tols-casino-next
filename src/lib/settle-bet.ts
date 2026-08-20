@@ -6,6 +6,8 @@ import { syncPlayerProfile } from "@/lib/player-sync";
 import { getEngine } from "@/lib/game-engines";
 import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
+import { applyBetDebit } from "@/lib/bonus";
+import { pushBridgeEvent } from "@/lib/governance-bridge";
 import type { BetResponse, SettledOutcome } from "@/shared/types";
 
 export class BetError extends Error {
@@ -71,20 +73,15 @@ async function persistSettled(opts: {
   autoBetId?: string;
   roundId?: string;
   alreadyDebited?: boolean;
-}): Promise<{ betId: string; balance: number }> {
+}): Promise<{ betId: string; balance: number; bonusBalance: number; wageringRemaining: number }> {
   const { userId, game, amount, result, seed, hash, nonce, autoBetId, roundId, alreadyDebited } = opts;
 
   const final = await db.$transaction(async (tx) => {
+    let released = 0;
     if (!alreadyDebited) {
-      const debited = await tx.casinoWallet.updateMany({
-        where: { userId, balance: { gte: amount } },
-        data: {
-          balance: { decrement: amount },
-          totalWagered: { increment: amount },
-          xp: { increment: Math.floor(amount) },
-        },
-      });
-      if (debited.count === 0) return { insufficient: true } as const;
+      const d = await applyBetDebit(tx, userId, amount);
+      if (d.insufficient) return { insufficient: true } as const;
+      released = d.released;
     }
 
     let balance: number;
@@ -120,7 +117,15 @@ async function persistSettled(opts: {
       },
     });
 
-    return { insufficient: false, balance, betId: bet.id } as const;
+    const walletAfter = await tx.casinoWallet.findUnique({ where: { userId }, select: { bonusBalance: true, wageringRemaining: true } });
+    return {
+      insufficient: false as const,
+      balance,
+      betId: bet.id,
+      bonusBalance: walletAfter?.bonusBalance ?? 0,
+      wageringRemaining: walletAfter?.wageringRemaining ?? 0,
+      released,
+    };
   });
 
   if ("insufficient" in final && final.insufficient) throw new BetError("Insufficient balance", 400);
@@ -147,13 +152,19 @@ async function persistSettled(opts: {
 
   after(() => syncPlayerProfile(userId).catch(() => {}));
   publish({ event: "balance:update", userId, data: { balance: final.balance } });
+  publish({ event: "bonus:update", userId, data: { bonusBalance: final.bonusBalance, wageringRemaining: final.wageringRemaining } });
+  if (final.released > 0) {
+    after(() =>
+      pushBridgeEvent("casino.bonus_released", { userId, amount: final.released, balance: final.balance }).catch(() => {}),
+    );
+  }
   publish({
     event: "round:result",
     userId,
     data: { gameId: game, result: result.payload, profit: result.profit, multiplier: result.multiplier, won: result.won },
   });
 
-  return { betId: final.betId, balance: final.balance };
+  return { betId: final.betId, balance: final.balance, bonusBalance: final.bonusBalance, wageringRemaining: final.wageringRemaining };
 }
 
 export async function playInstantBet(args: PlayArgs): Promise<BetResponse> {
@@ -164,7 +175,8 @@ export async function playInstantBet(args: PlayArgs): Promise<BetResponse> {
   const wallet = await db.casinoWallet.findUnique({ where: { userId: args.userId } });
   if (!wallet) throw new BetError("No wallet", 400);
 
-  const check = engine.validateBet(payload, wallet.balance, args.amount);
+  const available = wallet.balance + wallet.bonusBalance;
+  const check = engine.validateBet(payload, available, args.amount);
   if (!check.valid) throw new BetError(check.error || "Invalid bet", 400);
 
   const seedPair = await getActiveSeed(args.userId);
@@ -203,6 +215,9 @@ export async function playInstantBet(args: PlayArgs): Promise<BetResponse> {
     clientSeed: seed,
     nonce,
     newBalance: saved.balance,
+    bonusBalance: saved.bonusBalance,
+    wageringRemaining: saved.wageringRemaining,
+    availableBalance: saved.balance + saved.bonusBalance,
     controlApplied,
   };
 }

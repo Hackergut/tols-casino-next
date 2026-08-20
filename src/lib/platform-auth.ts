@@ -9,8 +9,8 @@ export interface PlatformAuthFailure {
 }
 
 /**
- * Guard per tutte le /api/platform/* — richiede JWT RS256 valido
- * Header: Authorization: Bearer <jwt firmato dalla Tower con RS256>
+ * Guard for all /api/platform/* routes — requires a valid RS256 JWT.
+ * Header: Authorization: Bearer <jwt signed by the Tower with RS256>
  */
 export function requirePlatformAuth(req: Request | NextRequest): PlatformAuthSuccess | PlatformAuthFailure {
   const token = getBearerToken(req);
@@ -24,22 +24,22 @@ export function requirePlatformAuth(req: Request | NextRequest): PlatformAuthSuc
           error: result.error || "Unauthorized",
           hint: isMissingKey
             ? "Set PLATFORM_JWT_PUBLIC_KEY in the Casino Vercel project — see .env.bridge-keys"
-            : "Invia Authorization: Bearer <jwt RS256> firmato con PLATFORM_JWT_PRIVATE_KEY della Tower. Verifica iss/aud/exp.",
+            : "Send Authorization: Bearer <jwt RS256> signed with the Tower's PLATFORM_JWT_PRIVATE_KEY. Verify iss/aud/exp.",
         },
         { status: isMissingKey ? 503 : 401 }
       ),
     };
   }
 
-  // opzionale: controlla scope
-  // per health/whoami basta qualsiasi JWT valido; per write serve withdrawals:write
+  // Optional: check scope.
+  // For health/whoami any valid JWT is enough; writes require withdrawals:write.
   return { claims: result.claims };
 }
 
 export function hasScope(claims: PlatformJwtClaims, scope: string): boolean {
-  if (!claims.scope || claims.scope.length === 0) return true; // se non specificato, permetti (retrocompat)
+  if (!claims.scope || claims.scope.length === 0) return true; // if unspecified, allow (backward compat)
   if (claims.scope.includes(scope) || claims.scope.includes("*") || claims.scope.includes("platform:*")) return true;
-  // Alias per compatibilità governance UI: withdrawals:approve ↔ withdrawals:write
+  // Aliases for governance UI compatibility: withdrawals:approve ↔ withdrawals:write
   const aliases: Record<string, string[]> = {
     "withdrawals:write": ["withdrawals:approve", "withdrawals:write"],
     "withdrawals:approve": ["withdrawals:write", "withdrawals:approve"],

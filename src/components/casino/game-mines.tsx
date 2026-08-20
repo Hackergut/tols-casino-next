@@ -114,7 +114,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
     try {
       const data = await placeOriginalsBet('mines', betAmount, { mines: mineCount, tilesToReveal: 3 }, 'start');
       roundIdRef.current = data.roundId ?? null;
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setPhase('playing');
     } catch { /* ignore */ }
   }, [betAmount, balance, mineCount]);
@@ -135,7 +135,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
       const mult = Number(payload.multiplier ?? data.multiplier ?? 0);
       setCurrentMultiplier(mult);
       setPayout(betAmount * mult);
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
 
       if (!data.pending) {
         setPhase('done');
@@ -170,7 +170,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
       setTimeout(() => setShowConfetti(false), 2500);
       setResult({ won: true, payout: data.payout, hitMine: false });
       setPayout(data.payout);
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setHistory(prev => [{ result: 'win', payout: data.payout, mines: mineCount, picks: currentPicks.length }, ...prev].slice(0, 10));
     } catch { /* ignore */ }
   }, [phase, revealed, mineCount, currentPicks]);

@@ -173,7 +173,7 @@ export function BridgePage() {
             <label className="space-y-1 text-xs"><span>Governance API base</span><Input value={form.towerApiBase} onChange={(e) => setForm({ ...form, towerApiBase: e.target.value })} placeholder="https://gov.tols.fun/api" /></label>
             <label className="space-y-1 text-xs"><span>API key {connection?.apiKeyHint && <em className="text-muted-foreground">({connection.apiKeyHint} saved)</em>}</span><Input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={connection?.hasApiKey ? 'Leave blank to keep existing' : 'Governance API key'} /></label>
             <label className="space-y-1 text-xs"><span>App key {connection?.appKeyHint && <em className="text-muted-foreground">({connection.appKeyHint} saved)</em>}</span><Input type="password" value={form.appKey} onChange={(e) => setForm({ ...form, appKey: e.target.value })} placeholder={connection?.hasAppKey ? 'Leave blank to keep existing' : 'Governance app key'} /></label>
-            <label className="space-y-1 text-xs md:col-span-2"><span>Shared bridge secret</span><Input type="password" value={form.bridgeSecret} onChange={(e) => setForm({ ...form, bridgeSecret: e.target.value })} placeholder={connection?.hasBridgeSecret ? 'Leave blank to keep the encrypted secret' : 'Minimo 32 caratteri — same value on Governance'} /></label>
+            <label className="space-y-1 text-xs md:col-span-2"><span>Shared bridge secret</span><Input type="password" value={form.bridgeSecret} onChange={(e) => setForm({ ...form, bridgeSecret: e.target.value })} placeholder={connection?.hasBridgeSecret ? 'Leave blank to keep the encrypted secret' : 'At least 32 characters — same value on Governance'} /></label>
             <label className="space-y-1 text-xs"><span>Health path</span><Input value={form.healthPath} onChange={(e) => setForm({ ...form, healthPath: e.target.value })} /></label>
             <label className="space-y-1 text-xs"><span>Registration/webhook path</span><Input value={form.webhookPath} onChange={(e) => setForm({ ...form, webhookPath: e.target.value })} /></label>
           </div>
@@ -244,7 +244,7 @@ export function BridgePage() {
           <CardHeader><CardTitle className="text-sm">Bridge endpoints</CardTitle><CardDescription>Use these URLs on Governance and Vercel.</CardDescription></CardHeader>
           <CardContent className="space-y-2">
             {[
-              { m: 'GET', p: '/api/bridge/health?probe=true', d: 'health pubblico (Vercel cron ogni 15m)' },
+              { m: 'GET', p: '/api/bridge/health?probe=true', d: 'public health (Vercel cron every 15m)' },
               { m: 'POST', p: '/api/bridge/webhook', d: 'Tower → Casino (HMAC X-Bridge-Signature)' },
               { m: 'GET', p: '/api/bridge/sso?token=...', d: 'SSO Tower→Casino (bridge secret)' },
               { m: 'POST', p: '/api/bridge/sso', d: 'SSO Casino→Tower (mint token)' },

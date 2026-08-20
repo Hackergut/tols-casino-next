@@ -98,7 +98,7 @@ export function WheelGame({ onBack, initialBalance }: Props) {
           const r = { won: data.won, segment: payload.segment, multiplier: data.multiplier, payout: data.payout };
           setResult(r);
           setWinningSegment(seg);
-          setBalance(data.newBalance);
+          setBalance(data.availableBalance ?? data.newBalance);
           setHistory(prev => [{ result: r.won ? 'win' : 'lose', multiplier: r.multiplier, payout: r.payout }, ...prev].slice(0, 10));
           setSpinning(false);
           if (r.won) {

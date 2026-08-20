@@ -115,7 +115,14 @@ export interface BetResponse {
   serverSeedHash: string;
   clientSeed: string;
   nonce: number;
+  /** Real (withdrawable) balance after settlement. */
   newBalance: number;
+  /** Locked bonus balance after settlement. */
+  bonusBalance: number;
+  /** Wagering still required before the bonus releases. */
+  wageringRemaining: number;
+  /** Total playable balance (real + bonus) after settlement. */
+  availableBalance: number;
   controlApplied: string | null;
   pending?: boolean;
 }

@@ -1,5 +1,5 @@
 /*
- * Scopa Siciliana — client-side replay helpers.
+ * Sicilian Scopa — client-side replay helpers.
  *
  * The server returns the full chronological `timeline` (deal + move events,
  * see `src/lib/scopa.ts`). These pure helpers let the animated table rebuild
@@ -21,19 +21,19 @@ export const SCOPA_SUIT_SYMBOL: Record<number, string> = {
 };
 
 export const SCOPA_SUIT_NAME: Record<number, string> = {
-  0: "Denari",
-  1: "Coppe",
-  2: "Spade",
-  3: "Bastoni",
+  0: "Coins",
+  1: "Cups",
+  2: "Swords",
+  3: "Clubs",
 };
 
-// Traditional Sicilian deck colours: Denari gold, Coppe red, Spade deep blue,
-// Bastoni green — the classic regional card palette.
+// Traditional Sicilian deck colours: Coins gold, Cups red, Swords deep blue,
+// Clubs green — the classic regional card palette.
 export const SCOPA_SUIT_COLOR: Record<number, string> = {
-  0: "#d7a10f", // denari — gold
-  1: "#c3311c", // coppe — red
-  2: "#274a8f", // spade — deep blue
-  3: "#2f7a3a", // bastoni — green
+  0: "#d7a10f", // coins — gold
+  1: "#c3311c", // cups — red
+  2: "#274a8f", // swords — deep blue
+  3: "#2f7a3a", // clubs — green
 };
 
 /** Unique per-card key — a 40-card deck has exactly one of each (suit, value). */
@@ -41,7 +41,7 @@ export function scopaCardKey(card: Card): string {
   return `${card.suit}:${card.value}`;
 }
 
-/** Compact face label, e.g. "7◆", "D♥" (Donna), "C♠" (Cavallo), "R♣" (Re). */
+/** Compact face label, e.g. "7◆", "D♥" (Queen), "C♠" (Knight), "R♣" (King). */
 export function scopaShort(card: Card): string {
   const v = card.value <= 7 ? String(card.value) : card.value === 8 ? "D" : card.value === 9 ? "C" : "R";
   return `${v}${SCOPA_SUIT_SYMBOL[card.suit]}`;
@@ -50,11 +50,11 @@ export function scopaShort(card: Card): string {
 /* ── Board state ───────────────────────────────────────────────────────── */
 
 export interface ScopaBoard {
-  /** Hands, still face-up: [Giocatore, Banco]. */
+  /** Hands, still face-up: [Player, Bank]. */
   hands: [Card[], Card[]];
-  /** Cards currently on the table (tavolo). */
+  /** Cards currently on the table. */
   table: Card[];
-  /** Captured piles: [Giocatore, Banco]. */
+  /** Captured piles: [Player, Bank]. */
   piles: [Card[], Card[]];
 }
 

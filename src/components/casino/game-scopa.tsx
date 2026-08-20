@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
-import { GameBetControls } from "@/components/casino/game-shared";
+import { GameBetControls, SoundToggle } from "@/components/casino/game-shared";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { useOriginalsSession } from "@/lib/originals-client";
 import { PlayingCard } from "@/components/casino/playing-card";
@@ -16,7 +16,7 @@ interface Props {
 }
 
 const SUITS = ["♦", "♥", "♣", "♠"];
-const SUIT_NAME = ["Denari", "Coppe", "Bastoni", "Spade"];
+const SUIT_NAME = ["Coins", "Cups", "Clubs", "Swords"];
 const RANKS = ["", "A", "2", "3", "4", "5", "6", "7", "F", "C", "R"];
 
 function ScopaCardView({ card, onClick, disabled }: { card: ScopaCard; onClick?: () => void; disabled?: boolean }) {
@@ -52,7 +52,7 @@ export function ScopaGame({ onBack, initialBalance }: Props) {
 
   useEffect(() => {
     const latest = result ?? round;
-    if (latest?.newBalance != null) setBalance(latest.newBalance);
+    if (latest?.newBalance != null) setBalance(latest.availableBalance ?? latest.newBalance);
   }, [result, round, setBalance]);
 
   const deal = useCallback(() => {
@@ -82,35 +82,36 @@ export function ScopaGame({ onBack, initialBalance }: Props) {
         </button>
         <div>
           <h1>Scopa</h1>
-          <p>Mini-mano vs il banco — pari, somme, scopa. Vince chi fa più punti.</p>
+          <p>A quick hand against the bank — match pairs or sums to sweep. Most points wins.</p>
         </div>
+        <SoundToggle className="g-sound ml-auto" />
       </div>
 
       <div className="game-grid">
         <div className="bj-table scopa-table">
           <div className="bj-hand">
             <p className="bj-hand-label">
-              Banco · {dealerCaptured.length} carte · {dealerScope} scope
+              Bank · {dealerCaptured.length} cards · {dealerScope} sweeps
               {dealerPts != null ? ` · ${dealerPts} pt` : ""}
             </p>
             <div className="bj-cards">
               {dealerCaptured.slice(-4).map((c, i) => (
                 <ScopaCardView key={`d-${i}`} card={c} />
               ))}
-              {!dealerCaptured.length && <p className="text-sm text-white/30">Nessuna presa</p>}
+              {!dealerCaptured.length && <p className="text-sm text-white/30">No captures</p>}
             </div>
           </div>
 
           <div className="bj-hand">
-            <p className="bj-hand-label">Tavolo</p>
+            <p className="bj-hand-label">Table</p>
             <div className="bj-cards">
-              {table.length ? table.map((c, i) => <ScopaCardView key={`t-${i}`} card={c} />) : <p className="text-sm text-white/30">Tavolo vuoto</p>}
+              {table.length ? table.map((c, i) => <ScopaCardView key={`t-${i}`} card={c} />) : <p className="text-sm text-white/30">Empty table</p>}
             </div>
           </div>
 
           <div className="bj-hand">
             <p className="bj-hand-label">
-              Tu · {playerCaptured.length} carte · {playerScope} scope
+              You · {playerCaptured.length} cards · {playerScope} sweeps
               {playerPts != null ? ` · ${playerPts} pt` : ""}
             </p>
             <div className="bj-cards">
@@ -119,7 +120,7 @@ export function ScopaGame({ onBack, initialBalance }: Props) {
                     <ScopaCardView key={`p-${i}`} card={c} onClick={() => play(i)} disabled={pending} />
                   ))
                 : playerCaptured.slice(-4).map((c, i) => <ScopaCardView key={`pc-${i}`} card={c} />)}
-              {playing && !playerHand.length && <p className="text-sm text-white/30">Aspetta il banco…</p>}
+              {playing && !playerHand.length && <p className="text-sm text-white/30">Waiting for the bank…</p>}
             </div>
           </div>
 
@@ -141,17 +142,17 @@ export function ScopaGame({ onBack, initialBalance }: Props) {
           <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={playing || pending} />
           {!playing && !result && (
             <button onClick={deal} disabled={pending || betAmount <= 0 || betAmount > balance} className="g-btn g-btn-play">
-              {pending ? "Distribuendo…" : "Dai le carte"}
+              {pending ? "Dealing…" : "Deal cards"}
             </button>
           )}
-          {playing && <p className="text-center text-xs text-white/40">Gioca una carta dalla tua mano</p>}
+          {playing && <p className="text-center text-xs text-white/40">Play a card from your hand</p>}
           {result && !playing && (
             <button onClick={reset} className="g-btn g-btn-secondary">
-              Nuova mano
+              New hand
             </button>
           )}
           <p className="text-[10px] leading-relaxed text-white/35">
-            Cattura per pari o per somma. Svuotare il tavolo è scopa. Chi ha più carte, più denari, il settebello e le scope vince 1.90x (+0.30x a scopa).
+            Capture by matching a card or summing to its value. Clearing the table is a sweep. Most cards, most coins, the seven of coins and the sweeps win 1.90x (+0.30x per sweep).
           </p>
         </div>
       </div>

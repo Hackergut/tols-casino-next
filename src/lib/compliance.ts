@@ -112,18 +112,17 @@ export interface VpnAssessment {
 /*
  * Jurisdictions the platform must not serve.
  *
- * The default is the set that virtually every unlicensed crypto casino blocks
- * (regulators with active enforcement against offshore operators). It is NOT a
- * legal opinion and it is NOT complete — set BLOCKED_COUNTRIES explicitly once
- * you know which licence you hold.
+ * The default is a conservative set of regulators with active enforcement
+ * against offshore operators. It is NOT a legal opinion and it is NOT complete
+ * — set BLOCKED_COUNTRIES explicitly once you know which licence you hold.
  *
- * Note IT is absent from the default on purpose: Italy requires an ADM licence,
- * so it belongs on this list for an unlicensed operator — but this product is
- * Italian-facing, and silently blocking your own market (and your own office)
- * via a default nobody chose is worse than making you opt in. Add it via env.
+ * The United States is deliberately NOT blocked by default: US players are
+ * accepted (subject to their own state law), so they must never be flagged or
+ * gated by the geo assessment. Add any jurisdiction you cannot serve via the
+ * BLOCKED_COUNTRIES environment variable.
  */
 export const BLOCKED_COUNTRIES = new Set<string>(
-  (process.env.BLOCKED_COUNTRIES ?? "US,GB,FR,NL,AU,SG,IL")
+  (process.env.BLOCKED_COUNTRIES ?? "GB,FR,NL,AU,SG,IL")
     .split(",")
     .map((c) => c.trim().toUpperCase())
     .filter(Boolean),

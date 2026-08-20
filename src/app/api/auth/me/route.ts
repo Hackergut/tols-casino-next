@@ -11,6 +11,8 @@ export async function GET() {
     avatarColor: user.avatarColor,
     level: user.level,
     balance: user.wallet?.balance ?? 0,
+    bonusBalance: user.wallet?.bonusBalance ?? 0,
+    wageringRemaining: user.wallet?.wageringRemaining ?? 0,
     currency: user.wallet?.currency ?? "USDT",
     vipLevel: user.wallet?.vipLevel ?? 1,
     totalWagered: user.wallet?.totalWagered ?? 0,

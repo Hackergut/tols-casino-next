@@ -5,7 +5,7 @@ import { requirePlatformAuth, hasScope } from "@/lib/platform-auth";
 /**
  * GET /api/platform/deposits — JWT RS256 required
  * Query: ?status=pending|confirmed|all&limit=50&offset=0&chain=solana&userId=...
- * Ritorna depositi reali del Casino (elimina mockup governance)
+ * Returns the Casino's real deposits (removes the governance mock).
  */
 export async function GET(req: NextRequest) {
   const auth = requirePlatformAuth(req);

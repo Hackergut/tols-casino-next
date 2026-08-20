@@ -1,29 +1,29 @@
-# Governance — cosa incollare nel repo `tolsgovernz` (https://vercel.com/hackguts-projects/tolsgovernz)
+# Governance — what to paste into the `tolsgovernz` repo (https://vercel.com/hackguts-projects/tolsgovernz)
 
-Questo è l'ALTRO progetto Vercel (Governance). Casino è `tols-casino-next`.
+This is the OTHER Vercel project (Governance). The Casino is `tols-casino-next`.
 
-## 1. Env su Vercel Governance (Settings → Environment Variables → Production)
+## 1. Env on Vercel Governance (Settings → Environment Variables → Production)
 
-Prendi domini REALI da Vercel → Settings → Domains (non inventare):
-- Governance: `https://gov.tols.fun` (o custom se hai)
-- Casino: `https://www.tols.fun` o `https://www.tols.fun`
+Get REAL domains from Vercel → Settings → Domains (do not invent them):
+- Governance: `https://gov.tols.fun` (or custom if you have one)
+- Casino: `https://www.tols.fun`
 
 ```
 GOVERNANCE_TOWER_URL=https://gov.tols.fun
 APP_URL=https://www.tols.fun
-GOVERNANCE_BRIDGE_SECRET=<stesso del Casino — openssl rand -hex 32>
-PLATFORM_JWT_PRIVATE_KEY=<base64 PEM privato — BLOCCO 1 di .env.bridge-keys su casino>
+GOVERNANCE_BRIDGE_SECRET=<same as the Casino — openssl rand -hex 32>
+PLATFORM_JWT_PRIVATE_KEY=<private PEM base64 — BLOCK 1 of .env.bridge-keys on casino>
 PLATFORM_JWT_ISSUER=tols-governance
 PLATFORM_JWT_AUDIENCE=tols-casino
 ```
 
-## 2. Copia `src/lib/governance-bridge.ts` dal Casino
+## 2. Copy `src/lib/governance-bridge.ts` from the Casino
 
-Da `tols-casino-next` → `tolsgovernz`, stesso file (usa `GOVERNANCE_TOWER_URL` / `APP_URL`).
+From `tols-casino-next` → `tolsgovernz`, same file (uses `GOVERNANCE_TOWER_URL` / `APP_URL`).
 
-## 3. Route Governance (Next.js)
+## 3. Governance route (Next.js)
 
-Crea `src/app/api/bridge/events/route.ts` ← Casino → Governance:
+Create `src/app/api/bridge/events/route.ts` ← Casino → Governance:
 ```ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyBridgeSignature } from "@/lib/governance-bridge";
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-Push Governance → Casino:
+Governance → Casino push:
 ```ts
 import { signBridgePayload } from "@/lib/governance-bridge";
 const raw = JSON.stringify({ type: "ping", payload: {} });
@@ -46,9 +46,9 @@ await fetch(`${process.env.APP_URL}/api/bridge/webhook`, {
 });
 ```
 
-## 4. JWT Governance → Casino (elimina mockup)
+## 4. JWT Governance → Casino (removes the mockups)
 
-La Governance firma i JWT con `PLATFORM_JWT_PRIVATE_KEY` e chiama:
+Governance signs the JWTs with `PLATFORM_JWT_PRIVATE_KEY` and calls:
 ```ts
 import { createSign, createPrivateKey } from "node:crypto";
 function signJWT(payload: object) {
@@ -67,4 +67,4 @@ const res = await fetch(`${process.env.APP_URL}/api/platform/deposits?limit=5`, 
 
 ## 5. Domains
 
-Non serve aggiungere `tolsgovernz.vercel.app` — è già il dominio Vercel. Se usi custom domain, aggiungilo in Vercel → Settings → Domains su `tolsgovernz` e usa quello come `GOVERNANCE_TOWER_URL` ovunque.
+There is no need to add `tolsgovernz.vercel.app` — it is already the Vercel domain. If you use a custom domain, add it in Vercel → Settings → Domains on `tolsgovernz` and use that as `GOVERNANCE_TOWER_URL` everywhere.

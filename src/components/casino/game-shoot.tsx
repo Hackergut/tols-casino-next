@@ -132,7 +132,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
       shown[idx] = mult;
       setTargets(shown);
       setResult({ won: data.won, multiplier: mult, payout: data.payout });
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setGameState('result');
       setHistory(prev => [{
         result: data.won ? 'win' : 'lose',

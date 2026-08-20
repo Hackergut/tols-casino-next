@@ -1,5 +1,5 @@
 /*
- * Scopa Siciliana — Fast Bet engine.
+ * Sicilian Scopa — Fast Bet engine.
  *
  * A deterministic, provably-fair "auto game" of Sicilian Scopa. The human
  * player does NOT play Scopa: they bet on the outcome of a fully automatic
@@ -24,13 +24,13 @@
 /* ── Deck & values ─────────────────────────────────────────────────────── */
 
 /** Sicilian suits, in the canonical order used for tie-breaks. */
-export const SUITS = ["Denari", "Coppe", "Spade", "Bastoni"] as const;
+export const SUITS = ["Coins", "Cups", "Swords", "Clubs"] as const;
 
-/** Face cards are stored as 8 (Donna), 9 (Cavallo), 10 (Re). */
+/** Face cards are stored as 8 (Queen), 9 (Knight), 10 (King). */
 export const FACE_NAMES: Record<number, string> = {
-  8: "Donna",
-  9: "Cavallo",
-  10: "Re",
+  8: "Queen",
+  9: "Knight",
+  10: "King",
 };
 
 /** Primiera values (historical Scopa scoring). */
@@ -54,7 +54,7 @@ export interface Card {
 }
 
 export function cardLabel(card: Card): string {
-  return `${card.value === 8 ? "Donna" : card.value === 9 ? "Cavallo" : card.value === 10 ? "Re" : card.value} di ${SUITS[card.suit]}`;
+  return `${card.value === 8 ? "Queen" : card.value === 9 ? "Knight" : card.value === 10 ? "King" : card.value} of ${SUITS[card.suit]}`;
 }
 
 /** Deterministic float source in [0,1). One `cursor` → one independent value. */
@@ -114,8 +114,8 @@ interface CaptureCandidate {
   tableIndices: number[];
   played: Card;
   scopa: boolean;
-  settebello: boolean;
-  denari: number;
+  sevenOfCoins: boolean;
+  coins: number;
   value: number;
 }
 
@@ -129,10 +129,10 @@ function lexCompare(a: number[], b: number[]): number {
 
 /**
  * Fixed, published capture strategy (spec §1.2):
- *   1. Scopa      — capture every card on the table, if possible;
- *   2. Settebello — otherwise capture the 7 of Denari, if possible;
+ *   1. Sweep      — capture every card on the table, if possible;
+ *   2. Seven of Coins — otherwise capture the 7 of Coins, if possible;
  *   3. otherwise, among all legal captures, take the one that captures the
- *      most Denari, then (tie) the highest total captured value;
+ *      most Coins, then (tie) the highest total captured value;
  *   4. fully deterministic tie-breaks: lower played card value, then lower
  *      suit, then fewer table cards, then lexicographic table indices.
  * Returns null when no capture is possible (the caller must discard).
@@ -148,8 +148,8 @@ function chooseCapture(hand: Card[], table: Card[]): { cardIndex: number; tableI
         tableIndices: combo,
         played: card,
         scopa: combo.length === table.length && table.length > 0,
-        settebello: taken.some((c) => c.suit === 0 && c.value === 7),
-        denari: taken.filter((c) => c.suit === 0).length,
+        sevenOfCoins: taken.some((c) => c.suit === 0 && c.value === 7),
+        coins: taken.filter((c) => c.suit === 0).length,
         value: taken.reduce((s, c) => s + c.value, 0),
       });
     }
@@ -159,8 +159,8 @@ function chooseCapture(hand: Card[], table: Card[]): { cardIndex: number; tableI
   cands.sort((a, b) => {
     return (
       (b.scopa ? 1 : 0) - (a.scopa ? 1 : 0) ||
-      (b.settebello ? 1 : 0) - (a.settebello ? 1 : 0) ||
-      b.denari - a.denari ||
+      (b.sevenOfCoins ? 1 : 0) - (a.sevenOfCoins ? 1 : 0) ||
+      b.coins - a.coins ||
       b.value - a.value ||
       a.played.value - b.played.value ||
       a.played.suit - b.played.suit ||
@@ -236,10 +236,10 @@ export interface ScopaRoundResult {
   bankPoints: number;
   playerScopa: number;
   bankScopa: number;
-  playerSettebello: boolean;
-  bankSettebello: boolean;
-  playerDenari: number;
-  bankDenari: number;
+  playerSevenOfCoins: boolean;
+  bankSevenOfCoins: boolean;
+  playerCoins: number;
+  bankCoins: number;
   playerPrimiera: number;
   bankPrimiera: number;
   totalPoints: number;
@@ -328,8 +328,8 @@ export function playScopaRound(rand: Rand): ScopaRoundResult {
   }
 
   // Standard Scopa rule: the player who made the last capture takes the
-  // remaining table cards. (Without this, cards — possibly the Settebello —
-  // would stay uncaptured and the card/denari/settebello/primiera categories
+  // remaining table cards. (Without this, cards — possibly the Seven of Coins —
+  // would stay uncaptured and the card/coins/seven-of-coins/primiera categories
   // would be ill-defined.)
   if (table.length > 0) {
     const taker: 0 | 1 = lastCapture ?? 1; // fallback: dealer keeps them if nobody ever captured
@@ -339,22 +339,22 @@ export function playScopaRound(rand: Rand): ScopaRoundResult {
     table.length = 0;
   }
 
-  // Score (§1.3): cards, denari, settebello, primiera, +1 per scopa.
+  // Score (§1.3): cards, coins, seven of coins, primiera, +1 per sweep.
   let p0 = 0;
   let p1 = 0;
 
   if (captured[0].length > captured[1].length) p0++;
   else if (captured[1].length > captured[0].length) p1++;
 
-  const den0 = captured[0].filter((c) => c.suit === 0).length;
-  const den1 = captured[1].filter((c) => c.suit === 0).length;
-  if (den0 > den1) p0++;
-  else if (den1 > den0) p1++;
+  const coins0 = captured[0].filter((c) => c.suit === 0).length;
+  const coins1 = captured[1].filter((c) => c.suit === 0).length;
+  if (coins0 > coins1) p0++;
+  else if (coins1 > coins0) p1++;
 
-  const sett0 = captured[0].some((c) => c.suit === 0 && c.value === 7);
-  const sett1 = captured[1].some((c) => c.suit === 0 && c.value === 7);
-  if (sett0) p0++;
-  else if (sett1) p1++;
+  const seven0 = captured[0].some((c) => c.suit === 0 && c.value === 7);
+  const seven1 = captured[1].some((c) => c.suit === 0 && c.value === 7);
+  if (seven0) p0++;
+  else if (seven1) p1++;
 
   const prim0 = primiera(captured[0]);
   const prim1 = primiera(captured[1]);
@@ -376,10 +376,10 @@ export function playScopaRound(rand: Rand): ScopaRoundResult {
     bankPoints: p1,
     playerScopa: scopaCount[0],
     bankScopa: scopaCount[1],
-    playerSettebello: sett0,
-    bankSettebello: sett1,
-    playerDenari: den0,
-    bankDenari: den1,
+    playerSevenOfCoins: seven0,
+    bankSevenOfCoins: seven1,
+    playerCoins: coins0,
+    bankCoins: coins1,
     playerPrimiera: prim0,
     bankPrimiera: prim1,
     totalPoints: p0 + p1,
@@ -395,23 +395,23 @@ export type ScopaMarket =
   | "draw" // X — draw
   | "over" // total points > 4.5
   | "under" // total points ≤ 4.5
-  | "settebello_player" // Player captures the 7 of Denari
-  | "settebello_bank" // Bank captures the 7 of Denari
-  | "scopa_over"; // at least one Scopa in the round (total > 0)
+  | "seven_of_coins_player" // Player captures the 7 of Coins
+  | "seven_of_coins_bank" // Bank captures the 7 of Coins
+  | "sweep_over"; // at least one Scopa in the round (total > 0)
 
 export const SCOPA_MARKETS: {
   id: ScopaMarket;
   label: string;
   description: string;
 }[] = [
-  { id: "player", label: "1 · Giocatore", description: "Il Giocatore vince il round" },
-  { id: "bank", label: "2 · Banco", description: "Il Banco vince il round" },
-  { id: "draw", label: "X · Pareggio", description: "Il round termina in parità" },
-  { id: "over", label: "Over 4.5", description: "Somma punti totali > 4.5" },
-  { id: "under", label: "Under 4.5", description: "Somma punti totali ≤ 4.5" },
-  { id: "settebello_player", label: "Settebello · Giocatore", description: "Il Giocatore cattura il 7 di Denari" },
-  { id: "settebello_bank", label: "Settebello · Banco", description: "Il Banco cattura il 7 di Denari" },
-  { id: "scopa_over", label: "Scopa Over 0.5", description: "Almeno una Scopa nel round" },
+  { id: "player", label: "1 · Player", description: "The Player wins the round" },
+  { id: "bank", label: "2 · Bank", description: "The Bank wins the round" },
+  { id: "draw", label: "X · Draw", description: "The round ends in a draw" },
+  { id: "over", label: "Over 4.5", description: "Total points > 4.5" },
+  { id: "under", label: "Under 4.5", description: "Total points ≤ 4.5" },
+  { id: "seven_of_coins_player", label: "Seven of Coins · Player", description: "The Player captures the 7 of Coins" },
+  { id: "seven_of_coins_bank", label: "Seven of Coins · Bank", description: "The Bank captures the 7 of Coins" },
+  { id: "sweep_over", label: "Sweep Over 0.5", description: "At least one sweep in the round" },
 ];
 
 /**
@@ -426,9 +426,9 @@ export const SCOPA_MARKETS: {
  *   draw              0.10520  9.10
  *   over              0.69811  1.37
  *   under             0.30189  3.17
- *   settebello_player 0.51110  1.87
- *   settebello_bank   0.48890  1.96
- *   scopa_over        0.78485  1.22
+ *   seven_of_coins_player 0.51110  1.87
+ *   seven_of_coins_bank   0.48890  1.96
+ *   sweep_over        0.78485  1.22
  *
  * odds = floor(0.96 / p_upper) where p_upper is the 95% confidence interval's
  * UPPER bound (p̂ + 1.96·SE, SE ≈ 0.00015). Using the upper bound guarantees
@@ -444,9 +444,9 @@ export const SCOPA_ODDS: Record<ScopaMarket, number> = {
   draw: 9.1,
   over: 1.37,
   under: 3.17,
-  settebello_player: 1.87,
-  settebello_bank: 1.96,
-  scopa_over: 1.22,
+  seven_of_coins_player: 1.87,
+  seven_of_coins_bank: 1.96,
+  sweep_over: 1.22,
 };
 
 /**
@@ -469,11 +469,11 @@ export function resolveScopaMarket(market: ScopaMarket, r: ScopaRoundResult): bo
       return r.totalPoints > 4.5;
     case "under":
       return r.totalPoints <= 4.5;
-    case "settebello_player":
-      return r.playerSettebello;
-    case "settebello_bank":
-      return r.bankSettebello;
-    case "scopa_over":
+    case "seven_of_coins_player":
+      return r.playerSevenOfCoins;
+    case "seven_of_coins_bank":
+      return r.bankSevenOfCoins;
+    case "sweep_over":
       return r.playerScopa + r.bankScopa > 0;
   }
 }

@@ -116,7 +116,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
       const cp = Number((data.payload as { crashPoint?: number })?.crashPoint ?? 0);
       setCrashPoint(cp);
       currentCrashRef.current = cp || cashMult;
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setPfData({ serverSeedHash: data.serverSeedHash, clientSeed: data.clientSeed, nonce: data.nonce });
       if (data.won) {
         setPhase('cashed');
@@ -158,7 +158,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
             const cp = Number((data.payload as { crashPoint?: number })?.crashPoint ?? mFloor);
             setCrashPoint(cp);
             setMultiplier(cp);
-            setBalance(data.newBalance);
+            setBalance(data.availableBalance ?? data.newBalance);
             setHistory(prev => [{ multiplier: cp, result: 'lose', payout: 0 }, ...prev].slice(0, 10));
           }).catch(() => {});
         }
@@ -187,7 +187,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
     try {
       const data = await placeOriginalsBet('crash', betAmount, { cashOutAt: autoCashout }, 'start');
       roundIdRef.current = data.roundId ?? null;
-      setBalance(data.newBalance);
+      setBalance(data.availableBalance ?? data.newBalance);
       setPfData({ serverSeedHash: data.serverSeedHash, clientSeed: data.clientSeed, nonce: data.nonce });
       if (!data.pending) {
         const serverCp = Number((data.payload as { crashPoint?: number })?.crashPoint ?? 1);

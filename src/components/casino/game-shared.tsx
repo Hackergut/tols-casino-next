@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Shield, ChevronDown, ChevronUp, Volume2, VolumeX } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
+import { useGameSettings } from '@/lib/game-settings';
+import { setSoundEnabled } from '@/lib/game-audio';
 
 /* ═══════════════════════════════════════════════════════════════════════
    Shared TOLS Original Game Components
@@ -29,7 +31,34 @@ export function GameHeader({
         <h1>{title}</h1>
         <p>{subtitle}</p>
       </div>
+      <SoundToggle className="g-sound ml-auto" />
     </div>
+  );
+}
+
+// ── Sound toggle ────────────────────────────────────────────────────────
+// Compact in-header mute control. Lives in the game header (not a floating
+// overlay) so it stays out of the board area; the persisted preference is
+// shared with the account Settings page.
+export function SoundToggle({ className = "" }: { className?: string }) {
+  const soundEnabled = useGameSettings((s) => s.soundEnabled);
+  const toggleSound = useGameSettings((s) => s.toggleSound);
+
+  // The store is the source of truth; mirror it into the audio engine so a
+  // toggle here and a toggle in Settings stay in lock-step.
+  useEffect(() => { setSoundEnabled(soundEnabled); }, [soundEnabled]);
+
+  return (
+    <button
+      type="button"
+      onClick={toggleSound}
+      aria-pressed={soundEnabled}
+      aria-label={soundEnabled ? "Mute sound" : "Unmute sound"}
+      title={soundEnabled ? "Mute" : "Unmute"}
+      className={className}
+    >
+      {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+    </button>
   );
 }
 

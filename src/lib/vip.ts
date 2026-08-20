@@ -14,13 +14,13 @@ export interface VipTier {
 }
 
 export const VIP_TIERS: VipTier[] = [
-  { level: 1, name: "Spark", color: "#facc15", points: 0,         cashback: 0,  benefits: ["Bonus di benvenuto", "Accesso a tutte le slot"] },
-  { level: 2, name: "Blaze", color: "#fb7185", points: 500,       cashback: 5,  benefits: ["5% cashback settimanale", "20 free spin"] },
-  { level: 3, name: "Storm", color: "#38bdf8", points: 2_000,     cashback: 7,  benefits: ["7% cashback", "50 free spin", "Bonus mensile"] },
-  { level: 4, name: "Titan", color: "#cbd5e1", points: 10_000,    cashback: 10, benefits: ["10% cashback", "Prelievi prioritari", "Regalo di compleanno"] },
-  { level: 5, name: "Nova",  color: "#c084fc", points: 50_000,    cashback: 12, benefits: ["12% cashback", "Account manager dedicato", "Tornei esclusivi"] },
-  { level: 6, name: "Apex",  color: "#f59e0b", points: 200_000,   cashback: 15, benefits: ["15% cashback", "Inviti eventi VIP", "Limiti di puntata più alti"] },
-  { level: 7, name: "Myth",  color: "#cdf32b", points: 1_000_000, cashback: 20, benefits: ["20% cashback", "Esperienze luxury", "Supporto 24/7 VIP", "Bonus personalizzati"] },
+  { level: 1, name: "Spark", color: "#facc15", points: 0,         cashback: 0,  benefits: ["Welcome bonus", "Access to all slots"] },
+  { level: 2, name: "Blaze", color: "#fb7185", points: 500,       cashback: 5,  benefits: ["5% weekly cashback", "20 free spins"] },
+  { level: 3, name: "Storm", color: "#38bdf8", points: 2_000,     cashback: 7,  benefits: ["7% cashback", "50 free spins", "Monthly bonus"] },
+  { level: 4, name: "Titan", color: "#cbd5e1", points: 10_000,    cashback: 10, benefits: ["10% cashback", "Priority withdrawals", "Birthday gift"] },
+  { level: 5, name: "Nova",  color: "#c084fc", points: 50_000,    cashback: 12, benefits: ["12% cashback", "Dedicated account manager", "Exclusive tournaments"] },
+  { level: 6, name: "Apex",  color: "#f59e0b", points: 200_000,   cashback: 15, benefits: ["15% cashback", "VIP event invites", "Higher bet limits"] },
+  { level: 7, name: "Myth",  color: "#cdf32b", points: 1_000_000, cashback: 20, benefits: ["20% cashback", "Luxury experiences", "24/7 VIP support", "Personalised bonuses"] },
 ];
 
 /** Points a player has earned (currently 1 point per $1 wagered). */

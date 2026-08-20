@@ -11,9 +11,8 @@
  * and two had no animation whatsoever.
  */
 
-import { useEffect, useState, useCallback } from "react";
-import { sfx, isSoundEnabled, setSoundEnabled } from "@/lib/game-audio";
-import { Volume2, VolumeX } from "lucide-react";
+import { useEffect, useState } from "react";
+import { sfx } from "@/lib/game-audio";
 import { toast } from "sonner";
 
 interface Win {
@@ -30,9 +29,6 @@ function haptic(pattern: number | number[]): void {
 
 export function GameFeedback() {
   const [win, setWin] = useState<Win | null>(null);
-  const [soundOn, setSoundOn] = useState(true);
-
-  useEffect(() => { setSoundOn(isSoundEnabled()); }, []);
 
   useEffect(() => {
     const onBet = (e: Event) => {
@@ -62,7 +58,7 @@ export function GameFeedback() {
       } catch (e) {
         const u = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
         if (u.includes("/api/bets")) {
-          toast.error("Connessione persa", { description: "La puntata non è stata inviata." });
+          toast.error("Connection lost", { description: "Your bet was not sent." });
         }
         throw e;
       }
@@ -77,11 +73,11 @@ export function GameFeedback() {
           if (!res.ok || !j?.success) {
             const reason = String(j?.error ?? "");
             if (res.status === 429) {
-              toast.error("Troppe puntate", { description: "Attendi qualche secondo e riprova." });
+              toast.error("Too many bets", { description: "Wait a few seconds and try again." });
             } else if (/insufficient/i.test(reason)) {
-              toast.error("Saldo insufficiente", { description: "Riduci la puntata o effettua un deposito." });
+              toast.error("Insufficient balance", { description: "Lower your bet or make a deposit." });
             } else {
-              toast.error("Puntata non riuscita", { description: reason || "Riprova." });
+              toast.error("Bet failed", { description: reason || "Try again." });
             }
           }
         }).catch(() => {});
@@ -99,13 +95,6 @@ export function GameFeedback() {
     return () => clearTimeout(t);
   }, [win]);
 
-  const toggleSound = useCallback(() => {
-    const next = !soundOn;
-    setSoundOn(next);
-    setSoundEnabled(next);
-    if (next) sfx.click();
-  }, [soundOn]);
-
   return (
     <>
       <style>{`
@@ -121,15 +110,6 @@ export function GameFeedback() {
         }
         @keyframes tolsFlash { 0% { opacity: 0.35 } 100% { opacity: 0 } }
       `}</style>
-
-      {/* Sound switch — audio must always be one tap from off. */}
-      <button
-        onClick={toggleSound}
-        aria-label={soundOn ? "Disattiva audio" : "Attiva audio"}
-        className="fixed bottom-[5.5rem] left-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface/90 text-white/70 backdrop-blur-sm transition-colors hover:text-lime lg:bottom-4"
-      >
-        {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-      </button>
 
       {win && (
         <div className="pointer-events-none fixed inset-0 z-[65] flex items-center justify-center">
