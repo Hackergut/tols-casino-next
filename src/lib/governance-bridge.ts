@@ -74,8 +74,8 @@ function bridgeSecret(): string {
   return (pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "").trim();
 }
 
-export function signBridgePayload(payload: string): string {
-  const secret = bridgeSecret();
+export function signBridgePayload(payload: string, secretOverride?: string): string {
+  const secret = secretOverride || bridgeSecret();
   if (!secret) throw new Error("GOVERNANCE_BRIDGE_SECRET not configured — imposta lo stesso secret su Casino e Tower (Vercel → Settings → Environment Variables)");
   return createHmac("sha256", secret).update(payload).digest("hex");
 }
@@ -84,14 +84,24 @@ export function signBridgeBody(body: unknown): string {
   return signBridgePayload(typeof body === "string" ? body : JSON.stringify(body));
 }
 
-export function verifyBridgeSignature(rawBody: string, signature: string | null): boolean {
-  const secret = bridgeSecret();
+export function verifyBridgeSignature(rawBody: string, signature: string | null, secretOverride?: string): boolean {
+  const secret = secretOverride || bridgeSecret();
   if (!secret || !signature) return false;
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   const a = Buffer.from(expected, "utf8");
   const b = Buffer.from(signature.trim().toLowerCase().replace(/^sha256=/, ""), "utf8");
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+/** Verify with the encrypted DB connection first, then environment fallback. */
+export async function verifyRuntimeBridgeSignature(rawBody: string, signature: string | null): Promise<boolean> {
+  try {
+    const { getGovernanceConnection } = await import("@/lib/governance-connection");
+    const connection = await getGovernanceConnection();
+    if (connection?.enabled && connection.bridgeSecret) return verifyBridgeSignature(rawBody, signature, connection.bridgeSecret);
+  } catch { /* env-only deployments remain supported */ }
+  return verifyBridgeSignature(rawBody, signature);
 }
 
 // ── Outbound helper (Casino → Tower) ────────────────────────────────────
@@ -112,10 +122,19 @@ export interface BridgeFetchOpts {
  * Usa TOLS_API_KEY / TOLS_APP_KEY se la Tower li richiede.
  */
 export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
-  const { towerApiBase, towerOrigin } = getBridgeConfig();
+  const envConfig = getBridgeConfig();
+  let stored: import("@/lib/governance-connection").GovernanceConnection | null = null;
+  try {
+    const { getGovernanceConnection } = await import("@/lib/governance-connection");
+    stored = await getGovernanceConnection();
+    if (stored && !stored.enabled) stored = null;
+  } catch { /* use environment configuration */ }
+  const towerApiBase = stored?.towerApiBase || envConfig.towerApiBase;
+  const towerOrigin = stored?.towerOrigin || envConfig.towerOrigin;
+  const casinoOrigin = stored?.casinoOrigin || envConfig.casinoOrigin;
   const base = opts.useOrigin ? towerOrigin : towerApiBase;
-  const apiKey = process.env.TOLS_API_KEY || "";
-  const appKey = process.env.TOLS_APP_KEY || "";
+  const apiKey = stored?.apiKey || process.env.TOLS_API_KEY || "";
+  const appKey = stored?.appKey || process.env.TOLS_APP_KEY || "";
   const path = opts.path || "";
   const url = path ? `${base}${path.startsWith("/") ? path : `/${path}`}` : base;
 
@@ -123,15 +142,16 @@ export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response>
     "Content-Type": "application/json",
     "Accept": "application/json",
     "X-Bridge-Source": "tols-casino",
-    "X-Casino-Origin": getBridgeConfig().casinoOrigin,
+    "X-Casino-Origin": casinoOrigin,
     ...(opts.headers || {}),
   };
   if (apiKey) { headers["x-api-key"] = apiKey; headers["api_key"] = apiKey; }
   if (appKey) { headers["x-app-key"] = appKey; headers["app_key"] = appKey; }
 
-  if (bridgeSecret() && opts.body !== undefined) {
+  const runtimeSecret = stored?.bridgeSecret || bridgeSecret();
+  if (runtimeSecret && opts.body !== undefined) {
     const raw = typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body);
-    headers["x-bridge-signature"] = `sha256=${signBridgePayload(raw)}`;
+    headers["x-bridge-signature"] = `sha256=${signBridgePayload(raw, runtimeSecret)}`;
     headers["x-bridge-timestamp"] = String(Math.floor(Date.now() / 1000));
   }
 
@@ -169,7 +189,13 @@ export async function pushBridgeEvent(type: BridgeEventType, payload: Record<str
   const body = { type, payload, ts: new Date().toISOString(), source: "casino" };
   // La Governance (gov.tols.fun) espone secondo UI: /api/platform/webhooks (events:write)
   // Manteniamo fallback su /bridge/events per retrocompatibilità
+  let configuredWebhook: string | null = null;
+  try {
+    const { getGovernanceConnection } = await import("@/lib/governance-connection");
+    configuredWebhook = (await getGovernanceConnection())?.webhookPath || null;
+  } catch { /* environment fallback */ }
   const candidates: Array<{ path: string; useOrigin?: boolean }> = [
+    ...(configuredWebhook ? [{ path: configuredWebhook, useOrigin: true }] : []),
     { path: "/api/platform/webhooks", useOrigin: true },
     { path: "/api/platform/webhook", useOrigin: true },
     { path: "/bridge/events" },
@@ -221,17 +247,17 @@ export interface BridgeSsoPayload {
   nonce: string;
 }
 
-export function createBridgeSsoToken(payload: BridgeSsoPayload): string {
-  const secret = bridgeSecret();
+export function createBridgeSsoToken(payload: BridgeSsoPayload, secretOverride?: string): string {
+  const secret = secretOverride || bridgeSecret();
   if (!secret) throw new Error("GOVERNANCE_BRIDGE_SECRET not configured");
   const b64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const sig = createHmac("sha256", secret).update(b64).digest("hex");
   return `${b64}.${sig}`;
 }
 
-export function verifyBridgeSsoToken(token: string | undefined): BridgeSsoPayload | null {
+export function verifyBridgeSsoToken(token: string | undefined, secretOverride?: string): BridgeSsoPayload | null {
   if (!token) return null;
-  const secret = bridgeSecret();
+  const secret = secretOverride || bridgeSecret();
   if (!secret) return null;
   const [b64, sig] = token.split(".");
   if (!b64 || !sig) return null;

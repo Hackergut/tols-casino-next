@@ -15,12 +15,18 @@
 
 import { useEffect, useState } from "react";
 import { Settings2, X } from "lucide-react";
+import { useLocale } from "@/lib/use-locale";
 
 export function CompactGameShell({ children, gameKey }: { children: React.ReactNode; gameKey: string | null }) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { t } = useLocale();
 
-  // Collapse the sheet whenever the player switches game.
-  useEffect(() => { setSheetOpen(false); }, [gameKey]);
+  // Collapse after the game-key transition without cascading synchronously
+  // inside the effect that observes navigation.
+  useEffect(() => {
+    const task = window.setTimeout(() => setSheetOpen(false), 0);
+    return () => window.clearTimeout(task);
+  }, [gameKey]);
 
   // Close on Escape, matching the other overlays in the app.
   useEffect(() => {
@@ -39,8 +45,8 @@ export function CompactGameShell({ children, gameKey }: { children: React.ReactN
         type="button"
         onClick={() => setSheetOpen((o) => !o)}
         aria-expanded={sheetOpen}
-        aria-label={sheetOpen ? "Chiudi impostazioni" : "Impostazioni di gioco"}
-        title={sheetOpen ? "Chiudi impostazioni" : "Impostazioni di gioco"}
+        aria-label={sheetOpen ? t("common.close") : t("nav.settings")}
+        title={sheetOpen ? t("common.close") : t("nav.settings")}
         className="game-sheet-toggle"
       >
         {sheetOpen ? <X className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}

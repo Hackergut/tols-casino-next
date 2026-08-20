@@ -10,9 +10,11 @@
  * asks for reduced motion, where a moving banner is actively unpleasant.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { TARGET_RTP, SLOTS_RTP } from "@/lib/game-math";
+import { useLocale } from "@/lib/use-locale";
 
 export interface Promo {
   id: string;
@@ -24,10 +26,10 @@ export interface Promo {
 }
 
 export const PROMOS: Promo[] = [
-  { id: "dice-duel", title: "Dice Duel", subtitle: "New TOLS Original · 1.9% edge", cta: "Play", image: "/games/originals/dice.jpg", target: "dice" },
+  { id: "dice-duel", title: "Dice Duel", subtitle: `TOLS Original · ${((1 - TARGET_RTP) * 100).toFixed(0)}% edge`, cta: "Play", image: "/games/originals/dice.jpg", target: "dice" },
   { id: "tols-roulette", title: "TOLS Roulette", subtitle: "European single zero · 97.3% RTP", cta: "Play", image: "/games/originals/roulette.jpg", target: "roulette" },
-  { id: "neon-sevens", title: "Neon Sevens", subtitle: "Three reels, one payline · 92% RTP", cta: "Spin", image: "/games/originals/slots.jpg", target: "slots" },
-  { id: "black-deck", title: "Black Deck", subtitle: "Table games, dealt in TOLS black", cta: "Play", image: "/games/originals/baccarat.jpg", target: "originals" },
+  { id: "neon-sevens", title: "Neon Sevens", subtitle: `Three reels, one payline · ${(SLOTS_RTP * 100).toFixed(0)}% RTP`, cta: "Spin", image: "/games/originals/slots.jpg", target: "slots" },
+  { id: "blackjack", title: "Blackjack 1V1", subtitle: "Six decks · S17 · Blackjack pays 3:2", cta: "Play", image: "/games/originals/blackjack.jpg", target: "blackjack" },
   { id: "chip-storm", title: "Chip Storm", subtitle: "Flip a chip, double your stake", cta: "Play", image: "/games/originals/coinflip.jpg", target: "coinflip" },
   { id: "weekly-race", title: "$100,000 Weekly Race", subtitle: "Climb the leaderboard — resets Monday", cta: "Enter", image: "/brand/hero-table.jpg", target: "rewards" },
 ];
@@ -36,27 +38,28 @@ const INTERVAL = 5200;
 
 export function HeroCarousel({ onSelect }: { onSelect: (target: string) => void }) {
   const reduced = useReducedMotion();
+  const { t } = useLocale();
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState(1);
   const [paused, setPaused] = useState(false);
-  const manual = useRef(false);
+  const [manual, setManual] = useState(false);
 
   const go = useCallback((next: number, byUser = false) => {
-    if (byUser) manual.current = true;
+    if (byUser) setManual(true);
     setDir(next > index || (index === PROMOS.length - 1 && next === 0) ? 1 : -1);
     setIndex((next + PROMOS.length) % PROMOS.length);
   }, [index]);
 
   // Autoplay — stops for reduced motion, hidden tabs, hover, or manual control.
   useEffect(() => {
-    if (reduced || paused || manual.current) return;
+    if (reduced || paused || manual) return;
     const t = setInterval(() => {
       if (document.hidden) return;
       setDir(1);
       setIndex((i) => (i + 1) % PROMOS.length);
     }, INTERVAL);
     return () => clearInterval(t);
-  }, [reduced, paused]);
+  }, [reduced, paused, manual]);
 
   const promo = PROMOS[index];
 
@@ -114,7 +117,7 @@ export function HeroCarousel({ onSelect }: { onSelect: (target: string) => void 
                   className="shrink-0 rounded-xl border-2 border-lime px-5 py-2.5 font-black uppercase tracking-wide text-lime transition-colors hover:bg-lime hover:text-bg sm:px-6"
                   style={{ fontSize: "clamp(0.75rem, 0.7rem + 0.25vw, 0.9375rem)" }}
                 >
-                  {promo.cta}
+                  {promo.cta === "Play" ? t("common.play") : promo.cta === "Spin" ? t("common.spin") : t("common.enter")}
                 </button>
               </motion.div>
             </div>
@@ -124,14 +127,14 @@ export function HeroCarousel({ onSelect }: { onSelect: (target: string) => void 
         {/* Arrows */}
         <button
           onClick={() => go(index - 1, true)}
-          aria-label="Promozione precedente"
+          aria-label={`${t("common.back")} · ${t("leader.promotions")}`}
           className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white/70 backdrop-blur-sm transition-colors hover:text-lime"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <button
           onClick={() => go(index + 1, true)}
-          aria-label="Promozione successiva"
+          aria-label={t("leader.promotions")}
           className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white/70 backdrop-blur-sm transition-colors hover:text-lime"
         >
           <ChevronRight className="h-4 w-4" />
@@ -144,7 +147,7 @@ export function HeroCarousel({ onSelect }: { onSelect: (target: string) => void 
           <button
             key={p.id}
             onClick={() => go(i, true)}
-            aria-label={`Vai a ${p.title}`}
+            aria-label={t("common.goTo", { target: p.title })}
             aria-current={i === index}
             className="h-1 overflow-hidden rounded-full transition-all"
             style={{ width: i === index ? 22 : 8, background: i === index ? "transparent" : "rgb(255 255 255 / 0.25)" }}
@@ -153,9 +156,9 @@ export function HeroCarousel({ onSelect }: { onSelect: (target: string) => void 
               <motion.span
                 key={`${p.id}-bar`}
                 className="block h-full rounded-full bg-lime"
-                initial={{ width: reduced || manual.current ? "100%" : 0 }}
+                initial={{ width: reduced || manual ? "100%" : 0 }}
                 animate={{ width: "100%" }}
-                transition={{ duration: reduced || manual.current || paused ? 0 : INTERVAL / 1000, ease: "linear" }}
+                transition={{ duration: reduced || manual || paused ? 0 : INTERVAL / 1000, ease: "linear" }}
               />
             )}
           </button>

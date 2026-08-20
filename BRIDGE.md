@@ -51,6 +51,22 @@ openssl rand -hex 32
 
 Su Vercel: **Project → Settings → Environment Variables → Production → Add → Save → Redeploy**.
 
+## Creazione della connessione runtime (Admin)
+
+Il Casino non dipende più esclusivamente dalle env. In **Admin → Governance Bridge** è disponibile una procedura reale di creazione:
+
+1. configura `CONNECTION_ENCRYPTION_KEY` (oppure un `ADMIN_SESSION_SECRET` stabile di almeno 16 caratteri);
+2. inserisci Governance origin/API base, Casino origin, API key, App key e bridge secret condiviso;
+3. premi **Crea connessione**: la configurazione viene cifrata AES-256-GCM e salvata server-side in `PlatformSetting`;
+4. premi **Test + registra**: il Casino verifica il vero health endpoint Governance e tenta la registrazione del callback Casino sugli endpoint supportati dalla Tower;
+5. dopo il test, eventi, sync, webhook e SSO usano automaticamente la connessione DB attiva. Le env restano solo come fallback di recovery.
+
+Lifecycle API admin-only:
+- `GET|POST|DELETE /api/bridge/connection`
+- `POST /api/bridge/connection/test`
+
+Le chiavi e il secret non vengono mai restituiti al browser; l'API espone soltanto presenza e ultime quattro cifre delle API key.
+
 ## Deploy — già creati, verifica solo
 
 1. **Casino** `tols-casino-next` → Vercel mostra già deploy. Se verde, ok. Se rosso, controlla `DATABASE_URL` e `PLATFORM_JWT_PUBLIC_KEY`.

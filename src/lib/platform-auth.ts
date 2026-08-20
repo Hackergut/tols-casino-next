@@ -23,7 +23,7 @@ export function requirePlatformAuth(req: Request | NextRequest): PlatformAuthSuc
           success: false,
           error: result.error || "Unauthorized",
           hint: isMissingKey
-            ? "Imposta PLATFORM_JWT_PUBLIC_KEY su Vercel (Casino) — vedi .env.bridge-keys"
+            ? "Set PLATFORM_JWT_PUBLIC_KEY in the Casino Vercel project — see .env.bridge-keys"
             : "Invia Authorization: Bearer <jwt RS256> firmato con PLATFORM_JWT_PRIVATE_KEY della Tower. Verifica iss/aud/exp.",
         },
         { status: isMissingKey ? 503 : 401 }

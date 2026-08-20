@@ -15,81 +15,21 @@
 import { useEffect, useState } from "react";
 import { TARGET_RTP, SLOTS_RTP } from '@/lib/game-math';
 import {
-  Flame, Layers, Radio, LayoutGrid, Gamepad2, Trophy, Gift, Users, Sparkles,
+  Flame, Layers, Radio, LayoutGrid, Gamepad2, Trophy, Sparkles,
   ChevronRight, Clock, Star,
 } from "lucide-react";
 import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
-import { motion, useReducedMotion } from "framer-motion";
 import { LobbyGameCard } from "./GameCards";
 import { EurovirtualsRow } from "./EurovirtualsRow";
 import type { LobbyGame } from "./lobby-types";
+import { useLocale } from "@/lib/use-locale";
 
 interface Props {
   games: LobbyGame[];
   loading: boolean;
   onGameClick: (game: LobbyGame) => void;
   onNavigate: (section: string) => void;
-  authenticated?: boolean;
-}
-
-/* ── 1. Auth call to action ── */
-function AuthBar({ onNavigate }: { onNavigate: (s: string) => void }) {
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => onNavigate("login")}
-        className="rounded-xl border border-white/12 px-5 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:border-lime/40 hover:text-white"
-      >
-        Login
-      </button>
-      <button
-        onClick={() => onNavigate("register")}
-        className="rounded-xl bg-lime px-5 py-2.5 text-sm font-black text-bg transition-transform hover:-translate-y-0.5"
-      >
-        Register
-      </button>
-    </div>
-  );
-}
-
-/* ── 2. Promotions strip ── */
-const PROMOS = [
-  { id: "level-up", label: "Level Up!", detail: "Reward at every tier", icon: Star, accent: true },
-  { id: "clutch-up", label: "$20K Clutch Up", detail: "Ends in 10d", icon: Trophy, accent: false },
-  { id: "weekly-race", label: "$100,000 Weekly Race", detail: "Live leaderboard", icon: Flame, accent: true },
-  { id: "challenges", label: "Casino Challenges", detail: "29 open", icon: Gift, accent: false },
-  { id: "affiliate", label: "Affiliate Program", detail: "Earn commission", icon: Users, accent: false },
-];
-
-function PromoStrip({ onNavigate }: { onNavigate: (s: string) => void }) {
-  return (
-    <div className="scrollbar-hide -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
-      {PROMOS.map(({ id, label, detail, icon: Icon, accent }) => (
-        <motion.button
-          key={id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: PROMOS.indexOf(PROMOS.find((x) => x.id === id)!) * 0.05, duration: 0.35 }}
-          onClick={() => onNavigate(id === "affiliate" ? "affiliate" : "rewards")}
-          className="group flex min-w-[190px] shrink-0 items-center gap-3 rounded-2xl border border-white/6 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-lime/30"
-          style={{
-            background: accent
-              ? "linear-gradient(120deg, color-mix(in oklab, var(--color-lime) 16%, #0f1015), #0f1015 75%)"
-              : "var(--color-surface)",
-          }}
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lime/12">
-            <Icon className="h-4 w-4 text-lime" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-bold text-white">{label}</span>
-            <span className="block truncate text-[11px] text-white/45">{detail}</span>
-          </span>
-        </motion.button>
-      ))}
-    </div>
-  );
 }
 
 /* ── 3. Category navigation ── */
@@ -102,6 +42,8 @@ const CATEGORIES = [
 ];
 
 function CategoryNav({ active, onNavigate }: { active: string; onNavigate: (s: string) => void }) {
+  const { t } = useLocale();
+  const labels: Record<string, string> = { lobby: t("nav.lobby"), originals: t("nav.originals"), slots: t("nav.slots"), live: t("nav.liveCasino"), table: t("nav.table") };
   return (
     <div className="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1">
       {CATEGORIES.map(({ id, label, icon: Icon }) => (
@@ -115,7 +57,7 @@ function CategoryNav({ active, onNavigate }: { active: string; onNavigate: (s: s
               : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid transparent" }
           }
         >
-          <Icon className="h-4 w-4" /> {label}
+          <Icon className="h-4 w-4" /> {labels[id] ?? label}
         </button>
       ))}
     </div>
@@ -124,21 +66,23 @@ function CategoryNav({ active, onNavigate }: { active: string; onNavigate: (s: s
 
 /* Empty state for a category the catalogue does not stock yet. */
 function EmptyRow({ label }: { label: string }) {
+  const { t } = useLocale();
   return (
     <div className="rounded-2xl border border-dashed border-white/10 px-5 py-8 text-center">
-      <p className="text-sm text-white/45">No {label} in the catalogue yet</p>
-      <p className="mt-1 text-xs text-white/25">Games appear here once they are added to the library</p>
+      <p className="text-sm text-white/45">{t("home.noCategory", { category: label })}</p>
+      <p className="mt-1 text-xs text-white/25">{t("home.addedLater")}</p>
     </div>
   );
 }
 
 function ViewAll({ onClick }: { onClick: () => void }) {
+  const { t } = useLocale();
   return (
     <button
       onClick={onClick}
       className="flex items-center gap-1 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition-colors hover:text-white"
     >
-      View all <ChevronRight className="h-3 w-3" />
+      {t("common.viewAll")} <ChevronRight className="h-3 w-3" />
     </button>
   );
 }
@@ -147,6 +91,7 @@ function ViewAll({ onClick }: { onClick: () => void }) {
 interface LeaderRow { userId: string; username: string; avatarColor: string; wagered: number }
 
 function WeeklyRace({ onOpen }: { onOpen: () => void }) {
+  const { t } = useLocale();
   const [rows, setRows] = useState<LeaderRow[]>([]);
   useEffect(() => {
     fetch("/api/leaderboard?metric=wagered&period=weekly&limit=5")
@@ -163,9 +108,9 @@ function WeeklyRace({ onOpen }: { onOpen: () => void }) {
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-lime" />
           <div>
-            <h2 className="font-display text-base uppercase text-white">$100,000 Weekly Race</h2>
+            <h2 className="font-display text-base uppercase text-white">{t("home.weeklyRace")}</h2>
             <p className="flex items-center gap-1 text-[11px] text-white/45">
-              <Clock className="h-3 w-3" /> Resets every Monday
+              <Clock className="h-3 w-3" /> {t("home.resetsMonday")}
             </p>
           </div>
         </div>
@@ -176,7 +121,7 @@ function WeeklyRace({ onOpen }: { onOpen: () => void }) {
 
       <div className="divide-y divide-white/5">
         {rows.length === 0 ? (
-          <p className="px-5 py-6 text-center text-sm text-white/40">Leaderboard is still warming up — place a bet to enter</p>
+          <p className="px-5 py-6 text-center text-sm text-white/40">{t("home.raceEmpty")}</p>
         ) : (
           rows.slice(0, 5).map((r, i) => (
             <div key={r.userId} className="flex items-center justify-between gap-3 px-5 py-3">
@@ -196,7 +141,7 @@ function WeeklyRace({ onOpen }: { onOpen: () => void }) {
                   ${PRIZES[i]?.toLocaleString() ?? "—"}
                 </p>
                 <p className="font-mono text-[11px] tabular-nums text-white/35">
-                  ${r.wagered.toFixed(2)} wagered
+                  {t("home.wagered", { amount: `$${r.wagered.toFixed(2)}` })}
                 </p>
               </div>
             </div>
@@ -209,36 +154,23 @@ function WeeklyRace({ onOpen }: { onOpen: () => void }) {
 
 /* ── About copy, collapsed by default ── */
 function AboutTols() {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   return (
     <section className="rounded-2xl border border-white/6 bg-surface/40 p-5">
-      <h2 className="font-display text-base uppercase text-white">TOLS — Provably Fair Crypto Casino</h2>
-      <p className="mt-2 text-sm leading-relaxed text-white/55">
-        TOLS runs its own Originals on a provably fair engine: every outcome comes from
-        HMAC-SHA256 over a server seed whose SHA-256 commitment is published before you bet,
-        your own client seed, and an incrementing nonce. Rotate the seed at any time and the
-        old one is revealed, so you can recompute every result yourself.
-      </p>
+      <h2 className="font-display text-base uppercase text-white">{t("home.aboutTitle")}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-white/55">{t("home.aboutBody")}</p>
       {open && (
         <div className="mt-3 space-y-3 text-sm leading-relaxed text-white/55">
-          <p>
-            Game maths is enforced server-side. The Originals return {(TARGET_RTP * 100).toFixed(0)}%,
-            slots {(SLOTS_RTP * 100).toFixed(0)}%, and Roulette pays true single-zero odds at 97.3% —
-            the best return on the site. Plinko, Mines, Dice, Limbo and Crash all settle on the
-            server before any animation plays; the client only draws the result it was given.
-          </p>
-          <p>
-            Balances move in atomic database transactions, withdrawals hold funds until an
-            operator settles or rejects them, and every privileged action is written to an
-            audit trail.
-          </p>
+          <p>{t("home.aboutMath", { rtp: (TARGET_RTP * 100).toFixed(0), slotsRtp: (SLOTS_RTP * 100).toFixed(0) })}</p>
+          <p>{t("home.aboutSecurity")}</p>
         </div>
       )}
       <button
         onClick={() => setOpen((o) => !o)}
         className="mt-3 text-xs font-semibold text-lime transition-opacity hover:opacity-80"
       >
-        {open ? "Show less" : "Show more"}
+        {open ? t("common.showLess") : t("common.showMore")}
       </button>
     </section>
   );
@@ -302,7 +234,8 @@ function MegaJackpot() {
 }
 
 /* ── Page ── */
-export function HomeView({ games, loading, onGameClick, onNavigate, authenticated }: Props) {
+export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
+  const { t } = useLocale();
   const originals = games.filter((g) => g.gameType === "original");
   const slots = games.filter((g) => g.gameType === "external_slot");
   const live = games.filter((g) => g.isLive);
@@ -323,10 +256,10 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
 
   return (
     <div className="space-y-7">
-      <PromoStrip onNavigate={onNavigate} />
-      <CategoryNav active="lobby" onNavigate={onNavigate} />
+      {/* Visual hierarchy: large promotion hero, category tabs, then the
+          primary Originals shelf before any secondary lobby content. */}
       <HeroCarousel onSelect={onNavigate} />
-      <MegaJackpot />
+      <CategoryNav active="lobby" onNavigate={onNavigate} />
 
       {loading ? (
         <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -334,17 +267,18 @@ export function HomeView({ games, loading, onGameClick, onNavigate, authenticate
             <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
           ))}
         </div>
-      ) : (
+      ) : row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
+
+      <MegaJackpot />
+
+      {!loading && (
         <>
-          {row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
-          {row("Slots", <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, "slots", "slots")}
-          {row("Live Casino", <Radio className="h-5 w-5 shrink-0 text-lime" />, live, "live tables", "live")}
+          {row(t("nav.slots"), <Layers className="h-5 w-5 shrink-0 text-lime" />, slots, t("nav.slots").toLowerCase(), "slots")}
+          {row(t("nav.liveCasino"), <Radio className="h-5 w-5 shrink-0 text-lime" />, live, t("nav.liveCasino").toLowerCase(), "live")}
           <EurovirtualsRow onSelect={onGameClick} />
-
           <WeeklyRace onOpen={() => onNavigate("rewards")} />
-
-          {row("Game Shows", <Sparkles className="h-5 w-5 shrink-0 text-lime" />, [], "game shows", "live")}
-          {row("Latest Releases", <Star className="h-5 w-5 shrink-0 text-lime" />, originals.slice(0, 6), "releases", "originals")}
+          {row(t("home.gameShows"), <Sparkles className="h-5 w-5 shrink-0 text-lime" />, [], t("home.gameShows").toLowerCase(), "live")}
+          {row(t("home.latest"), <Star className="h-5 w-5 shrink-0 text-lime" />, originals.slice(0, 6), t("home.latest").toLowerCase(), "originals")}
         </>
       )}
 

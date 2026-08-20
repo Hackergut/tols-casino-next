@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getBridgeConfig, bridgeFetch } from "@/lib/governance-bridge";
+import { getGovernanceConnection } from "@/lib/governance-connection";
 
 // GET /api/bridge/health — public bridge + system health for Vercel/monitoring
 // Checks: db, bridge env, tower reachability (best-effort, never 5xx on tower down)
 export async function GET(req: NextRequest) {
   const started = Date.now();
   const cfg = getBridgeConfig();
+  const stored = await getGovernanceConnection().catch(() => null);
+  const towerOrigin = stored?.enabled ? stored.towerOrigin : cfg.towerOrigin;
+  const towerApiBase = stored?.enabled ? stored.towerApiBase : cfg.towerApiBase;
+  const casinoOrigin = stored?.enabled ? stored.casinoOrigin : cfg.casinoOrigin;
   const searchParams = new URL(req.url).searchParams;
   const probeTower = searchParams.get("probe") !== "false"; // ?probe=false to skip outbound
 
@@ -26,7 +31,7 @@ export async function GET(req: NextRequest) {
     const tt0 = Date.now();
     try {
       // HEAD the tower API base with bridge headers; many towers return 401 without keys — that's still \"reachable\"
-      const res = await bridgeFetch({ method: "GET", timeoutMs: 4000 });
+      const res = await bridgeFetch({ path: stored?.healthPath || "", useOrigin: Boolean(stored?.healthPath), method: "GET", timeoutMs: 4000 });
       tower = { reachable: true, status: res.status, latencyMs: Date.now() - tt0 };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -41,14 +46,17 @@ export async function GET(req: NextRequest) {
     service: "tols-casino-bridge",
     timestamp: new Date().toISOString(),
     latencyMs: Date.now() - started,
-    casino: { origin: cfg.casinoOrigin },
-    tower: { origin: cfg.towerOrigin, apiBase: cfg.towerApiBase, ...tower },
+    casino: { origin: casinoOrigin },
+    tower: { origin: towerOrigin, apiBase: towerApiBase, ...tower },
     bridge: {
-      configured: cfg.hasBridgeSecret,
-      hasTowerKeys: cfg.hasTowerKeys,
+      configured: Boolean(stored?.enabled && stored.bridgeSecret) || cfg.hasBridgeSecret,
+      source: stored?.enabled ? "database" : "environment",
+      connectionId: stored?.enabled ? stored.id : null,
+      hasTowerKeys: Boolean(stored?.apiKey && stored?.appKey) || cfg.hasTowerKeys,
       hasDb: cfg.hasDb,
       // never expose secret values
       envPresent: {
+        DATABASE_CONNECTION: Boolean(stored?.enabled),
         GOVERNANCE_TOWER_URL: Boolean(process.env.GOVERNANCE_TOWER_URL),
         TOLS_BASE_URL: Boolean(process.env.TOLS_BASE_URL),
         APP_URL: Boolean(process.env.APP_URL),

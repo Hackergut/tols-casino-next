@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createBridgeSsoToken, verifyBridgeSsoToken, getBridgeConfig } from "@/lib/governance-bridge";
 import { createSession, getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getGovernanceConnection } from "@/lib/governance-connection";
 
 /**
  * Bridge SSO
@@ -19,28 +20,30 @@ export async function POST() {
   if (!user) return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
 
   let token: string;
+  const connection = await getGovernanceConnection().catch(() => null);
   try {
     token = createBridgeSsoToken({
       userId: user.id,
       email: user.email,
       username: user.username,
       issuedAt: Date.now(),
-      nonce: Math.random().toString(36).slice(2, 10),
-    });
+      nonce: crypto.randomUUID(),
+    }, connection?.bridgeSecret);
   } catch (e) {
     return NextResponse.json({ success: false, error: e instanceof Error ? e.message : String(e) }, { status: 503 });
   }
 
   const cfg = getBridgeConfig();
   // Tower should verify via GET ${towerOrigin}/api/bridge/sso?token=...  or Casino's counterpart
-  const towerUrl = `${cfg.towerOrigin}/api/bridge/sso?token=${encodeURIComponent(token)}`;
+  const towerUrl = `${connection?.towerOrigin || cfg.towerOrigin}/api/bridge/sso?token=${encodeURIComponent(token)}`;
   return NextResponse.json({ success: true, data: { token, towerUrl, expiresInSec: 600 } });
 }
 
 // Verify inbound Tower SSO token and create a Casino session (+ user if first time)
 export async function GET(req: NextRequest) {
   const token = new URL(req.url).searchParams.get("token");
-  const payload = verifyBridgeSsoToken(token || undefined);
+  const connection = await getGovernanceConnection().catch(() => null);
+  const payload = verifyBridgeSsoToken(token || undefined, connection?.bridgeSecret);
 
   if (!payload) {
     return NextResponse.json({ success: false, error: "Invalid or expired SSO token. Mint a fresh one from the other side (POST /api/bridge/sso while logged in)." }, { status: 401 });
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
   if (wantsJson) {
     return NextResponse.json({ success: true, data: { userId: user.id, username: user.username } });
   }
-  const casinoOrigin = getBridgeConfig().casinoOrigin;
+  const casinoOrigin = connection?.casinoOrigin || getBridgeConfig().casinoOrigin;
   return NextResponse.redirect(`${casinoOrigin}/`, 302);
 }
 export async function OPTIONS() {

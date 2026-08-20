@@ -7,7 +7,7 @@ import { useBalanceStore } from "@/lib/balance-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { Gamepad2 } from "lucide-react";
+import { ArrowLeft, Gamepad2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 import { CasinoHeader } from "@/components/lobby/CasinoHeader";
@@ -30,7 +30,10 @@ import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
 import { useUIStore, useSessionStore } from "@/lib/store";
+import { casinoPath, ORIGINAL_IDS, parseCasinoRoute } from "@/lib/casino-routes";
+import { useLocale } from "@/lib/use-locale";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
+import type { OriginalId } from "@/lib/originals-registry";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false } },
@@ -77,6 +80,10 @@ const PoolRushGame = dynamic(
   () => import("@/components/casino/game-poolrush").then((m) => ({ default: m.PoolRushGame })),
   { ssr: false, loading: () => <GameLoading /> }
 );
+const BlackjackGame = dynamic(
+  () => import("@/components/casino/game-blackjack").then((m) => ({ default: m.BlackjackGame })),
+  { ssr: false, loading: () => <GameLoading /> }
+);
 const SlotsGame = dynamic(
   () => import("@/components/casino/game-slots").then((m) => ({ default: m.SlotsGame })),
   { ssr: false, loading: () => <GameLoading /> }
@@ -92,7 +99,9 @@ const ScopaGame = dynamic(
 
 /* ── Main Casino SPA ── */
 function CasinoPage() {
+  const { t } = useLocale();
   const [activeSection, setActiveSection] = useState("lobby");
+  const [routeReady, setRouteReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   /*
    * Balance comes from the shared store, which orders writes by sequence so a
@@ -119,6 +128,41 @@ function CasinoPage() {
   const { setDepositOpen } = useUIStore();
   const setSessionUser = useSessionStore((s) => s.setUser);
   const setSessionWallet = useSessionStore((s) => s.setWallet);
+
+  // Durable client routing. Known public paths are rewritten to this shell by
+  // proxy.ts, while the visible URL stays intact for refresh/deep-link/Back.
+  useEffect(() => {
+    const applyLocation = () => {
+      const route = parseCasinoRoute(window.location.pathname);
+      setActiveSection(route.section);
+      setActiveGame(route.game);
+      setMenuOpen(false);
+      setRouteReady(true);
+    };
+    const state = window.history.state as { tols?: boolean; index?: number } | null;
+    if (!state?.tols) window.history.replaceState({ ...(state || {}), tols: true, index: 0 }, "", window.location.href);
+    queueMicrotask(applyLocation);
+    window.addEventListener("popstate", applyLocation);
+    return () => window.removeEventListener("popstate", applyLocation);
+  }, []);
+
+  const navigate = useCallback((section: string, game: string | null = null, replace = false) => {
+    const path = casinoPath(section, game);
+    const current = window.history.state as { index?: number } | null;
+    const state = { tols: true, index: replace ? (current?.index ?? 0) : (current?.index ?? 0) + 1 };
+    if (replace || window.location.pathname === path) window.history.replaceState(state, "", path);
+    else window.history.pushState(state, "", path);
+    setActiveSection(section);
+    setActiveGame(game);
+    setMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const navigateBack = useCallback((fallbackSection = "lobby") => {
+    const state = window.history.state as { tols?: boolean; index?: number } | null;
+    if (state?.tols && (state.index ?? 0) > 0) window.history.back();
+    else navigate(fallbackSection, null, true);
+  }, [navigate]);
 
   // Resolve session + balance. Logged-in users get THEIR wallet balance (real,
   // per-user). Guests get a fun balance that is never shown as real money.
@@ -154,6 +198,7 @@ function CasinoPage() {
       }
     } catch { /* fall through */ }
     setAuthed(false);
+    setChatOpen(false);
     setSessionUser(null);
     try {
       const w = await (await fetch("/api/wallet")).json();
@@ -172,8 +217,12 @@ function CasinoPage() {
     return () => clearInterval(interval);
   }, [refreshBalance]);
 
-  // Fetch games
+  // Fetch games. Wait for URL hydration and abort the previous category read;
+  // otherwise a slower Lobby response can overwrite a newer Slots/Originals
+  // response after rapid navigation.
   useEffect(() => {
+    if (!routeReady) return;
+    const controller = new AbortController();
     const fetchGames = async () => {
       setLoading(true);
       try {
@@ -187,12 +236,12 @@ function CasinoPage() {
         if (activeSection === "recent") {
           // Fetch recent bets to find recently played games
           try {
-            const histRes = await fetch("/api/bets/history?limit=20");
+            const histRes = await fetch("/api/bets/history?limit=20", { signal: controller.signal });
             const histData = await histRes.json();
             if (histData.success && histData.data.bets.length > 0) {
               const gameIds = [...new Set(histData.data.bets.map((b: { gameId: string }) => b.gameId))];
               // Fetch all originals games for display
-              const origRes = await fetch("/api/games-lobby?category=originals");
+              const origRes = await fetch("/api/games-lobby?category=originals", { signal: controller.signal });
               const origData = await origRes.json();
               if (origData.success) {
                 const filtered = origData.data.filter((g: LobbyGame) => gameIds.includes(g.slug) || gameIds.includes(g.name.toLowerCase()));
@@ -202,24 +251,25 @@ function CasinoPage() {
               setGames([]);
             }
           } catch {
-            setGames([]);
+            if (!controller.signal.aborted) setGames([]);
           }
-          setLoading(false);
+          if (!controller.signal.aborted) setLoading(false);
           return;
         }
 
-        const res = await fetch(`/api/games-lobby?category=${cat}`);
+        const res = await fetch(`/api/games-lobby?category=${cat}`, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
           setGames(data.data || []);
         }
       } catch {
-        setGames([]);
+        if (!controller.signal.aborted) setGames([]);
       }
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     };
-    fetchGames();
-  }, [activeSection]);
+    void fetchGames();
+    return () => controller.abort();
+  }, [activeSection, routeReady]);
 
   // Fetch stats
   useEffect(() => {
@@ -255,10 +305,8 @@ function CasinoPage() {
       setGateDismissed(false);
       return;
     }
-    setActiveSection(section);
-    setActiveGame(null);
-    setMenuOpen(false);
-  }, []);
+    navigate(section);
+  }, [navigate]);
 
   // Profile menu routing — Cassaforte and Notifications open overlays
   // (Shuffle-style), everything else navigates to its section page.
@@ -269,37 +317,56 @@ function CasinoPage() {
     handleSectionChange(section);
   }, [handleSectionChange]);
 
+  const handleChatOpen = useCallback(() => {
+    if (authed === true) {
+      setChatOpen(true);
+      return;
+    }
+    setGateMode("register");
+    setGateDismissed(false);
+  }, [authed]);
+
   const handleGameClick = useCallback((game: LobbyGame) => {
     // Guests never had a wallet to bet from — the game opened anyway and the
     // first bet silently failed. Intercept here with the real next step.
     if (authed !== true) { setShowSignupPrompt(true); return; }
     if (game.gameType === "original") {
-      setActiveGame(game.slug);
-      setActiveSection("originals");
+      navigate("originals", game.slug);
     } else if (game.gameType === "external_virtual") {
       setVirtualGame(game);
     } else {
       setDetailGame(game);
     }
-  }, [authed]);
+  }, [authed, navigate]);
 
   const handleOriginalSelect = useCallback((gameId: string) => {
     if (authed !== true) { setShowSignupPrompt(true); return; }
-    setActiveGame(gameId);
-  }, [authed]);
+    navigate("originals", gameId);
+  }, [authed, navigate]);
 
   const handleBackFromGame = useCallback(() => {
-    setActiveGame(null);
+    navigateBack("originals");
     refreshBalance();
-  }, [refreshBalance]);
+  }, [navigateBack, refreshBalance]);
 
   const handleSwitchGame = useCallback((gameId: string) => {
-    setActiveGame(gameId);
+    navigate("originals", gameId, true);
     refreshBalance();
     // The incoming game mounts with its own canvas; without this the player
     // lands mid-page on the previous game's bet feed.
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [refreshBalance]);
+  }, [navigate, refreshBalance]);
+
+  // A deep-linked game still obeys the same authenticated-session gate as a
+  // clicked card; URLs cannot bypass the user-friendly login flow.
+  useEffect(() => {
+    if (!routeReady || authed !== false || !activeGame) return;
+    const task = window.setTimeout(() => {
+      setShowSignupPrompt(true);
+      navigate("originals", null, true);
+    }, 0);
+    return () => window.clearTimeout(task);
+  }, [activeGame, authed, navigate, routeReady]);
 
   // Filter games by search
   const displayedGames = searchQuery
@@ -329,55 +396,59 @@ function CasinoPage() {
       case "coinflip": return <CoinflipGame {...props} />;
       case "shoot": return <ShootGame {...props} />;
       case "poolrush": return <PoolRushGame {...props} />;
+      case "blackjack": return <BlackjackGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
+      default: return <p className="text-muted-foreground">{t("games.notFound")}</p>;
       case "scopa": return <ScopaGame {...props} />;
       default: return <p className="text-muted-foreground">Game not found</p>;
     }
   };
 
   const sectionTitle =
-    activeSection === "slots" ? "Slots" :
-    activeSection === "live" ? "Live Casino" :
-    activeSection === "table" ? "Table Games" :
-    activeSection === "recent" ? "Recently Played" :
+    activeSection === "slots" ? t("nav.slots") :
+    activeSection === "live" ? t("nav.liveCasino") :
+    activeSection === "table" ? t("nav.table") :
+    activeSection === "recent" ? t("nav.recent") :
     activeSection.charAt(0).toUpperCase() + activeSection.slice(1);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <VideoLoader ready={authed !== null && !loading} />
+      <VideoLoader ready={routeReady && authed !== null && !loading} />
       <CasinoHeader
         balance={balance}
         onMenuToggle={() => setMenuOpen(!menuOpen)}
         menuOpen={menuOpen}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
         onProfileNavigate={handleProfileNavigate}
-        onChatToggle={() => setChatOpen(true)}
+        onChatToggle={handleChatOpen}
         onNotifToggle={() => setNotifOpen(true)}
         onWalletClick={() => (authed === true ? setDepositOpen(true) : (setGateMode("register"), setGateDismissed(false)))}
         authed={authed === true}
         inGame={Boolean(activeGame)}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} />
+        <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <main className={`min-w-0 flex-1 overflow-y-auto ${activeGame ? "casino-main--game" : "pb-20 lg:pb-0"}`}>
           <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
+            {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && (
+              <button type="button" onClick={() => navigateBack("lobby")} className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/8 bg-surface/60 px-3 text-xs font-bold text-white/60 transition-colors hover:border-lime/30 hover:text-lime">
+                <ArrowLeft className="h-4 w-4" /> {t("common.back")}
+              </button>
+            )}
             {activeGame ? (
               <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
             ) : activeSection === "rewards" ? (
-              <LeaderboardHub onPlay={() => handleSectionChange("originals")} />
+              <LeaderboardHub onPlay={() => handleSectionChange("originals")} onBack={() => navigateBack("lobby")} />
             ) : isProfileSection(activeSection) ? (
-              <ProfileSectionView section={activeSection} onBack={() => handleSectionChange("lobby")} />
+              <ProfileSectionView section={activeSection} onBack={() => navigateBack("lobby")} />
             ) : activeSection === "originals" ? (
-              <OriginalsView onGameSelect={handleOriginalSelect} />
+              <OriginalsView onGameSelect={handleOriginalSelect} query={searchQuery} />
             ) : activeSection === "lobby" ? (
               <HomeView
-                games={games}
+                games={displayedGames}
                 loading={loading}
                 onGameClick={handleGameClick}
-                onNavigate={handleSectionChange}
-                authenticated={authed === true}
+                onNavigate={(target) => ORIGINAL_IDS.has(target as OriginalId) ? handleOriginalSelect(target) : handleSectionChange(target)}
               />
             ) : activeSection === "lobby-classic" ? (
               <LobbyView
@@ -393,7 +464,7 @@ function CasinoPage() {
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold uppercase tracking-wide text-lime">{sectionTitle}</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {activeSection === "recent" ? "Games you have played recently" : `${displayedGames.length} games available`}
+                    {activeSection === "recent" ? t("games.recentHelp") : t("games.available", { count: displayedGames.length })}
                   </p>
                 </div>
                 {loading ? (
@@ -405,7 +476,7 @@ function CasinoPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyGames label="No games available" />
+                  <EmptyGames label={t("games.none")} />
                 )}
               </div>
             )}
@@ -428,7 +499,7 @@ function CasinoPage() {
           onHome={() => handleSectionChange("lobby")}
           onCasino={() => handleSectionChange("originals")}
           onRewards={() => handleSectionChange("rewards")}
-          onChat={() => setChatOpen(true)}
+          onChat={handleChatOpen}
           onMenu={() => setMenuOpen(true)}
         />
       )}
@@ -452,7 +523,7 @@ function CasinoPage() {
       {/* Audio, haptics and win celebration for every game (see GameFeedback). */}
       <GameFeedback />
 
-      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatPanel open={chatOpen && authed === true} onClose={() => setChatOpen(false)} />
       <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
       <VaultSheet open={vaultOpen} onClose={() => setVaultOpen(false)} balance={balance} />
       <DepositModal />

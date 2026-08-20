@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, CalendarClock, ChevronRight, Crown, Flame, Medal, RefreshCw,
+  Activity, ArrowLeft, CalendarClock, ChevronRight, Crown, Flame, Medal, RefreshCw,
   Sparkles, Target, Trophy, Users, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLocale } from "@/lib/use-locale";
 
 interface Entry {
   rank: number;
@@ -16,6 +17,7 @@ interface Entry {
   wagered: number;
   wins: number;
   losses: number;
+  pushes: number;
   biggestWin: number;
   biggestBet: number;
   bestMultiplier: number;
@@ -23,6 +25,7 @@ interface Entry {
   netProfit: number;
   betCount: number;
   winRate: number;
+  favoriteGame: string | null;
 }
 
 interface Board {
@@ -97,6 +100,28 @@ const EMPTY: Overview = {
   promotions: [], boards: [], liveBets: [], highRollerBets: [], tournaments: [],
 };
 
+const PLAYER_CARD_ART: Record<string, string> = {
+  blackjack: "/games/originals/blackjack.jpg",
+  poolrush: "/games/originals/poolrush.jpg",
+  roulette: "/games/originals/roulette.jpg",
+  slots: "/games/originals/slots.jpg",
+  crash: "/games/originals/crash.jpg",
+  dice: "/games/originals/dice.jpg",
+  mines: "/games/originals/mines.jpg",
+  wheel: "/games/originals/wheel.jpg",
+  keno: "/games/originals/keno.jpg",
+  limbo: "/games/originals/limbo.jpg",
+  plinko: "/games/originals/plinko.jpg",
+  coinflip: "/games/originals/coinflip.jpg",
+  shoot: "/games/originals/shoot.jpg",
+};
+const PLAYER_CARD_FALLBACKS = Object.values(PLAYER_CARD_ART);
+function playerCardArt(entry: Entry): string {
+  if (entry.favoriteGame && PLAYER_CARD_ART[entry.favoriteGame]) return PLAYER_CARD_ART[entry.favoriteGame];
+  const hash = [...entry.userId].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
+  return PLAYER_CARD_FALLBACKS[hash % PLAYER_CARD_FALLBACKS.length];
+}
+
 const BOARD_ICON: Record<string, typeof Trophy> = {
   "weekly-race": Trophy,
   "daily-winners": Zap,
@@ -130,7 +155,8 @@ function timeLeft(iso: string): string {
   return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
+export function LeaderboardHub({ onPlay, onBack }: { onPlay: () => void; onBack: () => void }) {
+  const { t } = useLocale();
   const [data, setData] = useState<Overview>(EMPTY);
   const [activeBoard, setActiveBoard] = useState("weekly-race");
   const [feed, setFeed] = useState<"live" | "high">("live");
@@ -176,7 +202,7 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
       const response = await fetch(`/api/tournaments/${id}`, { method: "POST" });
       const json = await response.json();
       if (!response.ok || !json.success) throw new Error(json.error || "Could not join tournament");
-      toast.success("Tournament joined — paid bets now update your score live");
+      toast.success(t("leader.joined"));
       await load(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not join tournament");
@@ -188,19 +214,22 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
   return (
     <div className="leaderboard-hub space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="flex items-start gap-3">
+          <button type="button" onClick={onBack} className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-surface text-white/55 transition-colors hover:border-lime/35 hover:text-lime" aria-label={t("common.back")}><ArrowLeft className="h-4 w-4" /></button>
+          <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-lime/20 bg-lime/8 px-3 py-1 text-[11px] font-black uppercase tracking-[.16em] text-lime">
-            <Activity className="h-3.5 w-3.5" /> Live competition
+            <Activity className="h-3.5 w-3.5" /> {t("leader.liveCompetition")}
           </div>
-          <h1 className="font-display text-2xl uppercase text-white sm:text-3xl">Player Leaderboards</h1>
-          <p className="mt-1 max-w-2xl text-sm text-white/48">Real paid bets power every ranking, promotion and tournament score. Practice rounds never count.</p>
+          <h1 className="font-display text-2xl uppercase text-white sm:text-3xl">{t("leader.title")}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-white/48">{t("leader.subtitle")}</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="rounded-xl border border-white/7 bg-surface px-4 py-2 text-right">
             <p className="text-[10px] font-bold uppercase tracking-wider text-white/35">Mega Drop</p>
             <p className="font-mono text-lg font-black text-lime">{money(data.jackpot)}</p>
           </div>
-          <button type="button" onClick={() => void load()} disabled={loading} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white/55 hover:text-lime" aria-label="Refresh leaderboards">
+          <button type="button" onClick={() => void load()} disabled={loading} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white/55 hover:text-lime" aria-label={t("leader.refresh")}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
@@ -210,7 +239,7 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
       <section>
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-lime" />
-          <h2 className="font-display text-sm uppercase text-white">Live promotions</h2>
+          <h2 className="font-display text-sm uppercase text-white">{t("leader.promotions")}</h2>
         </div>
         <div className="scrollbar-hide -mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
           {data.promotions.map((promotion) => {
@@ -226,7 +255,7 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
                 </div>
                 <div className="mt-4 flex items-center justify-between text-[11px]">
                   <span className="flex items-center gap-1 text-white/40"><CalendarClock className="h-3 w-3" /> {timeLeft(promotion.endsAt)}</span>
-                  <span className={promotion.playerRank ? "font-bold text-lime" : "text-white/35"}>{promotion.playerRank ? `Your rank #${promotion.playerRank}` : "Play to rank"}</span>
+                  <span className={promotion.playerRank ? "font-bold text-lime" : "text-white/35"}>{promotion.playerRank ? `${t("leader.yourRank")} #${promotion.playerRank}` : t("leader.playToRank")}</span>
                 </div>
               </button>
             );
@@ -256,9 +285,9 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
                 <p className="text-xs text-white/40">{board.subtitle} · {board.totalPlayers} ranked players</p>
               </div>
               <div className="flex gap-2">
-                <Stat label="Prize pool" value={money(board.prizePool)} accent />
-                <Stat label="Ends in" value={timeLeft(board.endsAt)} />
-                {board.viewer && <Stat label="Your rank" value={`#${board.viewer.rank}`} accent />}
+                <Stat label={t("leader.prizePool")} value={money(board.prizePool)} accent />
+                <Stat label={t("leader.endsIn")} value={timeLeft(board.endsAt)} />
+                {board.viewer && <Stat label={t("leader.yourRank")} value={`#${board.viewer.rank}`} accent />}
               </div>
             </div>
 
@@ -271,17 +300,17 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,.7fr)]">
         <section className="overflow-hidden rounded-2xl border border-white/7 bg-surface/65">
           <div className="flex items-center justify-between border-b border-white/6 p-4">
-            <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">Bet activity</h2></div>
+            <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">{t("leader.betActivity")}</h2></div>
             <div className="flex rounded-lg bg-white/4 p-1">
-              <button onClick={() => setFeed("live")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "live" ? "bg-lime text-bg" : "text-white/45"}`}>Live bets</button>
-              <button onClick={() => setFeed("high")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "high" ? "bg-lime text-bg" : "text-white/45"}`}>High rollers</button>
+              <button onClick={() => setFeed("live")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "live" ? "bg-lime text-bg" : "text-white/45"}`}>{t("leader.liveBets")}</button>
+              <button onClick={() => setFeed("high")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${feed === "high" ? "bg-lime text-bg" : "text-white/45"}`}>{t("leader.highRollers")}</button>
             </div>
           </div>
           <BetActivity bets={feed === "live" ? data.liveBets : data.highRollerBets} />
         </section>
 
         <section className="rounded-2xl border border-white/7 bg-surface/65 p-4">
-          <div className="mb-4 flex items-center gap-2"><Medal className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">Tournaments</h2></div>
+          <div className="mb-4 flex items-center gap-2"><Medal className="h-4 w-4 text-lime" /><h2 className="font-display text-sm uppercase text-white">{t("leader.tournaments")}</h2></div>
           <div className="space-y-3">
             {data.tournaments.map((tournament) => (
               <div key={tournament.id} className="rounded-xl border border-white/7 bg-white/[.025] p-3">
@@ -304,7 +333,7 @@ export function LeaderboardHub({ onPlay }: { onPlay: () => void }) {
 
       <div className="flex flex-col gap-3 rounded-2xl border border-lime/15 bg-lime/[.055] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div><p className="font-bold text-white">Every settled paid bet updates the rankings</p><p className="text-xs text-white/42">Choose an Original and climb the live promotion boards.</p></div>
-        <button onClick={onPlay} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lime px-5 text-sm font-black uppercase text-bg">Play Originals <ChevronRight className="h-4 w-4" /></button>
+        <button onClick={onPlay} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lime px-5 text-sm font-black uppercase text-bg">{t("leader.playOriginals")} <ChevronRight className="h-4 w-4" /></button>
       </div>
     </div>
   );
@@ -323,14 +352,17 @@ function Podium({ board }: { board: Board }) {
       {order.map((entry) => {
         const first = entry.rank === 1;
         return (
-          <div key={entry.userId} className={`relative rounded-xl border p-3 ${first ? "border-lime/35 bg-lime/8 sm:min-h-[138px]" : "border-white/8 bg-white/[.025] sm:min-h-[124px]"}`}>
-            <span className="absolute right-3 top-2 text-xl">{entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}</span>
+          <div key={entry.userId} className={`group relative isolate overflow-hidden rounded-xl border p-3 ${first ? "border-lime/40 sm:min-h-[148px]" : "border-white/10 sm:min-h-[132px]"}`}>
+            <img src={playerCardArt(entry)} alt="" aria-hidden="true" className="pointer-events-none absolute inset-[-12px] -z-20 h-[calc(100%+24px)] w-[calc(100%+24px)] scale-110 object-cover opacity-35 blur-md saturate-125 transition duration-500 group-hover:scale-[1.16] group-hover:opacity-45" />
+            <div className={`pointer-events-none absolute inset-0 -z-10 ${first ? "bg-[linear-gradient(135deg,rgba(5,10,14,.78),rgba(11,20,18,.70),rgba(205,243,43,.12))]" : "bg-[linear-gradient(135deg,rgba(5,9,14,.84),rgba(9,14,20,.72))]"}`} />
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-t from-black/55 via-transparent to-white/[.035]" />
+            <span className="absolute right-3 top-2 text-xl drop-shadow-lg">{entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}</span>
             <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-black text-bg" style={{ background: entry.avatarColor }}>{entry.username.slice(0, 2).toUpperCase()}</span>
-              <div className="min-w-0"><p className="truncate text-sm font-bold text-white">{entry.username}</p><p className="text-[10px] text-white/35">Level {entry.level} · {entry.betCount} bets</p></div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-xs font-black text-bg shadow-lg" style={{ background: entry.avatarColor }}>{entry.username.slice(0, 2).toUpperCase()}</span>
+              <div className="min-w-0 pr-7"><p className="truncate text-sm font-bold text-white drop-shadow-md">{entry.username}</p><p className="text-[10px] text-white/55">Level {entry.level} · {entry.betCount} bets{entry.pushes ? ` · ${entry.pushes} pushes` : ""}</p></div>
             </div>
-            <p className={`mt-4 font-mono text-xl font-black ${first ? "text-lime" : "text-white"}`}>{score(board, entry)}</p>
-            <p className="text-[10px] text-white/30">{entry.winRate.toFixed(1)}% win rate</p>
+            <p className={`mt-4 font-mono text-xl font-black drop-shadow-lg ${first ? "text-lime" : "text-white"}`}>{score(board, entry)}</p>
+            <div className="flex items-center justify-between gap-2 text-[10px] text-white/45"><span>{entry.winRate.toFixed(1)}% decisive win rate</span>{entry.favoriteGame && <span className="rounded-full border border-white/10 bg-black/25 px-2 py-0.5 capitalize text-white/55 backdrop-blur-sm">{entry.favoriteGame}</span>}</div>
           </div>
         );
       })}

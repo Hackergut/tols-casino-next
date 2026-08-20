@@ -25,6 +25,7 @@ export interface LeaderboardEntry {
   wagered: number;
   wins: number;
   losses: number;
+  pushes: number;
   biggestWin: number;
   biggestBet: number;
   bestMultiplier: number;
@@ -32,9 +33,13 @@ export interface LeaderboardEntry {
   netProfit: number;
   betCount: number;
   winRate: number;
+  /** Most-played game in this ranking period, used for the player's card art. */
+  favoriteGame: string | null;
 }
 
-type MutableEntry = Omit<LeaderboardEntry, "rank" | "netProfit" | "winRate">;
+type MutableEntry = Omit<LeaderboardEntry, "rank" | "netProfit" | "winRate" | "favoriteGame"> & {
+  gameCounts: Record<string, number>;
+};
 
 export function aggregateLeaderboard(
   bets: LeaderboardBet[],
@@ -55,11 +60,13 @@ export function aggregateLeaderboard(
         wagered: 0,
         wins: 0,
         losses: 0,
+        pushes: 0,
         biggestWin: 0,
         biggestBet: 0,
         bestMultiplier: 0,
         totalWon: 0,
         betCount: 0,
+        gameCounts: {},
       };
       stats.set(bet.userId, row);
     }
@@ -67,10 +74,13 @@ export function aggregateLeaderboard(
     row.betCount += 1;
     row.biggestBet = Math.max(row.biggestBet, bet.amount);
     row.bestMultiplier = Math.max(row.bestMultiplier, bet.multiplier || 0);
+    row.totalWon += bet.payout;
+    if (bet.gameId) row.gameCounts[bet.gameId] = (row.gameCounts[bet.gameId] ?? 0) + 1;
     if (bet.result === "win") {
       row.wins += 1;
-      row.totalWon += bet.payout;
       row.biggestWin = Math.max(row.biggestWin, bet.payout);
+    } else if (bet.result === "push") {
+      row.pushes += 1;
     } else {
       row.losses += 1;
     }
@@ -94,12 +104,19 @@ export function aggregateLeaderboard(
     // Public routes clamp their requested output. Internal promotion ranking can
     // pass the full participant count so a viewer outside the top 100 still
     // receives an exact rank.
-    leaderboard: all.slice(0, Math.max(1, Math.floor(limit))).map((row, index) => ({
-      ...row,
-      rank: index + 1,
-      netProfit: row.totalWon - row.wagered,
-      winRate: row.betCount ? (row.wins / row.betCount) * 100 : 0,
-    })),
+    leaderboard: all.slice(0, Math.max(1, Math.floor(limit))).map((row, index) => {
+      const { gameCounts, ...publicRow } = row;
+      const favoriteGame = Object.entries(gameCounts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
+      const decided = row.wins + row.losses;
+      return {
+        ...publicRow,
+        rank: index + 1,
+        netProfit: row.totalWon - row.wagered,
+        winRate: decided ? (row.wins / decided) * 100 : 0,
+        favoriteGame,
+      };
+    }),
   };
 }
 

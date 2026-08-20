@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, Send, Users, Bell, Vault, ArrowUpFromLine, ArrowDownToLine } from "lucide-react";
+import { useLocale } from "@/lib/use-locale";
 
 const KEYFRAMES = `
 @keyframes tolsFade { from { opacity: 0 } to { opacity: 1 } }
@@ -61,9 +62,9 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
 
   useEffect(() => {
     if (!open) return;
-    load();
+    const first = window.setTimeout(() => void load(), 0);
     const t = setInterval(load, 5000);
-    return () => clearInterval(t);
+    return () => { window.clearTimeout(first); clearInterval(t); };
   }, [open, load]);
 
   useEffect(() => {
@@ -166,6 +167,7 @@ export function NotificationsPanel({ open, onClose }: { open: boolean; onClose: 
 
 /* ── Cassaforte (Vault) — bottom sheet ── */
 export function VaultSheet({ open, onClose, balance }: { open: boolean; onClose: () => void; balance: number }) {
+  const { t } = useLocale();
   const [vault, setVault] = useState(0);
   const [amount, setAmount] = useState("");
   const amt = Math.max(0, Number(amount) || 0);
@@ -178,7 +180,7 @@ export function VaultSheet({ open, onClose, balance }: { open: boolean; onClose:
       <div className="mx-auto max-w-lg px-5 pb-6 pt-3">
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/15" />
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2"><Vault className="h-5 w-5 text-lime" /><h2 className="text-lg font-bold text-white">Cassaforte</h2></div>
+          <div className="flex items-center gap-2"><Vault className="h-5 w-5 text-lime" /><h2 className="text-lg font-bold text-white">{t("profile.vault")}</h2></div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3">

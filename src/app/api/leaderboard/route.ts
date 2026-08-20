@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       ...(since ? { createdAt: { gte: since } } : {}),
       ...(game ? { gameId: game } : {}),
       amount: { gt: 0 },
+      result: { in: ["win", "lose", "push"] },
     },
     select: {
       userId: true,
