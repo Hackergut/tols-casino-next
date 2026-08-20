@@ -53,6 +53,8 @@ export interface OriginalGameDef {
   icon: LucideIcon;
   color: string;
   desc: string;
+  rtp?: number;
+  isNew?: boolean;
 }
 
 export const ORIGINAL_GAMES: OriginalGameDef[] = [
@@ -71,6 +73,48 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
   { id: "scopa", name: "Scopa Siciliana", icon: Swords, color: "#eab308", desc: "Bet on an automatic Sicilian Scopa round — provably fair." },
 ];
+
+export const ORIGINAL_IDS = new Set(ORIGINAL_GAMES.map((g) => g.id));
+
+export function originalArtUrl(id: string): string {
+  const slug = id === "poolrush" ? "pool-rush" : id;
+  return `/games/originals/${slug}.jpg`;
+}
+
+export function originalArtCandidates(id: string, extra?: string | null): string[] {
+  const slug = id === "poolrush" ? "pool-rush" : id;
+  const urls = [
+    `/games/originals/${slug}.jpg`,
+    `/games/originals/${id}.jpg`,
+    `/games/originals/${slug}.png`,
+    `/games/originals/${id}.png`,
+    `/games/originals/${slug}.svg`,
+    `/games/originals/${id}.svg`,
+  ];
+  if (extra && !urls.includes(extra)) urls.push(extra);
+  return [...new Set(urls)];
+}
+
+export function originalToLobbyGame(g: OriginalGameDef): LobbyGame {
+  const art = originalArtUrl(g.id);
+  return {
+    id: g.id,
+    slug: g.id,
+    name: g.name,
+    provider: "TOLS",
+    category: "originals",
+    imageUrl: art,
+    thumbnailUrl: art,
+    rtp: g.rtp ?? 99,
+    volatility: "medium",
+    isLive: false,
+    isNew: Boolean(g.isNew),
+    featured: true,
+    description: g.desc,
+    gameType: "original",
+    popularity: g.isNew ? 88 : 80,
+  };
+}
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "lobby", label: "Home", icon: HomeIcon },

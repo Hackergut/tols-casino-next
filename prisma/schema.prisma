@@ -355,7 +355,55 @@ model CasinoBet {
   serverSeedHash String     @default("")
   nonce          Int        @default(0)
   payload        String     @default("{}")
+  autoBetId      String?
+  roundId        String?
   createdAt      DateTime   @default(now())
+
+  @@index([autoBetId])
+  @@index([roundId])
+}
+
+// In-progress interactive rounds (Crash cashout, Mines reveal, Blackjack actions).
+// Secret outcome stays server-side until the round settles.
+model GameRound {
+  id             String    @id @default(cuid())
+  userId         String
+  gameId         String
+  amount         Float
+  status         String    @default("pending") // pending | settled | expired
+  clientSeed     String
+  serverSeedHash String
+  nonce          Int
+  secret         String    @default("{}")
+  publicState    String    @default("{}")
+  multiplier     Float     @default(0)
+  payout         Float     @default(0)
+  autoBetId      String?
+  betId          String?
+  startedAt      DateTime  @default(now())
+  settledAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId, gameId, status])
+}
+
+// Auto-bet sessions. Each tick places one server-authoritative wager and
+// applies onWin / onLoss / stopLoss / takeProfit before the next round.
+model AutoBet {
+  id            String   @id @default(cuid())
+  userId        String
+  gameId        String
+  params        String
+  status        String   @default("running") // running | stopped | completed | failed
+  roundsPlayed  Int      @default(0)
+  currentBet    Float
+  currentProfit Float    @default(0)
+  lastError     String   @default("")
+  lastBetId     String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, gameId, status])
 }
 
 model HouseEarning {

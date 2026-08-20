@@ -25,6 +25,7 @@ import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
+import { OriginalsRail } from "@/components/casino/OriginalsRail";
 import { LeaderboardHub } from "@/components/lobby/LeaderboardHub";
 import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
@@ -395,13 +396,13 @@ function CasinoPage() {
       case "plinko": return <PlinkoGame {...props} />;
       case "coinflip": return <CoinflipGame {...props} />;
       case "shoot": return <ShootGame {...props} />;
-      case "poolrush": return <PoolRushGame {...props} />;
+      case "poolrush":
+      case "pool-rush": return <PoolRushGame {...props} />;
       case "blackjack": return <BlackjackGame {...props} />;
       case "slots": return <SlotsGame {...props} />;
       case "roulette": return <RouletteGame {...props} />;
-      default: return <p className="text-muted-foreground">{t("games.notFound")}</p>;
       case "scopa": return <ScopaGame {...props} />;
-      default: return <p className="text-muted-foreground">Game not found</p>;
+      default: return <p className="text-muted-foreground">{t("games.notFound")}</p>;
     }
   };
 
@@ -436,7 +437,10 @@ function CasinoPage() {
               </button>
             )}
             {activeGame ? (
-              <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
+              <div className="originals-stage">
+                <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
+                <OriginalsRail gameId={activeGame} />
+              </div>
             ) : activeSection === "rewards" ? (
               <LeaderboardHub onPlay={() => handleSectionChange("originals")} onBack={() => navigateBack("lobby")} />
             ) : isProfileSection(activeSection) ? (

@@ -11,10 +11,10 @@
  * and two had no animation whatsoever.
  */
 
-import { useEffect, useState } from "react";
-import { sfx } from "@/lib/game-audio";
+import { useEffect, useState, useCallback } from "react";
+import { sfx, isSoundEnabled, setSoundEnabled } from "@/lib/game-audio";
+import { Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
-import { useLocale } from "@/lib/use-locale";
 
 interface Win {
   key: number;
@@ -29,8 +29,28 @@ function haptic(pattern: number | number[]): void {
 }
 
 export function GameFeedback() {
-  const { t } = useLocale();
   const [win, setWin] = useState<Win | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
+
+  useEffect(() => { setSoundOn(isSoundEnabled()); }, []);
+
+  useEffect(() => {
+    const onBet = (e: Event) => {
+      const d = (e as CustomEvent).detail as { pending?: boolean; won?: boolean; payout?: number; multiplier?: number } | undefined;
+      if (!d || d.pending) return;
+      if (d.won) {
+        const big = (d.multiplier ?? 0) >= 10;
+        big ? sfx.bigWin() : sfx.win();
+        haptic(big ? [40, 60, 40, 60, 90] : [30, 50, 30]);
+        setWin({ key: Date.now(), payout: d.payout ?? 0, multiplier: d.multiplier ?? 0, big });
+      } else {
+        sfx.lose();
+        haptic(25);
+      }
+    };
+    window.addEventListener("tols:bet", onBet);
+    return () => window.removeEventListener("tols:bet", onBet);
+  }, []);
 
   useEffect(() => {
     const original = window.fetch;
@@ -42,41 +62,27 @@ export function GameFeedback() {
       } catch (e) {
         const u = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
         if (u.includes("/api/bets")) {
-          toast.error(t("error.connection"), { description: t("error.betNotSent") });
+          toast.error("Connessione persa", { description: "La puntata non è stata inviata." });
         }
         throw e;
       }
       const url = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
       const method = (args[1]?.method ?? (args[0] as Request)?.method ?? "GET").toUpperCase();
 
-      if (method === "POST" && url.includes("/api/bets")) {
-        // Read a clone so the game still consumes the body itself.
+      const isOriginalsPost =
+        method === "POST" &&
+        (url.includes("/api/bets") || /\/api\/games\/[^/]+\/(action|auto-bet)/.test(url));
+      if (isOriginalsPost) {
         res.clone().json().then((j) => {
-          // A rejected bet used to be completely silent: every game checks
-          // `data.success` with no else branch, so the player tapped BET and
-          // nothing happened. Surface the server's reason instead.
           if (!res.ok || !j?.success) {
             const reason = String(j?.error ?? "");
             if (res.status === 429) {
-              toast.error(t("error.tooMany"), { description: t("error.wait") });
+              toast.error("Troppe puntate", { description: "Attendi qualche secondo e riprova." });
             } else if (/insufficient/i.test(reason)) {
-              toast.error(t("error.balance"), { description: t("error.reduce") });
+              toast.error("Saldo insufficiente", { description: "Riduci la puntata o effettua un deposito." });
             } else {
-              toast.error(t("error.betFailed"), { description: reason || t("error.retry") });
+              toast.error("Puntata non riuscita", { description: reason || "Riprova." });
             }
-            return;
-          }
-          const d = j?.data;
-          if (!d) return;
-          if (d.won) {
-            const big = d.multiplier >= 10;
-            if (big) sfx.bigWin();
-            else sfx.win();
-            haptic(big ? [40, 60, 40, 60, 90] : [30, 50, 30]);
-            setWin({ key: Date.now(), payout: d.payout ?? 0, multiplier: d.multiplier ?? 0, big });
-          } else {
-            sfx.lose();
-            haptic(25);
           }
         }).catch(() => {});
       }
@@ -84,7 +90,7 @@ export function GameFeedback() {
     };
 
     return () => { window.fetch = original; };
-  }, [t]);
+  }, []);
 
   // Celebration clears itself; a big win lingers a beat longer.
   useEffect(() => {
@@ -92,6 +98,13 @@ export function GameFeedback() {
     const t = setTimeout(() => setWin(null), win.big ? 2600 : 1700);
     return () => clearTimeout(t);
   }, [win]);
+
+  const toggleSound = useCallback(() => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundEnabled(next);
+    if (next) sfx.click();
+  }, [soundOn]);
 
   return (
     <>
@@ -108,6 +121,15 @@ export function GameFeedback() {
         }
         @keyframes tolsFlash { 0% { opacity: 0.35 } 100% { opacity: 0 } }
       `}</style>
+
+      {/* Sound switch — audio must always be one tap from off. */}
+      <button
+        onClick={toggleSound}
+        aria-label={soundOn ? "Disattiva audio" : "Attiva audio"}
+        className="fixed bottom-[5.5rem] left-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface/90 text-white/70 backdrop-blur-sm transition-colors hover:text-lime lg:bottom-4"
+      >
+        {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
 
       {win && (
         <div className="pointer-events-none fixed inset-0 z-[65] flex items-center justify-center">

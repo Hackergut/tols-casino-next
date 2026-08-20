@@ -19,7 +19,6 @@ import {
   POOL_RUSH_MIN_BET,
   POOL_RUSH_RTP,
 } from "@/lib/pool-rush";
-import { POOL_RUSH_RTP } from "@/lib/pool-rush";
 import { SCOPA_RTP } from "@/lib/scopa";
 
 export type OriginalId =

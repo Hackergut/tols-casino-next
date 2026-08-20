@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+
+function prismaErrorCode(error: unknown): string | undefined {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    return String((error as { code: unknown }).code);
+  }
+  return undefined;
+}
+
+function prismaErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return 'Database error';
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -201,7 +214,7 @@ export async function GET(request: NextRequest) {
     const order = (searchParams.get('order') || 'desc').toLowerCase();
 
     // Build where clause
-    const where: Prisma.CasinoGameWhereInput = {};
+    const where: Record<string, unknown> = {};
 
     if (search) {
       where.OR = [
@@ -220,7 +233,7 @@ export async function GET(request: NextRequest) {
     if (isLive !== undefined) where.isLive = isLive;
 
     // Build orderBy
-    let orderBy: Prisma.CasinoGameOrderByWithRelationInput;
+    let orderBy: Record<string, 'asc' | 'desc'>;
     if (isSortField(sortField)) {
       orderBy = { [sortField]: order === 'asc' ? 'asc' : 'desc' };
     } else {
@@ -231,12 +244,12 @@ export async function GET(request: NextRequest) {
 
     const [games, total] = await Promise.all([
       db.casinoGame.findMany({
-        where,
-        orderBy,
+        where: where as never,
+        orderBy: orderBy as never,
         skip,
         take: limit,
       }),
-      db.casinoGame.count({ where }),
+      db.casinoGame.count({ where: where as never }),
     ]);
 
     // The admin CRUD consumers read the raw model fields, while the embedded
@@ -477,15 +490,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[POST /api/games] Error:', error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return errorResponse(
-          'A game with this externalId already exists',
-          409
-        );
-      }
-      return errorResponse(`Database error: ${error.message}`, 500);
+    const code = prismaErrorCode(error);
+    if (code === 'P2002') {
+      return errorResponse('A game with this externalId already exists', 409);
     }
+    if (code) return errorResponse(`Database error: ${prismaErrorMessage(error)}`, 500);
 
     if (error instanceof SyntaxError) {
       return errorResponse('Invalid JSON body', 400);
@@ -565,18 +574,10 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('[PUT /api/games] Error:', error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return errorResponse(
-          'A game with this externalId already exists',
-          409
-        );
-      }
-      if (error.code === 'P2025') {
-        return errorResponse('Game not found', 404);
-      }
-      return errorResponse(`Database error: ${error.message}`, 500);
-    }
+    const code = prismaErrorCode(error);
+    if (code === 'P2002') return errorResponse('A game with this externalId already exists', 409);
+    if (code === 'P2025') return errorResponse('Game not found', 404);
+    if (code) return errorResponse(`Database error: ${prismaErrorMessage(error)}`, 500);
 
     if (error instanceof SyntaxError) {
       return errorResponse('Invalid JSON body', 400);
@@ -612,12 +613,9 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('[DELETE /api/games] Error:', error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        return errorResponse('Game not found', 404);
-      }
-      return errorResponse(`Database error: ${error.message}`, 500);
-    }
+    const code = prismaErrorCode(error);
+    if (code === 'P2025') return errorResponse('Game not found', 404);
+    if (code) return errorResponse(`Database error: ${prismaErrorMessage(error)}`, 500);
 
     return errorResponse(
       error instanceof Error ? error.message : 'Internal server error',

@@ -18,13 +18,14 @@ import { useLocale } from "@/lib/use-locale";
 
 interface CarouselProps {
   title?: string;
+  subtitle?: string;
   icon?: ReactNode;
   action?: ReactNode;
   size?: CardSize;
   children: ReactNode[];
 }
 
-export function Carousel({ title, icon, action, size = "medium", children }: CarouselProps) {
+export function Carousel({ title, subtitle, icon, action, size = "medium", children }: CarouselProps) {
   const reduced = useReducedMotion();
   const { t } = useLocale();
   const scroller = useRef<HTMLDivElement>(null);
@@ -80,7 +81,10 @@ export function Carousel({ title, icon, action, size = "medium", children }: Car
         <header className="carousel-head mb-3 flex items-center justify-between gap-2 sm:mb-4 sm:gap-3">
           <div className="flex min-w-0 items-center gap-2">
             {icon}
-            {title && <h2 className="font-display truncate text-base uppercase text-white">{title}</h2>}
+            <div className="min-w-0">
+              {title && <h2 className="font-display truncate text-base uppercase text-white">{title}</h2>}
+              {subtitle && <p className="mt-0.5 truncate text-xs text-white/40">{subtitle}</p>}
+            </div>
           </div>
           <div className="flex shrink-0 items-center" style={{ gap: SPACE.sm }}>
             {action}

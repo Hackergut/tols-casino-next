@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Number(searchParams.get("limit") ?? 50));
   const skip = Number(searchParams.get("skip") ?? 0);
 
-  const where: Record<string, unknown> = { userId: user.id };
+  const where: Record<string, unknown> = { userId: user.id, result: { not: "pending" } };
   if (game) where.gameId = game;
   if (result === "win" || result === "lose" || result === "push") where.result = result;
   else where.result = { in: ["win", "lose", "push"] };

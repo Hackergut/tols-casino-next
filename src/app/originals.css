@@ -1,0 +1,479 @@
+/* Unified lobby game card — same chrome for Originals, slots, live, virtuals. */
+.tols-game-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  background: #0f1015;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    transform var(--dur-base, 240ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    border-color var(--dur-fast, 120ms) ease,
+    box-shadow var(--dur-base, 240ms) ease;
+}
+.tols-game-card:hover,
+.tols-game-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--color-lime) 42%, transparent);
+  box-shadow:
+    0 14px 32px rgb(0 0 0 / 0.45),
+    0 0 0 1px color-mix(in oklab, var(--color-lime) 18%, transparent);
+  outline: none;
+}
+.tols-game-card:active {
+  transform: translateY(-1px);
+}
+.tols-game-pill {
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  line-height: 1.2;
+}
+.tols-game-pill-original {
+  background: var(--color-lime);
+  color: var(--color-bg);
+}
+.tols-game-pill-new {
+  background: rgb(0 0 0 / 0.7);
+  color: var(--color-lime);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 55%, transparent);
+}
+.tols-game-pill-hot {
+  background: rgb(0 0 0 / 0.7);
+  color: #ffb52e;
+  border: 1px solid rgb(255 181 46 / 0.45);
+}
+.tols-game-pill-live {
+  background: rgb(0 0 0 / 0.7);
+  color: var(--color-lime);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 55%, transparent);
+}
+.tols-game-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--color-lime);
+  color: var(--color-bg);
+  opacity: 0;
+  transform: scale(0.78);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--color-lime) 35%, transparent);
+  transition: opacity 160ms ease, transform 200ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.tols-game-card:hover .tols-game-play,
+.tols-game-card:focus-visible .tols-game-play {
+  opacity: 1;
+  transform: scale(1);
+}
+.tols-games-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 640px) {
+  .tols-games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .tols-games-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1536px) {
+  .tols-games-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tols-game-card,
+  .tols-game-card:hover,
+  .tols-game-play {
+    transform: none;
+    transition: none;
+  }
+  .tols-game-card:hover .tols-game-play,
+  .tols-game-card:focus-visible .tols-game-play {
+    opacity: 1;
+  }
+}
+
+/* Originals rail + Blackjack — aligned to the modular game page layout. */
+
+.game-stage {
+  position: relative;
+  isolation: isolate;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in oklab, var(--color-lime) 12%, transparent);
+  background: #0c0d10;
+  padding: 0.35rem;
+}
+.game-stage-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: blur(42px) saturate(1.35) brightness(0.42);
+  opacity: 0.5;
+  mask-image: radial-gradient(ellipse at 50% 28%, #000 18%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 28%, #000 18%, transparent 72%);
+}
+.game-stage > *:not(.game-stage-atmosphere):not(.game-sheet-toggle):not(.game-sheet-scrim) {
+  position: relative;
+  z-index: 1;
+}
+
+.originals-stage {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .originals-stage {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+.originals-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.originals-rail-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid rgb(255 255 255 / 0.06);
+}
+.originals-rail-tabs button {
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.45);
+}
+.originals-rail-tabs button.active {
+  background: var(--color-lime);
+  color: var(--color-bg);
+}
+.originals-rail-card {
+  padding: 0.875rem;
+  border-radius: 1rem;
+  background: var(--color-surface);
+  border: 1px solid rgb(255 255 255 / 0.06);
+}
+
+.dice-area, .crash-area, .limbo-area, .wheel-area, .keno-area, .plinko-area,
+.coinflip-area, .shoot-area, .mines-board, .bj-table {
+  box-shadow:
+    inset 0 0 80px rgb(0 0 0 / 0.28),
+    0 0 0 1px color-mix(in oklab, var(--color-lime) 10%, transparent);
+}
+
+.bj-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 280px;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--color-lime) 10%, transparent), transparent 55%),
+    var(--color-surface);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 12%, transparent);
+}
+.bj-hand-label {
+  margin-bottom: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.4);
+}
+.bj-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 5.8rem;
+  align-items: center;
+}
+.bj-card {
+  position: relative;
+  width: 3.85rem;
+  height: 5.4rem;
+  border-radius: 0.42rem;
+  border: none;
+  padding: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 30% 18%, #ffffff, transparent 42%),
+    linear-gradient(165deg, #fffef8 0%, #f4efe4 100%);
+  box-shadow:
+    inset 0 0 0 1.5px #cdf32b,
+    inset 0 0 0 3.4px #fffef8,
+    0 10px 18px rgb(0 0 0 / 0.4);
+  color: #141414;
+}
+.bj-card::after {
+  content: "TOLS";
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, -50%);
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: rgb(20 20 16 / 0.08);
+  pointer-events: none;
+}
+button.bj-card {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: default;
+  font: inherit;
+}
+button.bj-card.scopa-playable { cursor: pointer; }
+.bj-card-back {
+  background:
+    url("/games/props/card-back.jpg") center / cover no-repeat;
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in oklab, var(--color-lime) 75%, #111),
+    0 10px 18px rgb(0 0 0 / 0.4);
+}
+.bj-card-back::after { content: none; }
+.bj-corner {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.92;
+}
+.bj-corner-tl { top: 0.28rem; left: 0.26rem; }
+.bj-corner-br { right: 0.26rem; bottom: 0.28rem; transform: rotate(180deg); }
+.bj-rank {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.bj-rank-wide { font-size: 0.62rem; letter-spacing: -0.05em; }
+.bj-suit { font-size: 0.72rem; line-height: 1; }
+.bj-pip {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  line-height: 1;
+  padding-bottom: 0.15rem;
+}
+.bj-red { color: #c81e1e; }
+.bj-black { color: #141414; }
+.bj-banner {
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.bj-banner.win {
+  color: var(--color-lime);
+  background: color-mix(in oklab, var(--color-lime) 12%, transparent);
+}
+.bj-banner.loss {
+  color: var(--color-loss);
+  background: color-mix(in oklab, var(--color-loss) 12%, transparent);
+}
+
+.pool-table {
+  position: relative;
+  min-height: 280px;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, #1c1e18, #0c0d0b 70%);
+  border: 10px solid #141412;
+  box-shadow:
+    inset 0 0 0 3px color-mix(in oklab, var(--color-lime) 55%, transparent),
+    inset 0 0 40px rgb(0 0 0 / 0.45);
+}
+.pool-pocket {
+  position: absolute;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: -0.8rem 0 0 -0.8rem;
+  border-radius: 999px;
+  background: #050505;
+  box-shadow: inset 0 0 6px #000;
+}
+.pool-ball {
+  position: absolute;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: -0.77rem 0 0 -0.77rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  background-image: radial-gradient(circle at 32% 28%, rgb(255 255 255 / 0.55), transparent 42%);
+  box-shadow: inset -2px -2px 4px rgb(0 0 0 / 0.35), 0 2px 4px rgb(0 0 0 / 0.4);
+  transition: transform 0.45s ease, opacity 0.45s ease;
+}
+.pool-ball.pocketed {
+  transform: scale(0.2);
+  opacity: 0;
+}
+.pool-cue {
+  position: absolute;
+  left: 6%;
+  top: 48%;
+  width: 38%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2a2a24, #e8ff00 85%, #fff 100%);
+  transform: rotate(-8deg);
+  opacity: 0.9;
+}
+.pool-banner {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0.75rem;
+}
+.scopa-table {
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--color-lime) 12%, transparent), transparent 55%),
+    var(--color-surface);
+}
+.scopa-card.scopa-playable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.scopa-card.scopa-playable:hover:not(:disabled) {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 20px rgb(0 0 0 / 0.35);
+}
+
+/* TOLS CSS/SVG 3D dice — in-game board matching the lobby tile. */
+.tols-die-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.6rem;
+  min-height: 7.5rem;
+  margin-bottom: 0.15rem;
+}
+.tols-die-scene {
+  width: 104px;
+  height: 104px;
+  perspective: 700px;
+}
+.tols-die-left { transform: rotateZ(-9deg); }
+.tols-die-right { transform: rotateZ(8deg); }
+.tols-die-cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tols-die-cube.is-rolling {
+  animation: tols-die-spin 0.32s linear infinite;
+}
+.tols-die-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.tols-die-face-1 { transform: rotateY(0deg) translateZ(52px); }
+.tols-die-face-2 { transform: rotateX(90deg) translateZ(52px); }
+.tols-die-face-3 { transform: rotateY(90deg) translateZ(52px); }
+.tols-die-face-4 { transform: rotateY(-90deg) translateZ(52px); }
+.tols-die-face-5 { transform: rotateX(-90deg) translateZ(52px); }
+.tols-die-face-6 { transform: rotateY(180deg) translateZ(52px); }
+.tols-die-svg { width: 100%; height: 100%; display: block; }
+.tols-die-floor {
+  width: 230px;
+  height: 16px;
+  margin: 0.15rem auto 0.65rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(0 0 0 / 0.55), transparent 72%);
+}
+@keyframes tols-die-spin {
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(360deg) rotateY(420deg) rotateZ(180deg); }
+}
+.mines-prop {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.45));
+}
+.keno-ball-art {
+  background-image: url("/games/props/keno-ball.jpg") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  text-shadow: 0 1px 4px #000;
+}
+.shoot-target-art {
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: url("/games/props/target.jpg") center / contain no-repeat;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.45));
+}
+.shoot-target-label {
+  font-family: var(--g-mono, ui-monospace, monospace);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 6px #000, 0 0 12px rgb(0 0 0 / 0.8);
+  pointer-events: none;
+}
+.coinflip-stage {
+  min-height: 280px;
+  background:
+    radial-gradient(ellipse at 50% 78%, color-mix(in oklab, var(--color-lime) 10%, transparent), transparent 52%),
+    radial-gradient(ellipse at 50% 100%, #161612, #0c0d10 68%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tols-die-cube.is-rolling { animation: none; }
+}
+
+/* Casino shell classes from master — needed after merging production routes. */
+.casino-content { container-type: inline-size; }
+@media (max-width: 767px) {
+  .casino-main--game {
+    height: calc(100dvh - 56px - env(safe-area-inset-top));
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .casino-main--game .casino-content { height: 100%; }
+}

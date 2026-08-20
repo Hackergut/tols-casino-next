@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { fairFloat, serverSeedHash, formatNumber } from "@/lib/types";
+import { formatNumber } from "@/lib/types";
 
 interface VerifyResult {
   serverSeed: string;
@@ -36,18 +36,28 @@ export function ProvablyFairModal({
   const [nonce, setNonce] = useState(String(lastBet?.nonce ?? 0));
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<VerifyResult | null>(null);
+  const [hash, setHash] = useState("");
+  const [roll, setRoll] = useState<number | null>(null);
 
-  const hash = serverSeed ? serverSeedHash(serverSeed) : "";
-  const roll = serverSeed && clientSeed ? Math.floor(fairFloat(serverSeed, clientSeed, Number(nonce)) * 10000) / 100 : null;
-
-  const verify = () => {
+  const verify = async () => {
     if (!serverSeed || !clientSeed) return;
+    const res = await fetch("/api/fair", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serverSeed, clientSeed, nonce: Number(nonce) }),
+    });
+    const json = await res.json();
+    if (!json.success) return;
+    const nextHash = String(json.data.serverSeedHash);
+    const nextRoll = Math.floor(Number(json.data.float) * 10000) / 100;
+    setHash(nextHash);
+    setRoll(nextRoll);
     setResult({
       serverSeed,
       clientSeed,
       nonce: Number(nonce),
-      roll: roll ?? 0,
-      hash,
+      roll: nextRoll,
+      hash: nextHash,
     });
   };
 
