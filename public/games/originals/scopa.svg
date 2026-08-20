@@ -11,26 +11,31 @@
       <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
       <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
     </radialGradient>
-    <linearGradient id="obj" x1="0" y1="0" x2="0.2" y2="1">
-      <stop offset="0" stop-color="#3a3a34"/><stop offset="1" stop-color="#0f0f0d"/>
-    </linearGradient>
   </defs>
   <rect width="1280" height="880" fill="url(#bg)"/>
   <rect width="1280" height="880" fill="url(#uglow)"/>
-  <g transform="translate(430,250) rotate(-12)">
-    <rect width="150" height="210" rx="16" fill="url(#obj)" stroke="#e8ff00" stroke-width="3"/>
-    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#e8ff00">7</text>
-    <circle cx="75" cy="140" r="18" fill="#e8b84a"/>
+  <g transform="translate(430,250) rotate(-10)">
+    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#e8b84a" stroke-width="3"/>
+    <text x="75" y="70" text-anchor="middle" font-size="36" font-weight="800" fill="#8a6a1a">3</text>
+    <circle cx="50" cy="120" r="12" fill="#e8b84a"/>
+    <circle cx="100" cy="120" r="12" fill="#e8b84a"/>
+    <circle cx="75" cy="160" r="12" fill="#e8b84a"/>
   </g>
-  <g transform="translate(560,230) rotate(-4)">
-    <rect width="150" height="210" rx="16" fill="url(#obj)" stroke="#e8ff00" stroke-width="3"/>
-    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#e8ff00">A</text>
-    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#e8ff00">♠</text>
+  <g transform="translate(545,220)">
+    <rect width="190" height="260" rx="18" fill="#f4f1ea" stroke="#e8b84a" stroke-width="4"/>
+    <text x="95" y="70" text-anchor="middle" font-size="48" font-weight="800" fill="#8a6a1a">7</text>
+    <circle cx="60" cy="110" r="14" fill="#e8b84a"/>
+    <circle cx="130" cy="110" r="14" fill="#e8b84a"/>
+    <circle cx="95" cy="150" r="14" fill="#e8b84a"/>
+    <circle cx="60" cy="190" r="14" fill="#e8b84a"/>
+    <circle cx="130" cy="190" r="14" fill="#e8b84a"/>
+    <circle cx="70" cy="230" r="14" fill="#e8b84a"/>
+    <circle cx="120" cy="230" r="14" fill="#e8b84a"/>
   </g>
-  <g transform="translate(700,250) rotate(10)">
-    <rect width="150" height="210" rx="16" fill="url(#obj)" stroke="#e8ff00" stroke-width="3"/>
-    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#e8ff00">3</text>
-    <circle cx="75" cy="140" r="18" fill="#e8b84a"/>
+  <g transform="translate(720,250) rotate(12)">
+    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#141414" stroke-width="3"/>
+    <text x="75" y="80" text-anchor="middle" font-size="36" font-weight="800" fill="#141414">4</text>
+    <path d="M40,120 L75,165 L110,120" fill="none" stroke="#5c3a1e" stroke-width="8" stroke-linecap="round"/>
   </g>
   <rect width="1280" height="880" fill="url(#vig)"/>
 </svg>
