@@ -2372,3 +2372,26 @@ Note: 16 pre-existing test failures across 7 suites (stale regex specs, sandbox
 DB stub) verified identical on the base commit — not regressions.
 prisma generate needed for the TelemetryEvent column (engine download blocked
 in this sandbox).
+
+## Promo cards → TOLS × Apple design system (2026-08-20)
+
+Redesigned the promo card surfaces following the Apple Design skill (fluid
+interfaces) as the design system:
+
+- Cards are motion.button with critically damped springs (bounce 0 ≈ damping
+  1.0, response 0.4): whileHover lift, whileTap scale 0.97 on pointer-DOWN
+  (instant press feedback), fully interruptible — no CSS keyframes on the
+  interactive card.
+- Translucent material language (tols-promo-*): blur(16px)+saturate pills with
+  bright 1px top edge (light catching the glass), glass play circle with lime
+  ring, bottom bar = gradient scrim + backdrop blur + hairline top edge.
+  Color (lime reward) on a SOLID chip per Apple's legibility rule.
+- Typography: title tightens as it grows (-0.02em, leading 1.12), small labels
+  open tracking (+0.08em uppercase), numbers mono + tabular.
+- touch-action: manipulation kills the 300ms tap delay; tap highlight removed.
+- prefers-reduced-motion: springs collapse to static (useReducedMotion), play
+  reveal is a plain opacity toggle; prefers-reduced-transparency: glass goes
+  frosty/solid.
+- Shared Carousel child entrance switched to a critically damped spring.
+- Detail hero, "More promotions" rail and the Promotions list all reuse the
+  same PromoCard / static hero chrome — one material language everywhere.

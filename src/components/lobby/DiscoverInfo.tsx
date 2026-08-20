@@ -10,35 +10,13 @@
  *
  * Every promotion also has its own detail page (PromoDetailSection) rendered
  * at /promo/{id}: the hero is the exact artwork of the promo card the player
- * tapped, dressed in the same TOLS brand accents, so the card → page jump is
- * seamless.
+ * tapped, dressed in the same TOLS × Apple material language (glass pills,
+ * translucent bar, solid lime reward), so the card → page jump is seamless.
  */
 
 import { ArrowLeft, Gift, Swords, CheckCircle2, ArrowUpRight, ChevronRight } from "lucide-react";
-import { ALL_PROMOTIONS, type TolsPromotion } from "./promotions";
-import { promoSection } from "@/lib/casino-routes";
-
-/* Same type scale + kind labels as the game cards / promo cards. */
-const TITLE_STYLE: React.CSSProperties = {
-  fontSize: "clamp(0.875rem, 0.78rem + 0.42vw, 1.0625rem)",
-  lineHeight: 1.2,
-  letterSpacing: "-0.01em",
-  textShadow: "0 1px 6px rgb(0 0 0 / 0.75)",
-};
-const META_STYLE: React.CSSProperties = {
-  fontSize: "clamp(0.75rem, 0.7rem + 0.24vw, 0.875rem)",
-  lineHeight: 1.25,
-  textShadow: "0 1px 5px rgb(0 0 0 / 0.7)",
-};
-const KIND_LABEL: Record<string, string> = {
-  welcome: "Welcome",
-  rakeback: "Rakeback",
-  reload: "Reload",
-  cashback: "Cashback",
-  jackpot: "Jackpot",
-  referral: "Referral",
-  campaign: "Campaign",
-};
+import { ALL_PROMOTIONS, PROMO_KIND_LABEL, type TolsPromotion } from "./promotions";
+import { PromoCard } from "./PromotionCards";
 
 function InfoShell({ title, subtitle, icon: Icon, onBack, children }: {
   title: string;
@@ -68,39 +46,45 @@ function InfoShell({ title, subtitle, icon: Icon, onBack, children }: {
   );
 }
 
-/* ── Promo hero — the card's artwork as the page hero, game-card chrome ── */
+/* ── Promo hero — the card's artwork, dressed statically in the same
+   TOLS × Apple material language as the card it came from ── */
 function PromoHero({ promo, icon: Icon }: { promo: TolsPromotion; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }) {
-  const kind = KIND_LABEL[promo.kind] ?? promo.kind;
+  const kind = PROMO_KIND_LABEL[promo.kind] ?? promo.kind;
   return (
-    <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-lime/15 bg-surface" style={{ boxShadow: "0 24px 60px rgb(0 0 0 / 0.45), 0 0 0 1px color-mix(in oklab, var(--color-lime) 10%, transparent)" }}>
+    <div
+      className="tols-promo-card group relative aspect-[16/9] cursor-default rounded-2xl"
+      style={{ boxShadow: "0 28px 64px rgb(0 0 0 / 0.5), 0 0 0 1px color-mix(in oklab, var(--color-lime) 10%, transparent)" }}
+    >
       <img src={promo.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
 
-      {/* Top-left: lime kind pill. */}
-      <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
-        <span className="tols-game-pill tols-game-pill-original">{kind}</span>
+      {/* Kind pill (top-left) — translucent material. */}
+      <div className="tols-promo-pill tols-promo-pill-kind absolute left-3 top-3">
+        <Icon className="h-3 w-3" />
+        {kind}
       </div>
 
-      {/* Top-right: badge pill. */}
+      {/* Badge pill (top-right) — translucent material. */}
       {promo.badge && (
-        <span className="absolute right-2.5 top-2.5 tols-game-pill tols-game-pill-new">{promo.badge}</span>
+        <div className="tols-promo-pill tols-promo-pill-badge absolute right-3 top-3">{promo.badge}</div>
       )}
 
-      {/* Center icon chip — the play-circle slot, here the promo icon. */}
+      {/* Center icon chip — the play-circle slot, kept visible on the hero. */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-lime/40 bg-black/55 backdrop-blur-sm">
-          <Icon className="h-6 w-6 text-lime" />
+        <span className="tols-promo-play tols-promo-play--static">
+          <Icon className="h-6 w-6" />
         </span>
       </div>
 
-      {/* Bottom bar: title + kind · tagline left, reward chip right. */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-black via-black/80 to-transparent p-4 pt-16 sm:p-5">
+      {/* Bottom translucent bar. */}
+      <div className="tols-promo-bar">
         <div className="min-w-0">
-          <h2 className="truncate font-bold text-white" style={TITLE_STYLE}>{promo.title}</h2>
-          <p className="truncate text-white/60" style={META_STYLE}>{kind} · {promo.tagline}</p>
+          <h2 className="tols-promo-title truncate">{promo.title}</h2>
+          <p className="tols-promo-meta truncate">
+            {kind} · {promo.tagline}
+          </p>
         </div>
-        <span className="flex max-w-[130px] shrink-0 items-center gap-1.5 rounded bg-black/55 px-2 py-1 font-mono text-xs font-bold tabular-nums text-lime" style={{ textShadow: "0 0 18px rgb(204 255 0 / 0.35)" }}>
-          <Icon className="h-3.5 w-3.5 shrink-0 text-lime/80" />
-          <span className="truncate">{promo.reward}</span>
+        <span className="tols-promo-reward" title={promo.reward}>
+          {promo.reward}
         </span>
       </div>
     </div>
@@ -190,29 +174,9 @@ export function PromoDetailSection({ promoId, onBack, onNavigate }: {
         </div>
         <div className="scrollbar-hide -mx-1 flex gap-3 overflow-x-auto px-1 pb-1" style={{ scrollSnapType: "x mandatory" }}>
           {others.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onNavigate(promoSection(p.id))}
-              aria-label={`${p.title} — ${p.reward} — details`}
-              className="tols-game-card group w-64 shrink-0 sm:w-72"
-              style={{ scrollSnapAlign: "start" }}
-            >
-              <img src={p.image} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <span className="tols-game-play">
-                  <ArrowUpRight className="h-5 w-5" />
-                </span>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-3 pt-14">
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-white" style={TITLE_STYLE}>{p.title}</p>
-                  <p className="truncate text-white/60" style={META_STYLE}>{KIND_LABEL[p.kind] ?? p.kind} · {p.tagline}</p>
-                </div>
-                <span className="max-w-[92px] shrink-0 truncate rounded bg-black/55 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-lime">
-                  {p.reward}
-                </span>
-              </div>
-            </button>
+            <div key={p.id} className="w-64 shrink-0 sm:w-72" style={{ scrollSnapAlign: "start" }}>
+              <PromoCard promo={p} onNavigate={onNavigate} />
+            </div>
           ))}
         </div>
       </section>
@@ -222,41 +186,10 @@ export function PromoDetailSection({ promoId, onBack, onNavigate }: {
 
 function PromoDetailCard({ promo, onNavigate }: { promo: TolsPromotion; onNavigate: (target: string) => void }) {
   const Icon = promo.icon;
-  const kind = KIND_LABEL[promo.kind] ?? promo.kind;
   return (
     <div className="overflow-hidden rounded-2xl border border-white/8 bg-surface/60">
-      {/* 16:9 artwork header — game-card chrome, entry to the detail page. */}
-      <button type="button" onClick={() => onNavigate(promoSection(promo.id))} aria-label={`${promo.title} — details`} className="tols-game-card group relative block w-full cursor-pointer text-left">
-        <div className="relative aspect-[16/9] overflow-hidden">
-          <img src={promo.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-
-          {/* Kind pill top-left, badge pill top-right. */}
-          <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
-            <span className="tols-game-pill tols-game-pill-original">{kind}</span>
-          </div>
-          {promo.badge && (
-            <span className="absolute right-2.5 top-2.5 tols-game-pill tols-game-pill-new">{promo.badge}</span>
-          )}
-
-          {/* Play circle revealed on hover. */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="tols-game-play">
-              <ArrowUpRight className="h-5 w-5" />
-            </span>
-          </div>
-
-          {/* Bottom bar: title + kind · tagline left, reward chip right. */}
-          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-3 pt-14">
-            <div className="min-w-0">
-              <h3 className="truncate font-bold text-white" style={TITLE_STYLE}>{promo.title}</h3>
-              <p className="truncate text-white/60" style={META_STYLE}>{kind} · {promo.tagline}</p>
-            </div>
-            <span className="max-w-[110px] shrink-0 truncate rounded bg-black/55 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-lime">
-              {promo.reward}
-            </span>
-          </div>
-        </div>
-      </button>
+      {/* Artwork header — the same card as the home shelf; tap opens the page. */}
+      <PromoCard promo={promo} onNavigate={onNavigate} />
 
       <div className="p-4">
         <div className="flex items-center gap-2">

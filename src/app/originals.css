@@ -85,10 +85,228 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Promotional cards share the EXACT game-card chrome (.tols-game-card):
-   painted 16:9 artwork, kind pill, badge pill, play circle on hover and the
-   bottom title/meta bar with the reward chip in the RTP slot. No separate
-   promo card styles — one card language for the whole lobby. */
+/* ═══════════════════════════════════════════════════════════════════════
+   Promo cards — TOLS × Apple design system
+   Translucent materials, springs (framer owns every transform), press
+   feedback on pointer-down, size-specific tracking. See PromotionCards.tsx.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.tols-promo-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 1.25rem; /* 20px — Apple surface radius */
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: #0f1015;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  /* Kill the 300ms mobile tap delay; no default highlight flash. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    0 12px 32px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+.tols-promo-card:hover {
+  border-color: rgb(255 255 255 / 0.18);
+}
+.tols-promo-card:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+}
+
+/* Translucent material — blur + saturate, bright top edge = light catching
+   the glass. Used by pills, the play circle and chrome chips. */
+.tols-promo-glass {
+  background: rgb(12 13 17 / 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
+}
+
+/* Pills — small labels open their tracking (Apple: +tracking at small sizes). */
+.tols-promo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  background: rgb(12 13 17 / 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
+  color: rgb(255 255 255 / 0.85);
+}
+.tols-promo-pill-kind {
+  color: var(--color-lime);
+}
+.tols-promo-pill-kind svg {
+  color: var(--color-lime);
+}
+.tols-promo-pill-cta {
+  color: var(--color-lime);
+  cursor: pointer;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.6875rem;
+  transition: background-color var(--dur-fast, 120ms) ease, color var(--dur-fast, 120ms) ease;
+}
+.tols-promo-pill-cta:hover {
+  background: var(--color-lime);
+  color: var(--color-bg);
+}
+.tols-promo-pill-cta:active {
+  transform: scale(0.96);
+}
+
+/* Center affordance — glass circle, arrow points at the destination (↗).
+   Opacity/scale live on this child, so the spring on the card is untouched. */
+.tols-promo-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: rgb(12 13 17 / 0.45);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid color-mix(in oklab, var(--color-lime) 55%, transparent);
+  color: var(--color-lime);
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 0 24px color-mix(in oklab, var(--color-lime) 18%, transparent);
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 200ms ease,
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tols-promo-card:hover .tols-promo-play,
+.tols-promo-card:focus-visible .tols-promo-play {
+  opacity: 1;
+  transform: scale(1);
+}
+/* Static variant — the detail-page hero keeps the circle visible. */
+.tols-promo-play--static {
+  opacity: 1;
+  transform: scale(1);
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+/* Bottom bar — translucent material over the art. The gradient scrim keeps
+   legibility even where backdrop-filter is unsupported. */
+.tols-promo-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 2.75rem 0.875rem 0.75rem;
+  background: linear-gradient(to top, rgb(8 9 12 / 0.92) 0%, rgb(8 9 12 / 0.55) 55%, transparent 100%);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+}
+/* Bright top edge — the material catching the light (Apple hairline). */
+.tols-promo-bar::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  pointer-events: none;
+}
+
+/* Typography — size-specific tracking and leading (Apple: tighten as it
+   grows; small text opens up). */
+.tols-promo-title {
+  font-size: clamp(0.9375rem, 0.84rem + 0.42vw, 1.125rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+}
+.tols-promo-meta {
+  margin-top: 0.2rem;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: rgb(255 255 255 / 0.62);
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.6);
+}
+
+/* Reward — color on a SOLID layer (Apple rule), mono + tabular numerals. */
+.tols-promo-reward {
+  flex-shrink: 0;
+  max-width: 7.5rem;
+  padding: 0.32rem 0.6rem;
+  border-radius: 0.6rem;
+  background: var(--color-lime);
+  color: var(--color-bg);
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 16px color-mix(in oklab, var(--color-lime) 30%, transparent);
+}
+
+/* Reduced transparency — glass goes frosty/solid (Apple:
+   prefers-reduced-transparency). */
+@media (prefers-reduced-transparency: reduce) {
+  .tols-promo-pill,
+  .tols-promo-play,
+  .tols-promo-bar,
+  .tols-promo-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgb(10 11 14 / 0.94);
+  }
+  .tols-promo-play {
+    background: rgb(10 11 14 / 0.9);
+  }
+  .tols-promo-bar {
+    background: linear-gradient(to top, rgb(8 9 12 / 0.98) 0%, rgb(8 9 12 / 0.88) 55%, rgb(8 9 12 / 0.5) 100%);
+  }
+}
+
+/* Reduced motion — framer collapses springs to static via useReducedMotion;
+   the play-circle reveal becomes a plain opacity toggle. */
+@media (prefers-reduced-motion: reduce) {
+  .tols-promo-play {
+    transition: opacity 150ms ease;
+    transform: none;
+  }
+  .tols-promo-card:hover .tols-promo-play,
+  .tols-promo-card:focus-visible .tols-promo-play {
+    transform: none;
+  }
+  .tols-promo-pill-cta:active {
+    transform: none;
+  }
+}
 
 @media (min-width: 640px) {
   .tols-games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
