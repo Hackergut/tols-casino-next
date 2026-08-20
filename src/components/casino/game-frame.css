@@ -118,6 +118,9 @@
 .tols-game__controls {
   grid-area: controls;
   min-width: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--lime-300) 20%, transparent) transparent;
 }
 .tols-game__canvas {
   grid-area: canvas;
@@ -144,6 +147,19 @@
   }
   .tols-game__canvas {
     min-height: clamp(420px, 58vh, 680px);
+  }
+}
+
+@media (min-width: 1280px) {
+  .tols-game {
+    gap: 16px;
+  }
+  .tols-game__body {
+    gap: 16px;
+  }
+  .tols-game__canvas,
+  .tols-bet {
+    border-radius: 18px;
   }
 }
 
@@ -1324,6 +1340,16 @@
     border-top: 1px solid color-mix(in oklab, var(--lime-300) 20%, var(--border));
     box-shadow: 0 -16px 44px rgb(0 0 0 / .58);
     border-radius: 18px 18px 0 0;
+  }
+  /* Drag handle bar at the top of the bottom sheet */
+  .compact-game .tols-game__controls::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--lime-300) 25%, transparent);
+    margin: 0 auto 8px;
   }
   .compact-game:not(.sheet-open) .tols-game__controls {
     height: calc(var(--game-sheet-collapsed) + env(safe-area-inset-bottom));

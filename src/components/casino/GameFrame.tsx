@@ -101,8 +101,10 @@ export function GameFrame({
   // keep the Web Audio master gain in lockstep with it.
   useEffect(() => { setSoundEnabled(soundEnabled); }, [soundEnabled]);
 
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   return (
-    <div className="tols-game">
+    <div className={`compact-game ${sheetOpen ? "sheet-open" : ""}`} style={{ height: "100%" }}>
       <header className="tols-game__head">
         <button onClick={onBack} className="tols-game__back" aria-label={t("game.back")}>
           <ArrowLeft className="size-4" />
@@ -150,9 +152,29 @@ export function GameFrame({
       </header>
 
       <div className="tols-game__body">
-        <aside className="tols-game__controls">{controls}</aside>
+        <aside className="tols-game__controls">
+          {/* Mobile drag handle */}
+          <button
+            className="game-sheet-toggle"
+            type="button"
+            aria-label={sheetOpen ? "Close bet panel" : "Open bet panel"}
+            onClick={() => setSheetOpen((v) => !v)}
+          >
+            <ChevronDown
+              className="size-3"
+              style={{
+                transform: sheetOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 200ms ease",
+              }}
+            />
+          </button>
+          {controls}
+        </aside>
         <section className="tols-game__canvas">{children}</section>
       </div>
+
+      {/* Mobile scrim */}
+      {sheetOpen && <div className="game-sheet-scrim" onClick={() => setSheetOpen(false)} />}
 
       <FairnessBar fairness={fairness} rtp={effectiveRtp} />
 
