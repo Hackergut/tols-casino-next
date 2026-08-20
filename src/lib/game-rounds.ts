@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getActiveSeed, nextNonce } from "@/lib/provably-fair";
 import { getEngine } from "@/lib/game-engines";
 import { BetError } from "@/lib/settle-bet";
+import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
 import { after } from "next/server";
 import { syncPlayerProfile } from "@/lib/player-sync";
@@ -156,7 +157,7 @@ export async function startRound(opts: {
       amount: opts.amount,
       multiplier: state.multiplier,
       payout: state.payout,
-      result: state.status === "settled" ? (state.won ? "win" : "lose") : "pending",
+      result: state.status === "settled" ? betResultTag(state) : "pending",
       clientSeed: seed,
       serverSeedHash: seedPair.serverSeedHash,
       nonce,
@@ -170,7 +171,7 @@ export async function startRound(opts: {
     await db.casinoBet.update({
       where: { id: row.id },
       data: {
-        result: state.won ? "win" : state.multiplier === 1 ? "push" : "lose",
+        result: betResultTag(state),
         multiplier: state.multiplier,
         payout: state.payout,
         payload: JSON.stringify(state.publicState),
@@ -242,7 +243,7 @@ export async function applyAction(opts: {
       where: { id: row.id },
       data: {
         amount: state.amount,
-        result: state.won ? "win" : state.multiplier === 1 ? "push" : "lose",
+        result: betResultTag(state),
         multiplier: state.multiplier,
         payout: state.payout,
         payload: JSON.stringify(state.publicState),

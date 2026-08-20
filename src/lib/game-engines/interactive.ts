@@ -1,17 +1,7 @@
 import { fairFloat } from "@/lib/provably-fair";
 import type { GameEngine, InteractiveRoundState, SettledOutcome } from "@/shared/types";
-import { MIN_BET } from "@/shared/constants";
-
-function okAmount(amount: number, balance: number) {
-  if (!Number.isFinite(amount) || amount < MIN_BET) return { valid: false, error: "Invalid bet amount" };
-  if (amount > balance) return { valid: false, error: "Insufficient balance" };
-  return { valid: true };
-}
-
-function paid(amount: number, multiplier: number, payload: Record<string, unknown>): SettledOutcome {
-  const payout = amount * multiplier;
-  return { multiplier, payout, profit: payout - amount, won: multiplier > 0, payload };
-}
+import { MINES_TILES } from "@/shared/constants";
+import { okAmount, paid } from "./common";
 
 function crashPointFromSeeds(serverSeed: string, clientSeed: string, nonce: number): number {
   const r = fairFloat(serverSeed, clientSeed, nonce);
@@ -42,6 +32,19 @@ export const crashEngine: GameEngine = {
   handlePlayerAction(action, state) {
     const crashPoint = Number(state.secret.crashPoint);
     const startedAt = Number(state.secret.startedAt ?? Date.now());
+    if (action.type === "deal-check") {
+      if (crashPoint <= 1) {
+        return {
+          ...state,
+          status: "settled",
+          won: false,
+          multiplier: 0,
+          payout: 0,
+          publicState: { crashPoint, cashedAt: 0 },
+        };
+      }
+      return state;
+    }
     if (action.type === "bust") {
       return {
         ...state,
@@ -75,7 +78,7 @@ export const crashEngine: GameEngine = {
   },
 };
 
-function minesLayout(serverSeed: string, clientSeed: string, nonce: number, mines: number, tiles = 25): boolean[] {
+function minesLayout(serverSeed: string, clientSeed: string, nonce: number, mines: number, tiles = MINES_TILES): boolean[] {
   const arr = new Array(tiles).fill(false);
   const indices = Array.from({ length: tiles }, (_, i) => i);
   for (let i = indices.length - 1; i > 0; i--) {
@@ -86,7 +89,7 @@ function minesLayout(serverSeed: string, clientSeed: string, nonce: number, mine
   return arr;
 }
 
-function nextMineMultiplier(picks: number, mines: number, tiles = 25): number {
+function nextMineMultiplier(picks: number, mines: number, tiles = MINES_TILES): number {
   let m = 1;
   for (let i = 0; i < picks; i++) m *= (tiles - i) / (tiles - mines - i);
   return Math.max(1, m * 0.99);
@@ -123,7 +126,7 @@ export const minesEngine: GameEngine = {
 
     if (action.type === "reveal") {
       const cell = Number(action.cellIndex);
-      if (!Number.isInteger(cell) || cell < 0 || cell > 24 || picks.includes(cell)) return state;
+      if (!Number.isInteger(cell) || cell < 0 || cell >= MINES_TILES || picks.includes(cell)) return state;
       picks.push(cell);
       if (layout[cell]) {
         return {
@@ -135,7 +138,7 @@ export const minesEngine: GameEngine = {
           publicState: { picks, hit: cell, layout, mines: minesCount },
         };
       }
-      const gemsTotal = 25 - minesCount;
+      const gemsTotal = MINES_TILES - minesCount;
       const multiplier = nextMineMultiplier(picks.length, minesCount);
       if (picks.length >= gemsTotal) {
         return {
@@ -172,7 +175,7 @@ export const minesEngine: GameEngine = {
     const layout = outcome.layout as boolean[];
     const want = Math.max(1, Number(bet.params.tilesToReveal ?? 3));
     const picks: number[] = [];
-    for (let i = 0; i < 25 && picks.length < want; i++) {
+    for (let i = 0; i < MINES_TILES && picks.length < want; i++) {
       picks.push(i);
       if (layout[i]) break;
     }
@@ -256,12 +259,12 @@ function bjPayout(amount: number, player: BjCard[], dealer: BjCard[], doubled: b
   // Double: stake is 2x, multiplier is still 0 / 1 / 2 against the doubled stake.
   const payout = (doubled ? amount * 2 : amount) * (multiplier === 2.5 ? 2.5 : multiplier === 2 ? 2 : multiplier === 1 ? 1 : 0);
   // Express multiplier vs original amount so wallet math stays amount * multiplier.
-  const vsOriginal = payout / amount;
+  const vsOriginal = amount > 0 ? payout / amount : 0;
   return {
     multiplier: vsOriginal,
     payout,
     profit: payout - stake,
-    won: payout > 0,
+    won: result !== "push" && payout > 0,
     payload: { player, dealer, result, doubled, playerTotal: p, dealerTotal: d },
   };
 }

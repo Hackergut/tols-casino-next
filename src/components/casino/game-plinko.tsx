@@ -14,6 +14,7 @@ import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
+import { PLINKO_TABLES } from "@/lib/game-engines/tables";
 
 interface Props {
   onBack: () => void;
@@ -21,18 +22,7 @@ interface Props {
 }
 
 
-/* ── Multiplier tables matching backend (src/app/api/bets/route.ts) ── */
-const MULTIPLIER_TABLES: Record<string, number[]> = {
-  '8-low': [5.6, 2.1, 1.1, 1, 0.5, 1, 1.1, 2.1, 5.6],
-  '8-medium': [13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13],
-  '8-high': [29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29],
-  '12-low': [10, 3, 1.3, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.3, 3, 10],
-  '12-medium': [58, 15, 7, 3, 1.5, 1, 0.5, 1, 1.5, 3, 7, 15, 58],
-  '12-high': [420, 70, 14, 5, 2, 1, 0.2, 1, 2, 5, 14, 70, 420],
-  '16-low': [16, 9, 2, 1.4, 1.4, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.4, 1.4, 2, 9, 16],
-  '16-medium': [110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110],
-  '16-high': [1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000],
-};
+const MULTIPLIER_TABLES = PLINKO_TABLES;
 
 /* ── Theme colours (hex — canvas can't read CSS vars) ── */
 const COL = {

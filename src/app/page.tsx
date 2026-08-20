@@ -304,7 +304,10 @@ function CasinoPage() {
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
             {activeGame ? (
-              <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
+              <div className="originals-stage">
+                <CompactGameShell gameKey={activeGame}>{renderGame()}</CompactGameShell>
+                <OriginalsRail gameId={activeGame} />
+              </div>
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => handleSectionChange("lobby")} />
             ) : activeSection === "originals" ? (

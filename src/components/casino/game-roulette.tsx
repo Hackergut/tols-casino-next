@@ -220,7 +220,6 @@ const DOZENS = [
 
 export function RouletteGame({ onBack, initialBalance }: Props) {
   const [chip, setChip] = useState(5);
-  const { balance, setBalance } = useOriginalsSession("roulette", { color: "red" }, chip, initialBalance);
   const [bets, setBets] = useState<Map<string, Bet>>(new Map());
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<null | { winning: number; won: boolean; payout: number }>(null);
@@ -228,6 +227,10 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
   const wheelRef = useRef<RouletteHandle | null>(null);
 
   const totalStaked = Array.from(bets.values()).reduce((s, b) => s + b.amount, 0);
+  const autoColor = Array.from(bets.values()).some((b) => b.type === "black") && !Array.from(bets.values()).some((b) => b.type === "red")
+    ? "black"
+    : "red";
+  const { balance, setBalance } = useOriginalsSession("roulette", { color: autoColor }, totalStaked || chip, initialBalance);
 
   const placeBet = useCallback((type: string, value?: number) => {
     if (spinning) return;

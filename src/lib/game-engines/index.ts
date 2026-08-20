@@ -38,3 +38,4 @@ export function listEngines(): GameEngine[] {
 export { blackjackEngine, crashEngine, minesEngine };
 export { bjHandValue } from "./interactive";
 export type { BjCard } from "./interactive";
+export { KENO_TABLES, PLINKO_TABLES, ROULETTE_RED, WHEEL_TABLES } from "./tables";

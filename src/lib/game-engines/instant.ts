@@ -1,18 +1,8 @@
 import { fairFloat } from "@/lib/provably-fair";
-import type { GameEngine, SettledOutcome } from "@/shared/types";
-import { MIN_BET } from "@/shared/constants";
+import type { GameEngine } from "@/shared/types";
+import { KENO_DRAWS, KENO_MAX_PICKS, KENO_POOL, KENO_RISKS, PLINKO_ROWS, WHEEL_SEGMENTS } from "@/shared/constants";
 import { KENO_TABLES, PLINKO_TABLES, ROULETTE_RED, SLOT_P, SLOT_PAY, WHEEL_TABLES } from "./tables";
-
-function okAmount(amount: number, balance: number) {
-  if (!Number.isFinite(amount) || amount < MIN_BET) return { valid: false, error: "Invalid bet amount" };
-  if (amount > balance) return { valid: false, error: "Insufficient balance" };
-  return { valid: true };
-}
-
-function paid(amount: number, multiplier: number, payload: Record<string, unknown>): SettledOutcome {
-  const payout = amount * multiplier;
-  return { multiplier, payout, profit: payout - amount, won: multiplier > 0, payload };
-}
+import { isRisk, okAmount, paid } from "./common";
 
 export const diceEngine: GameEngine = {
   id: "dice",
@@ -31,7 +21,7 @@ export const diceEngine: GameEngine = {
   },
   settleBet(bet, outcome) {
     const target = Number(bet.params.target ?? 50);
-    const isOver = Boolean(bet.params.isOver ?? false);
+    const isOver = Boolean(bet.params.isOver ?? true);
     const roll = Number(outcome.roll);
     const won = isOver ? roll > target : roll < target;
     const winChance = isOver ? 100 - target : target;
@@ -68,8 +58,12 @@ export const coinflipEngine: GameEngine = {
   id: "coinflip",
   name: "Coinflip",
   kind: "instant",
-  validateBet(_p, balance, amount) {
-    return okAmount(amount, balance);
+  validateBet(params, balance, amount) {
+    const base = okAmount(amount, balance);
+    if (!base.valid) return base;
+    const choice = params.choice ?? "heads";
+    if (choice !== "heads" && choice !== "tails") return { valid: false, error: "Choice must be heads or tails" };
+    return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce) {
     const flip = fairFloat(serverSeed, clientSeed, nonce) < 0.5 ? "heads" : "tails";
@@ -91,7 +85,9 @@ export const plinkoEngine: GameEngine = {
     const base = okAmount(amount, balance);
     if (!base.valid) return base;
     const rows = Number(params.rows ?? 12);
-    if (![8, 12, 16].includes(rows)) return { valid: false, error: "Rows must be 8, 12 or 16" };
+    if (!(PLINKO_ROWS as readonly number[]).includes(rows)) return { valid: false, error: "Rows must be 8, 12 or 16" };
+    const risk = String(params.risk ?? "medium");
+    if (!isRisk(risk)) return { valid: false, error: "Risk must be low, medium or high" };
     return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce, params) {
@@ -116,8 +112,14 @@ export const wheelEngine: GameEngine = {
   id: "wheel",
   name: "Wheel",
   kind: "instant",
-  validateBet(_p, balance, amount) {
-    return okAmount(amount, balance);
+  validateBet(params, balance, amount) {
+    const base = okAmount(amount, balance);
+    if (!base.valid) return base;
+    const segments = Number(params.segments ?? WHEEL_SEGMENTS);
+    if (segments !== WHEEL_SEGMENTS) return { valid: false, error: `Wheel uses ${WHEEL_SEGMENTS} segments` };
+    const risk = String(params.risk ?? "medium");
+    if (!isRisk(risk)) return { valid: false, error: "Risk must be low, medium or high" };
+    return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce, params) {
     const segments = Number(params.segments ?? 20);
@@ -141,21 +143,25 @@ export const kenoEngine: GameEngine = {
   validateBet(params, balance, amount) {
     const base = okAmount(amount, balance);
     if (!base.valid) return base;
-    const picks = Array.isArray(params.picks) ? params.picks : [];
-    if (picks.length < 1) return { valid: false, error: "Pick at least one number" };
+    const picks = Array.isArray(params.picks) ? params.picks.map(Number) : [];
+    const unique = [...new Set(picks.filter((n) => Number.isInteger(n) && n >= 1 && n <= KENO_POOL))];
+    if (unique.length < 1) return { valid: false, error: "Pick at least one number" };
+    if (unique.length > KENO_MAX_PICKS) return { valid: false, error: `Pick at most ${KENO_MAX_PICKS} numbers` };
+    const risk = String(params.risk ?? "classic");
+    if (!(KENO_RISKS as readonly string[]).includes(risk)) return { valid: false, error: "Invalid keno risk" };
     return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce) {
-    const pool = Array.from({ length: 40 }, (_, i) => i + 1);
+    const pool = Array.from({ length: KENO_POOL }, (_, i) => i + 1);
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(fairFloat(serverSeed, clientSeed + ":k" + i, nonce) * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    return { drawn: pool.slice(0, 10) };
+    return { drawn: pool.slice(0, KENO_DRAWS) };
   },
   settleBet(bet, outcome) {
     const picks: number[] = Array.isArray(bet.params.picks)
-      ? (bet.params.picks as number[]).filter((n) => Number.isInteger(n) && n >= 1 && n <= 40).slice(0, 10)
+      ? [...new Set((bet.params.picks as number[]).filter((n) => Number.isInteger(n) && n >= 1 && n <= KENO_POOL))].slice(0, KENO_MAX_PICKS)
       : [];
     const drawn = (outcome.drawn as number[]) ?? [];
     const drawnSet = new Set(drawn);
@@ -172,22 +178,33 @@ export const shootEngine: GameEngine = {
   id: "shoot",
   name: "Target Shoot",
   kind: "instant",
-  validateBet(_p, balance, amount) {
-    return okAmount(amount, balance);
+  validateBet(params, balance, amount) {
+    const base = okAmount(amount, balance);
+    if (!base.valid) return base;
+    const target = Number(params.target ?? 2);
+    if (!Number.isFinite(target) || target < 1) return { valid: false, error: "Target must be at least 1x" };
+    return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce) {
     return { r: fairFloat(serverSeed, clientSeed, nonce) };
   },
   settleBet(bet, outcome) {
     const r = Number(outcome.r);
-    let multiplier = 0;
-    if (r < 0.45) multiplier = 0;
-    else if (r < 0.75) multiplier = 1.5;
-    else if (r < 0.9) multiplier = 2.2;
-    else if (r < 0.97) multiplier = 4;
-    else if (r < 0.995) multiplier = 9;
-    else multiplier = 25;
-    return paid(bet.amount, multiplier, { roll: Math.floor(r * 10000) / 100, mult: multiplier });
+    let hit = 0;
+    if (r < 0.45) hit = 0;
+    else if (r < 0.75) hit = 1.5;
+    else if (r < 0.9) hit = 2.2;
+    else if (r < 0.97) hit = 4;
+    else if (r < 0.995) hit = 9;
+    else hit = 25;
+    const target = Number(bet.params.target ?? 2);
+    const won = hit >= target;
+    return paid(bet.amount, won ? hit : 0, {
+      roll: Math.floor(r * 10000) / 100,
+      mult: hit,
+      hit,
+      target,
+    });
   },
 };
 

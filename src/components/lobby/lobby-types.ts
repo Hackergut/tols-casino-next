@@ -58,7 +58,7 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "dice", name: "Dice", icon: Gamepad2, color: "#3b82f6", desc: "Roll over or under your target number for big multipliers." },
   { id: "mines", name: "Mines", icon: Zap, color: "#f59e0b", desc: "Reveal safe tiles and avoid the mines." },
   { id: "wheel", name: "Wheel", icon: CircleDot, color: "#8b5cf6", desc: "Spin the wheel for up to 9.9x multipliers." },
-  { id: "keno", name: "Keno", icon: Sparkles, color: "#ec4899", desc: "Pick 1-10 numbers from 80. Match to win!" },
+  { id: "keno", name: "Keno", icon: Sparkles, color: "#ec4899", desc: "Pick 1-10 numbers from 40. Match 10 draws to win!" },
   { id: "limbo", name: "Limbo", icon: TrendingUp, color: "#14b8a6", desc: "Set your target multiplier — instant result." },
   { id: "plinko", name: "Plinko", icon: RotateCcw, color: "#f97316", desc: "Drop the ball and watch it bounce to a win!" },
   { id: "coinflip", name: "Coinflip", icon: Crown, color: "#eab308", desc: "Pick heads or tails — 1.98x payout." },

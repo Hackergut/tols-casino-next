@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Minus, Plus } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
-import { originalsAction, useOriginalsSession } from "@/lib/originals-client";
+import { originalsAction, placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -175,17 +175,10 @@ export function MinesGame({ onBack, initialBalance }: Props) {
     setResult(null);
     setGameKey(k => k + 1);
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'mines', amount: betAmount, mode: 'start', payload: { mines: mineCount } }),
-      });
-      const data = await res.json();
-      if (!data.success) return;
-      roundIdRef.current = data.data.roundId ?? null;
-      setBalance(data.data.newBalance);
+      const data = await placeOriginalsBet('mines', betAmount, { mines: mineCount, tilesToReveal: 3 }, 'start');
+      roundIdRef.current = data.roundId ?? null;
+      setBalance(data.newBalance);
       setPhase('playing');
-      window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
     } catch { /* ignore */ }
   }, [betAmount, balance, mineCount]);
 
@@ -193,14 +186,8 @@ export function MinesGame({ onBack, initialBalance }: Props) {
     if (phase !== 'playing' || revealed.has(idx) || !roundIdRef.current) return;
 
     try {
-      const res = await fetch('/api/games/mines/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roundId: roundIdRef.current, action: { type: 'reveal', cellIndex: idx } }),
-      });
-      const data = await res.json();
-      if (!data.success) return;
-      const payload = data.data.payload as { picks?: number[]; layout?: boolean[]; multiplier?: number };
+      const data = await originalsAction('mines', roundIdRef.current, { type: 'reveal', cellIndex: idx });
+      const payload = data.payload as { picks?: number[]; layout?: boolean[]; multiplier?: number };
       const picks = payload.picks ?? [];
       setRevealed(new Set(picks.filter((p) => !(payload.layout && payload.layout[p]))));
       if (payload.layout) {
@@ -208,16 +195,14 @@ export function MinesGame({ onBack, initialBalance }: Props) {
         payload.layout.forEach((m, i) => { if (m) minePositions.add(i); });
         setMines(minePositions);
       }
-      const mult = Number(payload.multiplier ?? data.data.multiplier ?? 0);
+      const mult = Number(payload.multiplier ?? data.multiplier ?? 0);
       setCurrentMultiplier(mult);
       setPayout(betAmount * mult);
-      setBalance(data.data.newBalance);
-      window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
-      window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
+      setBalance(data.newBalance);
 
-      if (!data.data.pending) {
+      if (!data.pending) {
         setPhase('done');
-        if (!data.data.won) {
+        if (!data.won) {
           setRevealed(new Set(picks));
           setResult({ won: false, payout: 0, hitMine: true });
           setHistory(prev => [{ result: 'lose', payout: 0, mines: mineCount, picks: Math.max(0, picks.length - 1) }, ...prev].slice(0, 10));
@@ -226,8 +211,8 @@ export function MinesGame({ onBack, initialBalance }: Props) {
           setTimeout(() => setShaking(false), 500);
           setTimeout(() => setRedFlash(false), 600);
         } else {
-          setResult({ won: true, payout: data.data.payout, hitMine: false });
-          setHistory(prev => [{ result: 'win', payout: data.data.payout, mines: mineCount, picks: picks.length }, ...prev].slice(0, 10));
+          setResult({ won: true, payout: data.payout, hitMine: false });
+          setHistory(prev => [{ result: 'win', payout: data.payout, mines: mineCount, picks: picks.length }, ...prev].slice(0, 10));
         }
       }
     } catch { /* ignore */ }

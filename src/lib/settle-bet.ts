@@ -4,6 +4,7 @@ import { getActiveSeed, nextNonce } from "@/lib/provably-fair";
 import { resolveControl, applyForcedMultiplier } from "@/lib/game-control";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import { getEngine } from "@/lib/game-engines";
+import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
 import type { BetResponse, SettledOutcome } from "@/shared/types";
 
@@ -109,7 +110,7 @@ async function persistSettled(opts: {
         amount,
         multiplier: result.multiplier,
         payout: result.payout,
-        result: result.won ? "win" : result.multiplier === 1 ? "push" : "lose",
+        result: betResultTag(result),
         clientSeed: seed,
         serverSeedHash: hash,
         nonce,

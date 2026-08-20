@@ -6,6 +6,7 @@ import { ArrowLeft, RotateCcw, Minus, Plus, Star } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
+import { KENO_TABLES } from "@/lib/game-engines/tables";
 
 interface Props {
   onBack: () => void;
@@ -13,18 +14,7 @@ interface Props {
 }
 
 
-const PAYOUT_TABLE: Record<number, number[]> = {
-  1: [0, 3.8],
-  2: [0, 0, 8.5],
-  3: [0, 0, 2.2, 16],
-  4: [0, 0, 1.5, 4.5, 35],
-  5: [0, 0, 1.2, 2.5, 10, 90],
-  6: [0, 0, 1, 1.8, 5, 25, 180],
-  7: [0, 0, 0.8, 1.4, 3, 12, 60, 400],
-  8: [0, 0, 0.6, 1.1, 2, 6, 20, 100, 700],
-  9: [0, 0, 0.5, 0.9, 1.5, 4, 10, 40, 200, 1200],
-  10: [0, 0, 0.4, 0.8, 1.2, 3, 7, 25, 100, 500, 2000],
-};
+const PAYOUT_TABLE = KENO_TABLES.classic;
 
 function HitRing({ hits, total }: { hits: number; total: number }) {
   const r = 28;
@@ -394,7 +384,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
               )}
             </div>
             {phase === 'drawing' && (
-              <p className="text-xs mt-2" style={{ color: 'var(--color-pending)' }}>Drawing... {drawnOrder.length}/20</p>
+              <p className="text-xs mt-2" style={{ color: 'var(--color-pending)' }}>Drawing... {drawnOrder.length}/10</p>
             )}
             {phase === 'done' && (
               <div className="mt-2">

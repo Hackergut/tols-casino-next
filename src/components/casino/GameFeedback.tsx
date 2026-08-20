@@ -35,6 +35,24 @@ export function GameFeedback() {
   useEffect(() => { setSoundOn(isSoundEnabled()); }, []);
 
   useEffect(() => {
+    const onBet = (e: Event) => {
+      const d = (e as CustomEvent).detail as { pending?: boolean; won?: boolean; payout?: number; multiplier?: number } | undefined;
+      if (!d || d.pending) return;
+      if (d.won) {
+        const big = (d.multiplier ?? 0) >= 10;
+        big ? sfx.bigWin() : sfx.win();
+        haptic(big ? [40, 60, 40, 60, 90] : [30, 50, 30]);
+        setWin({ key: Date.now(), payout: d.payout ?? 0, multiplier: d.multiplier ?? 0, big });
+      } else {
+        sfx.lose();
+        haptic(25);
+      }
+    };
+    window.addEventListener("tols:bet", onBet);
+    return () => window.removeEventListener("tols:bet", onBet);
+  }, []);
+
+  useEffect(() => {
     const original = window.fetch;
 
     window.fetch = async (...args: Parameters<typeof fetch>) => {
@@ -51,12 +69,11 @@ export function GameFeedback() {
       const url = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
       const method = (args[1]?.method ?? (args[0] as Request)?.method ?? "GET").toUpperCase();
 
-      if (method === "POST" && url.includes("/api/bets")) {
-        // Read a clone so the game still consumes the body itself.
+      const isOriginalsPost =
+        method === "POST" &&
+        (url.includes("/api/bets") || /\/api\/games\/[^/]+\/(action|auto-bet)/.test(url));
+      if (isOriginalsPost) {
         res.clone().json().then((j) => {
-          // A rejected bet used to be completely silent: every game checks
-          // `data.success` with no else branch, so the player tapped BET and
-          // nothing happened. Surface the server's reason instead.
           if (!res.ok || !j?.success) {
             const reason = String(j?.error ?? "");
             if (res.status === 429) {
@@ -66,18 +83,6 @@ export function GameFeedback() {
             } else {
               toast.error("Puntata non riuscita", { description: reason || "Riprova." });
             }
-            return;
-          }
-          const d = j?.data;
-          if (!d) return;
-          if (d.won) {
-            const big = d.multiplier >= 10;
-            big ? sfx.bigWin() : sfx.win();
-            haptic(big ? [40, 60, 40, 60, 90] : [30, 50, 30]);
-            setWin({ key: Date.now(), payout: d.payout ?? 0, multiplier: d.multiplier ?? 0, big });
-          } else {
-            sfx.lose();
-            haptic(25);
           }
         }).catch(() => {});
       }

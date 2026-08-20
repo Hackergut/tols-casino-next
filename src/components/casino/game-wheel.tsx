@@ -6,6 +6,7 @@ import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
+import { WHEEL_TABLES } from "@/lib/game-engines/tables";
 
 interface Props {
   onBack: () => void;
@@ -14,74 +15,19 @@ interface Props {
 
 
 
-const SEGMENT_DEFS = {
-  low: [
-    { mult: 1.2, color: '#23301a', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.2, color: '#23301a', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.8, color: '#4a4a0a', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.2, color: '#23301a', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 2.0, color: 'var(--color-lime)', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.2, color: '#23301a', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.2, color: '#23301a', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-  ],
-  medium: [
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 2.0, color: 'var(--color-lime)', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 3.0, color: '#ff9e1b', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 2.0, color: 'var(--color-lime)', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 3.0, color: '#ff9e1b', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 2.0, color: 'var(--color-lime)', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 1.5, color: '#2b3a15', accent: false },
-  ],
-  high: [
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 9.9, color: '#ff4a33', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 4.5, color: '#ff9e1b', accent: true },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 0, color: 'var(--color-surface-raised)', accent: false },
-    { mult: 2.0, color: 'var(--color-lime)', accent: true },
-  ],
-} as const;
+function wheelStyle(mult: number): { color: string; accent: boolean } {
+  if (mult >= 9) return { color: '#ff4a33', accent: true };
+  if (mult >= 4) return { color: '#ff9e1b', accent: true };
+  if (mult >= 2) return { color: 'var(--color-lime)', accent: true };
+  if (mult >= 1.5) return { color: '#2b3a15', accent: false };
+  if (mult > 0) return { color: '#23301a', accent: false };
+  return { color: 'var(--color-surface-raised)', accent: false };
+}
+
+function segmentDefsFor(risk: 'low' | 'medium' | 'high') {
+  const table = WHEEL_TABLES[`20-${risk}`] ?? WHEEL_TABLES['20-medium'];
+  return table.map((mult) => ({ mult, ...wheelStyle(mult) }));
+}
 
 const SEGMENTS = 20;
 const SEG_ANGLE = 360 / SEGMENTS;
@@ -103,7 +49,7 @@ export function WheelGame({ onBack, initialBalance }: Props) {
   const [blurred, setBlurred] = useState(false);
   const reduced = useReducedMotion();
 
-  const segmentDefs = SEGMENT_DEFS[risk];
+  const segmentDefs = useMemo(() => segmentDefsFor(risk), [risk]);
 
   const wheelPaths = useMemo(() => {
     return segmentDefs.map((seg, i) => {
@@ -415,7 +361,6 @@ export function WheelGame({ onBack, initialBalance }: Props) {
                 <>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm" style={{ background: '#23301a' }} /><span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>1.2x — Frequent</span></div>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm" style={{ background: '#2b3a15' }} /><span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>1.5x — Common</span></div>
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm" style={{ background: '#4a4a0a' }} /><span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>1.8x — Uncommon</span></div>
                   <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-sm" style={{ background: 'var(--color-lime)' }} /><span className="text-[11px] font-bold" style={{ color: 'var(--color-lime)' }}>2.0x — Rare!</span></div>
                 </>
               )}

@@ -14,36 +14,6 @@ interface Props {
 
 
 
-/* ── Local RNG (seeded) ── */
-function seededRandom(seed: string): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    const char = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return (Math.abs(hash) % 10000) / 10000;
-}
-
-function generateTargets(chosenMult: number, seed: string): number[] {
-  const targets: number[] = [];
-  // Generate 4 random multipliers
-  for (let i = 0; i < 4; i++) {
-    const r = seededRandom(seed + ':' + i);
-    // Distribute: 0x, low, medium, some high
-    if (r < 0.2) targets.push(0);
-    else if (r < 0.5) targets.push(Number((r * 5).toFixed(1)));
-    else if (r < 0.8) targets.push(Number((r * 8).toFixed(1)));
-    else targets.push(Number((r * 10).toFixed(1)));
-  }
-  // Ensure at least one target >= chosenMult
-  const guaranteedIdx = Math.floor(seededRandom(seed + ':guaranteed') * 5);
-  const guaranteedVal = Math.max(chosenMult, Number((chosenMult + seededRandom(seed + ':bonus') * (10 - chosenMult)).toFixed(1)));
-  targets.splice(guaranteedIdx, 0, Number(Math.min(10, guaranteedVal).toFixed(1)));
-
-  return targets.slice(0, 5);
-}
-
 /* ── SVG Target Component ── */
 function TargetSVG({ multiplier, revealed, hit, isResult, won, shooting, index }: {
   multiplier: number;
@@ -171,7 +141,7 @@ function TargetSVG({ multiplier, revealed, hit, isResult, won, shooting, index }
 export function ShootGame({ onBack, initialBalance }: Props) {
   const [betAmount, setBetAmount] = useState(5);
   const [targetMult, setTargetMult] = useState(2);
-  const { balance, setBalance } = useOriginalsSession("shoot", {}, betAmount, initialBalance);
+  const { balance, setBalance } = useOriginalsSession("shoot", { target: targetMult }, betAmount, initialBalance);
   const [gameState, setGameState] = useState<'idle' | 'ready' | 'shooting' | 'result'>('idle');
   const [targets, setTargets] = useState<number[]>([]);
   const [chosenIdx, setChosenIdx] = useState<number | null>(null);
@@ -180,7 +150,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
   const [flash, setFlash] = useState(false);
   const reduced = useReducedMotion();
 
-  const potentialWin = useMemo(() => betAmount * targetMult, [betAmount, targetMult]);
+  const potentialWin = useMemo(() => betAmount * 25, [betAmount]);
 
   const startRound = useCallback(() => {
     if (betAmount <= 0 || betAmount > balance) return;
@@ -238,7 +208,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
           <Crosshair className="w-5 h-5" style={{ color: 'var(--color-lime)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Target Shoot</h1>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick a target multiplier, then shoot!</p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Hit a multiplier ≥ your target — you win the revealed payout</p>
           </div>
         </div>
       </div>
@@ -411,7 +381,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Max Win</span>
-                <span className="text-xs font-bold" style={{ color: 'var(--color-lime)' }}>10x</span>
+                <span className="text-xs font-bold" style={{ color: 'var(--color-lime)' }}>25x</span>
               </div>
             </div>
           </div>
@@ -430,7 +400,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
               </div>
               <div className="flex items-start gap-2">
                 <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0" style={{ background: 'color-mix(in oklab, var(--color-lime) 15%, transparent)', color: 'var(--color-lime)' }}>3</span>
-                <span className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>Shoot one target — if it&apos;s ≥ your target, you win!</span>
+                <span className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>Shoot one target — if the hit is ≥ your target, you win that multiplier</span>
               </div>
             </div>
           </div>
