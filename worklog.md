@@ -2433,3 +2433,25 @@ card) and its backdrop-blur band visually bisected the artwork.
   gradient alone keeps text legible (transparent 0% → 55% → 94% bottom)
 - Removed the ::before top hairline (another visible horizontal cut line)
 - Whole-card veil lightened slightly (bottom 30%)
+
+## Card CMS — governance section for game & promo cards (2026-08-20)
+
+Every card on the platform is now replaceable from the governance admin
+without touching code or redeploying:
+
+- CmsCard model (entity game|promo, key, title/tagline/reward/badge/cta/
+  target/accent/imageUrl/enabled/sortOrder, unique (entity,key)) — stores ONLY
+  overrides; deleting a row reverts to the built-in default.
+- API: GET /api/cms/cards (public, enabled only), PUT + DELETE (admin-gated
+  via requireAdmin + auditLog) at /api/cms/cards.
+- Client layer: use-cms-cards.ts (module-cached fetch, refreshCmsCards(),
+  useEffectivePromotions / useEffectiveGames / useEffectiveOriginalGames);
+  cms-cards.ts pure merge helpers (applyCmsToPromo / applyCmsToGame).
+- Platform wiring: PromotionCards, PromotionsInfoSection and PromoDetailSection
+  read effective promos; page.tsx merges overrides into games-lobby results;
+  OriginalsView merges into the static Originals registry. CMS unavailable →
+  built-in defaults, never a broken lobby.
+- Admin module "Card CMS" (sidebar Operations group, /control/admin): tabs
+  Promo cards (10) + Game cards (13), live card preview, image URL field with
+  datalist of existing artwork, enable toggle, Save / Reset-to-default,
+  per-card override badge, refresh across the whole app after save.

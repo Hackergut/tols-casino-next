@@ -31,7 +31,8 @@ import { useMemo } from "react";
 import { ArrowUpRight, ChevronRight, Gift } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Carousel } from "./Carousel";
-import { ALL_PROMOTIONS, PROMO_KIND_LABEL, type TolsPromotion } from "./promotions";
+import { PROMO_KIND_LABEL, type TolsPromotion } from "./promotions";
+import { useEffectivePromotions } from "@/lib/use-cms-cards";
 import { promoSection } from "@/lib/casino-routes";
 
 /* House spring — critically damped (Apple: damping 1.0, response ≈ 0.4). */
@@ -111,6 +112,7 @@ export function PromoCard({ promo, onNavigate }: { promo: TolsPromotion; onNavig
 }
 
 export function PromotionCards({ onNavigate }: { onNavigate: (target: string) => void }) {
+  const promotions = useEffectivePromotions();
   return (
     <section className="space-y-3">
       <Carousel
@@ -131,7 +133,7 @@ export function PromotionCards({ onNavigate }: { onNavigate: (target: string) =>
           </button>
         }
       >
-        {ALL_PROMOTIONS.map((promo) => (
+        {promotions.map((promo) => (
           <PromoCard key={promo.id} promo={promo} onNavigate={onNavigate} />
         ))}
       </Carousel>

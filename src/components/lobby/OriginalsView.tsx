@@ -4,12 +4,13 @@ import { useState } from "react";
 import { Gamepad2 } from "lucide-react";
 import { OriginalGameCard } from "./GameCards";
 import { Carousel } from "./Carousel";
-import { ORIGINAL_GAMES } from "./lobby-types";
+import { useEffectiveOriginalGames } from "@/lib/use-cms-cards";
 import { useLocale } from "@/lib/use-locale";
 
 export function OriginalsView({ onGameSelect, query = "" }: { onGameSelect: (gameId: string) => void; query?: string }) {
   const [gridMode, setGridMode] = useState(false);
   const { t } = useLocale();
+  const ORIGINAL_GAMES = useEffectiveOriginalGames();
   const games = query.trim()
     ? ORIGINAL_GAMES.filter((game) => `${game.name} ${game.desc}`.toLowerCase().includes(query.trim().toLowerCase()))
     : ORIGINAL_GAMES;

@@ -15,7 +15,8 @@
  */
 
 import { ArrowLeft, Gift, Swords, CheckCircle2, ArrowUpRight, ChevronRight } from "lucide-react";
-import { ALL_PROMOTIONS, PROMO_KIND_LABEL, type TolsPromotion } from "./promotions";
+import { PROMO_KIND_LABEL, type TolsPromotion } from "./promotions";
+import { useEffectivePromotions } from "@/lib/use-cms-cards";
 import { PromoCard } from "./PromotionCards";
 
 function InfoShell({ title, subtitle, icon: Icon, onBack, children }: {
@@ -97,7 +98,8 @@ export function PromoDetailSection({ promoId, onBack, onNavigate }: {
   onBack: () => void;
   onNavigate: (target: string) => void;
 }) {
-  const promo = ALL_PROMOTIONS.find((p) => p.id === promoId);
+  const promotions = useEffectivePromotions();
+  const promo = promotions.find((p) => p.id === promoId);
   if (!promo) {
     return (
       <InfoShell title="Promotion" subtitle="This promotion is not available" icon={Gift} onBack={onBack}>
@@ -112,7 +114,7 @@ export function PromoDetailSection({ promoId, onBack, onNavigate }: {
   }
 
   const Icon = promo.icon;
-  const others = ALL_PROMOTIONS.filter((p) => p.id !== promo.id);
+  const others = promotions.filter((p) => p.id !== promo.id);
 
   return (
     <div className="space-y-6">
@@ -221,10 +223,11 @@ function PromoDetailCard({ promo, onNavigate }: { promo: TolsPromotion; onNaviga
 }
 
 export function PromotionsInfoSection({ onBack, onNavigate }: { onBack: () => void; onNavigate: (target: string) => void }) {
+  const promotions = useEffectivePromotions();
   return (
     <InfoShell title="Promotions" subtitle="Every official TOLS promotion, in one place" icon={Gift} onBack={onBack}>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {ALL_PROMOTIONS.map((promo) => (
+        {promotions.map((promo) => (
           <PromoDetailCard key={promo.id} promo={promo} onNavigate={onNavigate} />
         ))}
       </div>

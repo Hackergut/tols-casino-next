@@ -26,6 +26,8 @@ import { ProfileSectionView, isProfileSection } from "@/components/lobby/Profile
 import { PromoDetailSection } from "@/components/lobby/DiscoverInfo";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { track } from "@/lib/client-telemetry";
+import { useCmsOverrides } from "@/lib/use-cms-cards";
+import { applyCmsToGame } from "@/lib/cms-cards";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { OriginalsRail } from "@/components/casino/OriginalsRail";
 import { LeaderboardHub } from "@/components/lobby/LeaderboardHub";
@@ -131,6 +133,7 @@ function CasinoPage() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const { setDepositOpen } = useUIStore();
+  const cmsOverrides = useCmsOverrides();
   const setSessionUser = useSessionStore((s) => s.setUser);
   const setSessionWallet = useSessionStore((s) => s.setWallet);
 
@@ -254,7 +257,7 @@ function CasinoPage() {
               const origData = await origRes.json();
               if (origData.success) {
                 const filtered = origData.data.filter((g: LobbyGame) => gameIds.includes(g.slug) || gameIds.includes(g.name.toLowerCase()));
-                setGames(filtered.length > 0 ? filtered : origData.data);
+                setGames((filtered.length > 0 ? filtered : origData.data).map((g: LobbyGame) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`))));
               }
             } else {
               setGames([]);
@@ -269,7 +272,8 @@ function CasinoPage() {
         const res = await fetch(`/api/games-lobby?category=${cat}`, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
-          setGames(data.data || []);
+          const list = (data.data || []) as LobbyGame[];
+          setGames(list.map((g) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`))));
         }
       } catch {
         if (!controller.signal.aborted) setGames([]);
@@ -278,7 +282,7 @@ function CasinoPage() {
     };
     void fetchGames();
     return () => controller.abort();
-  }, [activeSection, routeReady]);
+  }, [activeSection, routeReady, cmsOverrides]);
 
   // Fetch stats
   useEffect(() => {
