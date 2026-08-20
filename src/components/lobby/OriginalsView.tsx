@@ -43,19 +43,19 @@ export function OriginalsView({ onGameSelect, query = "" }: { onGameSelect: (gam
           </header>
           <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
             {games.map((game) => (
-              <OriginalGameCard key={game.id} game={game} onClick={() => onGameSelect(game.id)} />
+              <OriginalGameCard key={game.id} game={game} onClick={() => onGameSelect(game.id)} variant="portrait" />
             ))}
           </div>
         </section>
       ) : (
         <Carousel
           title="TOLS Originals"
-          size="large"
+          size="portrait"
           icon={<Gamepad2 className="h-5 w-5 shrink-0 text-lime" />}
           action={toggle}
         >
           {games.map((game) => (
-            <OriginalGameCard key={game.id} game={game} onClick={() => onGameSelect(game.id)} />
+            <OriginalGameCard key={game.id} game={game} onClick={() => onGameSelect(game.id)} variant="portrait" />
           ))}
         </Carousel>
       )}

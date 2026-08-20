@@ -241,10 +241,10 @@ export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
   const slots = games.filter((g) => g.gameType === "external_slot");
   const live = games.filter((g) => g.isLive);
 
-  const row = (title: string, icon: React.ReactNode, list: LobbyGame[], emptyLabel: string, target: string) =>
+  const row = (title: string, icon: React.ReactNode, list: LobbyGame[], emptyLabel: string, target: string, portrait = false) =>
     list.length > 0 ? (
-      <Carousel title={title} size="large" icon={icon} action={<ViewAll onClick={() => onNavigate(target)} />}>
-        {list.map((g) => <LobbyGameCard key={g.id} game={g} onClick={() => onGameClick(g)} />)}
+      <Carousel title={title} size={portrait ? "portrait" : "large"} icon={icon} action={<ViewAll onClick={() => onNavigate(target)} />}>
+        {list.map((g) => <LobbyGameCard key={g.id} game={g} onClick={() => onGameClick(g)} variant={portrait ? "portrait" : "landscape"} />)}
       </Carousel>
     ) : (
       <section>
@@ -271,7 +271,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
             <div key={i} className="skeleton-shimmer aspect-[16/9] rounded-2xl bg-surface" />
           ))}
         </div>
-      ) : row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}
+      ) : row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals", true)}
 
       <MegaJackpot />
 

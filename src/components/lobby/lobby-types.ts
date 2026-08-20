@@ -82,9 +82,9 @@ export function originalArtUrl(id: string): string {
   return `/games/originals/${slug}.jpg`;
 }
 
-export function originalArtCandidates(id: string, extra?: string | null): string[] {
+export function originalArtCandidates(id: string, extra?: string | null, vertical = false): string[] {
   const slug = id === "poolrush" ? "pool-rush" : id;
-  const urls = [
+  const landscape = [
     `/games/originals/${slug}.jpg`,
     `/games/originals/${id}.jpg`,
     `/games/originals/${slug}.png`,
@@ -92,6 +92,10 @@ export function originalArtCandidates(id: string, extra?: string | null): string
     `/games/originals/${slug}.svg`,
     `/games/originals/${id}.svg`,
   ];
+  // Portrait variant: the vertical 9:16 clone first, landscape as fallback.
+  const urls = vertical
+    ? [`/games/originals/${slug}-vertical.jpg`, `/games/originals/${id}-vertical.jpg`, ...landscape]
+    : landscape;
   if (extra && !urls.includes(extra)) urls.push(extra);
   return [...new Set(urls)];
 }
