@@ -2322,3 +2322,19 @@ Stage Summary:
 - Fonts self-hosted (src/app/fonts/*.woff2 via Fontsource builds of the same
   Inter/Michroma/Oswald families; layout.tsx switched next/font/google →
   next/font/local) so builds no longer depend on fonts.googleapis.com.
+
+## Promo cards → game-card design language (2026-08-20, follow-up)
+
+- All 10 promo artworks regenerated as painted illustrations in the game-tile
+  style (dark charcoal-navy scene, neon-lime rim light, golden subject) and
+  darkened to match the tile mood; served from /promos/*.jpg (1376×768).
+- Promo card chrome is now EXACTLY the game-card chrome (tols-game-card):
+  lime "Original"-style kind pill top-left (Welcome/Rakeback/Reload/Cashback/
+  Jackpot/Referral/Campaign), badge pill top-right, lime play circle with
+  arrow revealed on hover, bottom gradient bar with title + "kind · tagline"
+  meta and the reward as a mono-lime chip in the RTP-chip slot.
+- Same treatment applied to the per-promo page hero (static, no hover lift,
+  larger center icon chip) and to the "More promotions" rail and the
+  Promotions-list card headers.
+- Removed the previous promo-specific chrome (corner cut, watermark, wordmark
+  pill, edge hairline) and its CSS — one card language for the whole lobby.

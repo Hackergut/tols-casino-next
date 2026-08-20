@@ -18,6 +18,28 @@ import { ArrowLeft, Gift, Swords, CheckCircle2, ArrowUpRight, ChevronRight } fro
 import { ALL_PROMOTIONS, type TolsPromotion } from "./promotions";
 import { promoSection } from "@/lib/casino-routes";
 
+/* Same type scale + kind labels as the game cards / promo cards. */
+const TITLE_STYLE: React.CSSProperties = {
+  fontSize: "clamp(0.875rem, 0.78rem + 0.42vw, 1.0625rem)",
+  lineHeight: 1.2,
+  letterSpacing: "-0.01em",
+  textShadow: "0 1px 6px rgb(0 0 0 / 0.75)",
+};
+const META_STYLE: React.CSSProperties = {
+  fontSize: "clamp(0.75rem, 0.7rem + 0.24vw, 0.875rem)",
+  lineHeight: 1.25,
+  textShadow: "0 1px 5px rgb(0 0 0 / 0.7)",
+};
+const KIND_LABEL: Record<string, string> = {
+  welcome: "Welcome",
+  rakeback: "Rakeback",
+  reload: "Reload",
+  cashback: "Cashback",
+  jackpot: "Jackpot",
+  referral: "Referral",
+  campaign: "Campaign",
+};
+
 function InfoShell({ title, subtitle, icon: Icon, onBack, children }: {
   title: string;
   subtitle: string;
@@ -46,59 +68,41 @@ function InfoShell({ title, subtitle, icon: Icon, onBack, children }: {
   );
 }
 
-/* ── Promo hero — the card's artwork as the page hero, with TOLS accents ── */
+/* ── Promo hero — the card's artwork as the page hero, game-card chrome ── */
 function PromoHero({ promo, icon: Icon }: { promo: TolsPromotion; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }) {
+  const kind = KIND_LABEL[promo.kind] ?? promo.kind;
   return (
     <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-lime/15 bg-surface" style={{ boxShadow: "0 24px 60px rgb(0 0 0 / 0.45), 0 0 0 1px color-mix(in oklab, var(--color-lime) 10%, transparent)" }}>
       <img src={promo.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-      {/* Scrim for legibility, same as the promo card. */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
 
-      {/* Lime diagonal corner cut + icon chip. */}
-      <div className="absolute left-0 top-0 flex items-center justify-center" style={{ width: 56, height: 56 }}>
-        <div className="tols-promo-corner absolute inset-0" />
-        <span className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-bg/85 shadow-[0_2px_12px_rgb(0_0_0/0.55)] ring-1 ring-lime/40">
-          <Icon className="h-4.5 w-4.5 text-lime" />
+      {/* Top-left: lime kind pill. */}
+      <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
+        <span className="tols-game-pill tols-game-pill-original">{kind}</span>
+      </div>
+
+      {/* Top-right: badge pill. */}
+      {promo.badge && (
+        <span className="absolute right-2.5 top-2.5 tols-game-pill tols-game-pill-new">{promo.badge}</span>
+      )}
+
+      {/* Center icon chip — the play-circle slot, here the promo icon. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-lime/40 bg-black/55 backdrop-blur-sm">
+          <Icon className="h-6 w-6 text-lime" />
         </span>
       </div>
 
-      {/* Badge + TOLS wordmark pill (top-right). */}
-      <div className="absolute right-3 top-3 flex items-center gap-2">
-        {promo.badge && (
-          <span className="rounded-full px-2.5 py-1 font-mono text-[11px] font-black uppercase tracking-wider backdrop-blur-md" style={{ color: promo.accent, border: `1px solid color-mix(in oklab, ${promo.accent} 45%, transparent)`, background: "rgba(0,0,0,0.55)" }}>
-            {promo.badge}
-          </span>
-        )}
-        <span className="flex items-center gap-1.5 rounded-full border border-lime/30 bg-black/50 px-2.5 py-1 font-display text-[11px] font-black uppercase tracking-widest text-lime backdrop-blur-md">
-          TOLS
-        </span>
-      </div>
-
-      {/* Oversized watermark. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-4 right-2 select-none font-display font-black uppercase leading-none"
-        style={{ fontSize: "clamp(3.5rem, 7vw, 5.5rem)", color: "rgba(204,255,0,0.14)", letterSpacing: "-0.02em", textShadow: "0 2px 18px rgb(0 0 0 / 0.6)" }}
-      >
-        TOLS
-      </span>
-
-      {/* Bottom overlay: kind · reward · title · tagline. */}
-      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-lime px-2.5 py-0.5 font-mono text-[10px] font-black uppercase tracking-widest text-bg">{promo.kind}</span>
-          <span className="font-mono text-sm font-black tabular-nums text-lime sm:text-base" style={{ textShadow: "0 0 18px rgb(204 255 0 / 0.4), 0 1px 6px rgb(0 0 0 / 0.8)" }}>
-            {promo.reward}
-          </span>
+      {/* Bottom bar: title + kind · tagline left, reward chip right. */}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-black via-black/80 to-transparent p-4 pt-16 sm:p-5">
+        <div className="min-w-0">
+          <h2 className="truncate font-bold text-white" style={TITLE_STYLE}>{promo.title}</h2>
+          <p className="truncate text-white/60" style={META_STYLE}>{kind} · {promo.tagline}</p>
         </div>
-        <h2 className="mt-1 font-display text-xl font-bold uppercase tracking-wide text-white sm:text-2xl" style={{ textShadow: "0 2px 10px rgb(0 0 0 / 0.8)" }}>
-          {promo.title}
-        </h2>
-        <p className="mt-0.5 text-xs text-white/65 sm:text-sm" style={{ textShadow: "0 1px 6px rgb(0 0 0 / 0.75)" }}>{promo.tagline}</p>
+        <span className="flex max-w-[130px] shrink-0 items-center gap-1.5 rounded bg-black/55 px-2 py-1 font-mono text-xs font-bold tabular-nums text-lime" style={{ textShadow: "0 0 18px rgb(204 255 0 / 0.35)" }}>
+          <Icon className="h-3.5 w-3.5 shrink-0 text-lime/80" />
+          <span className="truncate">{promo.reward}</span>
+        </span>
       </div>
-
-      {/* Lime accent hairline along the bottom edge. */}
-      <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-lime via-lime/60 to-transparent" />
     </div>
   );
 }
@@ -189,17 +193,25 @@ export function PromoDetailSection({ promoId, onBack, onNavigate }: {
             <button
               key={p.id}
               onClick={() => onNavigate(promoSection(p.id))}
-              aria-label={`${p.title} — details`}
-              className="tols-promo-card group relative w-64 shrink-0 sm:w-72"
+              aria-label={`${p.title} — ${p.reward} — details`}
+              className="tols-game-card group w-64 shrink-0 sm:w-72"
               style={{ scrollSnapAlign: "start" }}
             >
               <img src={p.image} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-3">
-                <p className="truncate font-mono text-xs font-black tabular-nums" style={{ color: p.accent }}>{p.reward}</p>
-                <p className="mt-0.5 truncate font-display text-sm font-bold uppercase text-white">{p.title}</p>
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="tols-game-play">
+                  <ArrowUpRight className="h-5 w-5" />
+                </span>
               </div>
-              <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-lime via-lime/60 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-3 pt-14">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-white" style={TITLE_STYLE}>{p.title}</p>
+                  <p className="truncate text-white/60" style={META_STYLE}>{KIND_LABEL[p.kind] ?? p.kind} · {p.tagline}</p>
+                </div>
+                <span className="max-w-[92px] shrink-0 truncate rounded bg-black/55 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-lime">
+                  {p.reward}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -210,26 +222,39 @@ export function PromoDetailSection({ promoId, onBack, onNavigate }: {
 
 function PromoDetailCard({ promo, onNavigate }: { promo: TolsPromotion; onNavigate: (target: string) => void }) {
   const Icon = promo.icon;
+  const kind = KIND_LABEL[promo.kind] ?? promo.kind;
   return (
     <div className="overflow-hidden rounded-2xl border border-white/8 bg-surface/60">
-      {/* 16:9 artwork header, matching the promo card. */}
-      <button type="button" onClick={() => onNavigate(promoSection(promo.id))} aria-label={`${promo.title} — details`} className="group relative block w-full cursor-pointer text-left">
+      {/* 16:9 artwork header — game-card chrome, entry to the detail page. */}
+      <button type="button" onClick={() => onNavigate(promoSection(promo.id))} aria-label={`${promo.title} — details`} className="tols-game-card group relative block w-full cursor-pointer text-left">
         <div className="relative aspect-[16/9] overflow-hidden">
           <img src={promo.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
-            <div>
-              <h3 className="text-base font-bold text-white" style={{ textShadow: "0 1px 6px rgb(0 0 0 / 0.75)" }}>{promo.title}</h3>
-              {promo.badge && <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: promo.accent }}>{promo.badge}</p>}
+
+          {/* Kind pill top-left, badge pill top-right. */}
+          <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
+            <span className="tols-game-pill tols-game-pill-original">{kind}</span>
+          </div>
+          {promo.badge && (
+            <span className="absolute right-2.5 top-2.5 tols-game-pill tols-game-pill-new">{promo.badge}</span>
+          )}
+
+          {/* Play circle revealed on hover. */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="tols-game-play">
+              <ArrowUpRight className="h-5 w-5" />
+            </span>
+          </div>
+
+          {/* Bottom bar: title + kind · tagline left, reward chip right. */}
+          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-3 pt-14">
+            <div className="min-w-0">
+              <h3 className="truncate font-bold text-white" style={TITLE_STYLE}>{promo.title}</h3>
+              <p className="truncate text-white/60" style={META_STYLE}>{kind} · {promo.tagline}</p>
             </div>
-            <span className="rounded-lg bg-black/60 px-2.5 py-1 font-mono text-sm font-black tabular-nums backdrop-blur-md" style={{ color: promo.accent }}>
+            <span className="max-w-[110px] shrink-0 truncate rounded bg-black/55 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-lime">
               {promo.reward}
             </span>
           </div>
-          {/* Tap affordance — the whole art is the entry to the detail page. */}
-          <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border border-lime/35 bg-black/55 text-lime backdrop-blur-md transition-transform group-hover:scale-110">
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </span>
         </div>
       </button>
 

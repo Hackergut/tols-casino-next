@@ -85,90 +85,11 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Promotional art cards — same chrome language as the game cards, but a wide
-   16:9 banner crop that suits promo artwork. */
-.tols-promo-card {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 1rem;
-  border: 1px solid rgb(255 255 255 / 0.06);
-  background: #0f1015;
-  text-align: left;
-  cursor: pointer;
-  isolation: isolate;
-  transition:
-    transform var(--dur-base, 240ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    border-color var(--dur-fast, 120ms) ease,
-    box-shadow var(--dur-base, 240ms) ease;
-}
-.tols-promo-card:hover,
-.tols-promo-card:focus-visible {
-  transform: translateY(-4px);
-  border-color: color-mix(in oklab, var(--color-lime) 42%, transparent);
-  box-shadow:
-    0 14px 32px rgb(0 0 0 / 0.45),
-    0 0 0 1px color-mix(in oklab, var(--color-lime) 18%, transparent);
-  outline: none;
-}
-.tols-promo-card:active {
-  transform: translateY(-1px);
-}
-.tols-promo-grid {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-}
-/* Lime diagonal corner cut — the signature TOLS brand notch on every promo
-   card. The chip sits on the dark side so the icon stays readable. */
-.tols-promo-corner {
-  background: var(--color-lime);
-  clip-path: polygon(0 0, 100% 0, 0 100%);
-}
-.tols-promo-card:hover .tols-promo-corner,
-.tols-promo-card:focus-visible .tols-promo-corner {
-  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--color-lime) 55%, transparent));
-}
-/* Chip sits centered on the cut's diagonal: lime half + dark half. */
-.tols-promo-corner + span {
-  transition: transform var(--dur-fast, 120ms) ease;
-}
-.tols-promo-card:hover .tols-promo-corner + span,
-.tols-promo-card:focus-visible .tols-promo-corner + span {
-  transform: scale(1.08);
-}
-.tols-promo-watermark {
-  pointer-events: none;
-  user-select: none;
-  opacity: 1;
-  transition: opacity var(--dur-base, 240ms) ease;
-}
-.tols-promo-card:hover .tols-promo-watermark {
-  opacity: 0.75;
-}
-.tols-promo-reward {
-  display: flex;
-  align-items: center;
-}
-.tols-promo-edge {
-  opacity: 1;
-  transition: box-shadow var(--dur-base, 240ms) ease;
-}
-.tols-promo-card:hover .tols-promo-edge {
-  box-shadow: 0 0 18px color-mix(in oklab, var(--color-lime) 45%, transparent);
-}
-@media (prefers-reduced-motion: reduce) {
-  .tols-promo-card,
-  .tols-promo-card:hover {
-    transform: none;
-    transition: none;
-  }
-  .tols-promo-card:hover .tols-promo-watermark {
-    opacity: 1;
-  }
-}
+/* Promotional cards share the EXACT game-card chrome (.tols-game-card):
+   painted 16:9 artwork, kind pill, badge pill, play circle on hover and the
+   bottom title/meta bar with the reward chip in the RTP slot. No separate
+   promo card styles — one card language for the whole lobby. */
+
 @media (min-width: 640px) {
   .tols-games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
