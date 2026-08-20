@@ -1,41 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 880" width="1280" height="880">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
-      <stop offset="0" stop-color="#161614"/><stop offset="1" stop-color="#080807"/>
+    <linearGradient id="dbg" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#121214"/><stop offset="1" stop-color="#080809"/>
     </linearGradient>
-    <radialGradient id="uglow" cx="0.5" cy="0.42" r="0.62">
-      <stop offset="0" stop-color="#e8ff00" stop-opacity="0.20"/>
-      <stop offset="0.55" stop-color="#e8ff00" stop-opacity="0.05"/>
-      <stop offset="1" stop-color="#e8ff00" stop-opacity="0"/>
+    <radialGradient id="dglow" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#cdf32b" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#cdf32b" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#cdf32b" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="vig" cx="0.5" cy="0.45" r="0.75">
+    <radialGradient id="dvig" cx="0.5" cy="0.45" r="0.75">
       <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
       <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
     </radialGradient>
-    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#000" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#000" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="obj" x1="0" y1="0" x2="0.2" y2="1">
-      <stop offset="0" stop-color="#3a3a34"/><stop offset="1" stop-color="#0f0f0d"/>
+    <linearGradient id="dobj" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#2c2c28"/><stop offset="1" stop-color="#0c0c0a"/>
     </linearGradient>
-    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    <linearGradient id="dsheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
     </linearGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
   </defs>
-  <rect width="1280" height="880" fill="url(#bg)"/>
-  <rect width="1280" height="880" fill="url(#uglow)"/>
-  <ellipse cx="640" cy="602" rx="330" ry="52" fill="url(#shadow)"/>
-  <g transform="translate(640,352) scale(2)"><g transform="translate(-76,10) rotate(-12)">
-     <rect x="-58" y="-58" width="116" height="116" rx="22" fill="url(#obj)" stroke="#e8ff00" stroke-width="2.5"/>
-     <rect x="-52" y="-52" width="104" height="46" rx="16" fill="url(#sheen)"/>
-     <circle cx="-24" cy="-24" r="9" fill="#e8ff00"/><circle cx="24" cy="24" r="9" fill="#e8ff00"/><circle cx="0" cy="0" r="9" fill="#e8ff00"/>
-   </g><g transform="translate(80,-8) rotate(10)">
-     <rect x="-58" y="-58" width="116" height="116" rx="22" fill="url(#obj)" stroke="#e8ff00" stroke-width="2.5"/>
-     <rect x="-52" y="-52" width="104" height="46" rx="16" fill="url(#sheen)"/>
-     <circle cx="-26" cy="-26" r="9" fill="#e8ff00"/><circle cx="0" cy="-26" r="9" fill="#e8ff00"/><circle cx="26" cy="-26" r="9" fill="#e8ff00"/><circle cx="-26" cy="26" r="9" fill="#e8ff00"/><circle cx="0" cy="26" r="9" fill="#e8ff00"/><circle cx="26" cy="26" r="9" fill="#e8ff00"/>
-   </g></g>
-  <rect width="1280" height="880" fill="url(#vig)"/>
+  <rect width="1280" height="880" fill="url(#dbg)"/>
+  <rect width="1280" height="880" fill="url(#dglow)"/>
+  <ellipse cx="640" cy="620" rx="340" ry="48" fill="#000" opacity="0.45"/>
+  <g transform="translate(640,360)">
+    <g transform="translate(-78,12) rotate(-12)">
+      <rect x="-58" y="-58" width="116" height="116" rx="18" fill="url(#dobj)" stroke="#cdf32b" stroke-width="2.5"/>
+      <rect x="-52" y="-52" width="104" height="46" rx="14" fill="url(#dsheen)"/>
+      <circle cx="-22" cy="-22" r="9" fill="#cdf32b"/>
+      <circle cx="22" cy="-22" r="9" fill="#cdf32b"/>
+      <circle cx="0" cy="0" r="9" fill="#cdf32b"/>
+      <circle cx="-22" cy="22" r="9" fill="#cdf32b"/>
+      <circle cx="22" cy="22" r="9" fill="#cdf32b"/>
+    </g>
+    <g transform="translate(82,-6) rotate(10)">
+      <rect x="-58" y="-58" width="116" height="116" rx="18" fill="url(#dobj)" stroke="#cdf32b" stroke-width="2.5"/>
+      <rect x="-52" y="-52" width="104" height="46" rx="14" fill="url(#dsheen)"/>
+      <text x="0" y="8" text-anchor="middle" fill="#cdf32b" font-size="22" font-weight="800" font-family="system-ui,sans-serif" letter-spacing="2">TOLS</text>
+    </g>
+  </g>
+  <rect width="1280" height="880" fill="url(#dvig)"/>
 </svg>

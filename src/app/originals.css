@@ -374,24 +374,55 @@ button.bj-card.scopa-playable { cursor: pointer; }
   box-shadow: 0 12px 20px rgb(0 0 0 / 0.35);
 }
 
-/* Photoreal in-game props — same studio art as the lobby tiles. */
-.dice-prop {
-  width: 5.75rem;
-  height: 5.75rem;
-  object-fit: contain;
-  filter: drop-shadow(0 14px 22px rgb(0 0 0 / 0.55));
-  margin: 0 auto 0.35rem;
-  display: block;
-  pointer-events: none;
-  user-select: none;
+/* TOLS CSS/SVG 3D dice — in-game board matching the lobby tile. */
+.tols-die-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.6rem;
+  min-height: 7.5rem;
+  margin-bottom: 0.15rem;
 }
-.dice-prop.rolling {
-  animation: dice-tumble 0.28s linear infinite;
+.tols-die-scene {
+  width: 104px;
+  height: 104px;
+  perspective: 700px;
 }
-@keyframes dice-tumble {
-  0% { transform: rotate(0deg) scale(1); }
-  40% { transform: rotate(150deg) scale(0.9); }
-  100% { transform: rotate(360deg) scale(1); }
+.tols-die-left { transform: rotateZ(-9deg); }
+.tols-die-right { transform: rotateZ(8deg); }
+.tols-die-cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tols-die-cube.is-rolling {
+  animation: tols-die-spin 0.32s linear infinite;
+}
+.tols-die-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.tols-die-face-1 { transform: rotateY(0deg) translateZ(52px); }
+.tols-die-face-2 { transform: rotateX(90deg) translateZ(52px); }
+.tols-die-face-3 { transform: rotateY(90deg) translateZ(52px); }
+.tols-die-face-4 { transform: rotateY(-90deg) translateZ(52px); }
+.tols-die-face-5 { transform: rotateX(-90deg) translateZ(52px); }
+.tols-die-face-6 { transform: rotateY(180deg) translateZ(52px); }
+.tols-die-svg { width: 100%; height: 100%; display: block; }
+.tols-die-floor {
+  width: 230px;
+  height: 16px;
+  margin: 0.15rem auto 0.65rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(0 0 0 / 0.55), transparent 72%);
+}
+@keyframes tols-die-spin {
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(360deg) rotateY(420deg) rotateZ(180deg); }
 }
 .mines-prop {
   width: 78%;
@@ -433,5 +464,5 @@ button.bj-card.scopa-playable { cursor: pointer; }
     radial-gradient(ellipse at 50% 100%, #161612, #0c0d10 68%);
 }
 @media (prefers-reduced-motion: reduce) {
-  .dice-prop.rolling { animation: none; }
+  .tols-die-cube.is-rolling { animation: none; }
 }

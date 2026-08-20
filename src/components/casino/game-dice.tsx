@@ -2,12 +2,90 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Shield, ChevronDown, ChevronUp } from 'lucide-react';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props { onBack: () => void; initialBalance: number; }
 type Result = null | { won: boolean; roll: number; payout: number; multiplier: number };
+
+const PIPS: Record<number, [number, number][]> = {
+  2: [[28, 28], [72, 72]],
+  3: [[28, 28], [50, 50], [72, 72]],
+  4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+  5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+  6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]],
+};
+
+const FACE_ROT: Record<number, string> = {
+  1: 'rotateX(0deg) rotateY(0deg)',
+  2: 'rotateX(-90deg) rotateY(0deg)',
+  3: 'rotateX(0deg) rotateY(-90deg)',
+  4: 'rotateX(0deg) rotateY(90deg)',
+  5: 'rotateX(90deg) rotateY(0deg)',
+  6: 'rotateX(0deg) rotateY(180deg)',
+};
+
+function facesFromRoll(roll: number): [number, number] {
+  const x = Math.floor(Math.max(0, roll) * 100);
+  return [1 + (x % 6), 1 + (Math.floor(x / 7) % 6)];
+}
+
+function DieFace({ n, uid }: { n: number; uid: string }) {
+  const gid = `die-fill-${uid}-${n}`;
+  return (
+    <svg viewBox="0 0 100 100" className="tols-die-svg" aria-hidden>
+      <defs>
+        <radialGradient id={gid} cx="32%" cy="26%" r="78%">
+          <stop offset="0%" stopColor="#2e2e2a" />
+          <stop offset="100%" stopColor="#0c0c0a" />
+        </radialGradient>
+      </defs>
+      <rect x="3" y="3" width="94" height="94" rx="16" fill={`url(#${gid})`} stroke="rgba(205,243,43,0.4)" strokeWidth="2.2" />
+      {n === 1 ? (
+        <text x="50" y="58" textAnchor="middle" fill="#cdf32b" fontSize="17" fontWeight="800" letterSpacing="1.6" fontFamily="system-ui,sans-serif">
+          TOLS
+        </text>
+      ) : (
+        (PIPS[n] ?? []).map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="8.4" fill="#cdf32b" />
+        ))
+      )}
+    </svg>
+  );
+}
+
+function TolsDie({
+  uid,
+  value,
+  rolling,
+  idle,
+}: {
+  uid: string;
+  value: number;
+  rolling: boolean;
+  idle: 'left' | 'right';
+}) {
+  const idlePose = idle === 'left'
+    ? 'rotateX(-18deg) rotateY(-28deg)'
+    : 'rotateX(-12deg) rotateY(22deg)';
+  const transform = rolling ? undefined : (value ? FACE_ROT[value] : idlePose);
+
+  return (
+    <div className={`tols-die-scene tols-die-${idle}`}>
+      <div
+        className={`tols-die-cube${rolling ? ' is-rolling' : ''}`}
+        style={transform ? { transform } : undefined}
+      >
+        {([1, 2, 3, 4, 5, 6] as const).map((n) => (
+          <div key={n} className={`tols-die-face tols-die-face-${n}`}>
+            <DieFace n={n} uid={uid} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function DiceGame({ onBack, initialBalance }: Props) {
   const reduced = useReducedMotion();
@@ -27,6 +105,10 @@ export function DiceGame({ onBack, initialBalance }: Props) {
   const winChance = useMemo(() => isOver ? (100 - target).toFixed(2) : target.toFixed(2), [target, isOver]);
   const potentialMultiplier = useMemo(() => winChance !== '0.00' ? (99 / Number(winChance)).toFixed(4) : '\u221e', [winChance]);
   const potentialPayout = useMemo(() => (betAmount * Number(potentialMultiplier === '\u221e' ? 0 : potentialMultiplier)).toFixed(2), [betAmount, potentialMultiplier]);
+  const faces = useMemo(
+    () => (result ? facesFromRoll(result.roll) : [0, 0]) as [number, number],
+    [result],
+  );
 
   const rollDice = useCallback(async () => {
     if (rolling || betAmount <= 0 || betAmount > balance) return;
@@ -52,27 +134,21 @@ export function DiceGame({ onBack, initialBalance }: Props) {
   const rollPct = animatedRoll;
   const winZoneStart = isOver ? targetPct : 0;
   const winZoneEnd = isOver ? 100 : targetPct;
+  const spinning = rolling && !reduced;
 
   return (
     <div className="game-wrapper compact-game">
-      {/* Header */}
-      <div className="g-header">
-        <button onClick={onBack} className="g-back" aria-label="Back"><ArrowLeft className="w-4 h-4" /></button>
-        <div><h1>Dice</h1><p>Roll over or under your target</p></div>
-      </div>
+      <GameHeader title="Dice" subtitle="Roll over or under your target" onBack={onBack} />
 
       <div className="game-grid">
-        {/* === GAME AREA (left/top) === */}
         <div className="space-y-2">
-          {/* Result Display + Slider — main game element */}
           <div className={'dice-area ' + (showResult && result?.won ? 'win' : '') + (showResult && result && !result.won ? ' loss' : '')}>
-            <img
-              src="/games/props/die.jpg"
-              alt=""
-              draggable={false}
-              className={`dice-prop${rolling && !reduced ? ' rolling' : ''}`}
-            />
-            {/* Result number */}
+            <div className="tols-die-pair">
+              <TolsDie uid="l" value={faces[0]} rolling={spinning} idle="left" />
+              <TolsDie uid="r" value={faces[1]} rolling={spinning} idle="right" />
+            </div>
+            <div className="tols-die-floor" aria-hidden />
+
             <div className="mb-3 text-center">
               <div className={'dice-result ' + (rolling ? '' : showResult && result?.won ? 'win' : showResult && result && !result.won ? 'loss' : 'idle') + (showResult && result && !reduced ? ' dice-slam' : '')}>
                 {animatedRoll.toFixed(2)}
@@ -88,26 +164,20 @@ export function DiceGame({ onBack, initialBalance }: Props) {
               {!result && !rolling && <p className="text-xs mt-1" style={{ color: 'var(--g-text-3)' }}>Set target & roll</p>}
             </div>
 
-            {/* Slider Bar — Shuffle style horizontal */}
             <div className="w-full">
               <div className="dice-bar">
-                {/* Win zone (subtle green) */}
                 <div className="dice-bar-win" style={{ left: winZoneStart + '%', width: (winZoneEnd - winZoneStart) + '%' }} />
-                {/* Lose zone (subtle dark) */}
                 <div className="dice-bar-lose" style={{ left: (isOver ? 0 : targetPct) + '%', width: (isOver ? targetPct : 100 - targetPct) + '%' }} />
-                {/* Roll result marker */}
                 {showResult && result && !rolling && (
                   <div className="absolute top-0 bottom-0 z-10" style={{ left: rollPct + '%', transform: 'translateX(-50%)' }}>
                     <div className={'w-0.5 h-full ' + (result.won ? 'bg-win' : 'bg-loss')} />
                   </div>
                 )}
               </div>
-              {/* Slider input overlaid */}
               <input type="range" min={2} max={98} value={target}
                 onChange={(e) => { setTarget(Number(e.target.value)); setResult(null); setShowResult(false); }}
                 className="dice-slider" disabled={rolling}
                 style={{ marginTop: '-48px', position: 'relative', zIndex: 20 }} />
-              {/* Scale labels */}
               <div className="flex justify-between mt-1 px-0.5">
                 <span className="text-[10px]" style={{ color: 'var(--g-text-3)', fontFamily: 'var(--g-mono)' }}>0</span>
                 <span className="text-[10px]" style={{ color: 'var(--g-text-3)', fontFamily: 'var(--g-mono)' }}>100</span>
@@ -115,7 +185,6 @@ export function DiceGame({ onBack, initialBalance }: Props) {
             </div>
           </div>
 
-          {/* Over/Under Toggle */}
           <div className="g-panel p-2">
             <div className="flex gap-2">
               <button onClick={() => { setIsOver(true); setResult(null); setShowResult(false); }} disabled={rolling}
@@ -125,14 +194,12 @@ export function DiceGame({ onBack, initialBalance }: Props) {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="g-stats">
             <div className="g-stat"><p className="g-stat-label">Win Chance</p><p className="g-stat-value">{winChance}%</p></div>
-            <div className="g-stat"><p className="g-stat-label">Multiplier</p><p className="g-stat-value lime">{potentialMultiplier}\u00d7</p></div>
+            <div className="g-stat"><p className="g-stat-label">Multiplier</p><p className="g-stat-value lime">{potentialMultiplier}×</p></div>
             <div className="g-stat"><p className="g-stat-label">Payout</p><p className="g-stat-value">{'$' + potentialPayout}</p></div>
           </div>
 
-          {/* History */}
           {history.length > 0 && (
             <div className="g-history">
               <div className="g-history-head">
@@ -144,16 +211,15 @@ export function DiceGame({ onBack, initialBalance }: Props) {
                   <div key={i} className="g-history-item">
                     <div className="flex items-center gap-2">
                       <span className={'g-history-badge ' + (h.result === 'win' ? 'win' : 'loss')}>{h.result}</span>
-                      <span className="text-[11px]" style={{ color: 'var(--g-text-2)' }}>{h.isOver ? 'Over' : 'Under'} {h.target} \u2192 <span className="font-semibold" style={{ color: 'var(--g-text)', fontFamily: 'var(--g-mono)' }}>{h.roll.toFixed(2)}</span></span>
+                      <span className="text-[11px]" style={{ color: 'var(--g-text-2)' }}>{h.isOver ? 'Over' : 'Under'} {h.target} → <span className="font-semibold" style={{ color: 'var(--g-text)', fontFamily: 'var(--g-mono)' }}>{h.roll.toFixed(2)}</span></span>
                     </div>
-                    <span className={'text-[11px] font-bold tabular-nums ' + (h.result === 'win' ? 'text-[#00e701]' : 'text-[#ff3b3b]')} style={{ fontFamily: 'var(--g-mono)' }}>{h.result === 'win' ? '+' : '-'}{'$' + h.payout.toFixed(2)}</span>
+                    <span className={'text-[11px] font-bold tabular-nums ' + (h.result === 'win' ? 'text-win' : 'text-loss')} style={{ fontFamily: 'var(--g-mono)' }}>{h.result === 'win' ? '+' : '-'}{'$' + h.payout.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Provably Fair */}
           <div className="g-pf">
             <button onClick={() => setShowPF(v => !v)} className="g-pf-toggle w-full">
               <div className="flex items-center gap-2">
@@ -173,26 +239,15 @@ export function DiceGame({ onBack, initialBalance }: Props) {
           </div>
         </div>
 
-        {/* === CONTROLS PANEL (right/bottom) === */}
         <div className="space-y-2">
-          {/* Balance */}
-          <div className="g-balance">
-            <p className="g-balance-label">Balance</p>
-            <p className="g-balance-value">{balance.toFixed(2)}</p>
-          </div>
-
-          {/* Bet Controls */}
+          <GameBalance value={balance} />
           <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={rolling} />
-
-          {/* Profit on Win */}
           <div className="g-panel p-3">
             <div className="flex items-center justify-between">
               <span className="text-xs" style={{ color: 'var(--g-text-3)' }}>Profit on Win</span>
               <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--g-green)', fontFamily: 'var(--g-mono)' }}>+{(Number(potentialPayout) - betAmount).toFixed(2)}</span>
             </div>
           </div>
-
-          {/* Roll Button */}
           <button onClick={rollDice} disabled={rolling || betAmount <= 0 || betAmount > balance} className="g-btn g-btn-play">
             {rolling ? 'Rolling...' : 'Roll Dice'}
           </button>
