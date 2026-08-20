@@ -28,6 +28,8 @@ export const GAME_META: Record<
   slots: { name: "Slots", kind: "instant", defaultParams: {} },
   roulette: { name: "Roulette", kind: "instant", defaultParams: { color: "red" } },
   blackjack: { name: "Blackjack", kind: "interactive", defaultParams: { strategy: "basic" } },
+  "pool-rush": { name: "Pool Rush", kind: "instant", defaultParams: {} },
+  scopa: { name: "Scopa", kind: "interactive", defaultParams: { strategy: "greedy" } },
 };
 
 export const DEFAULT_AUTO_BET = {

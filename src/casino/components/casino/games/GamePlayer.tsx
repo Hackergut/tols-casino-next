@@ -15,6 +15,8 @@ import { ShootGame } from "@/components/casino/game-shoot";
 import { SlotsGame } from "@/components/casino/game-slots";
 import { RouletteGame } from "@/components/casino/game-roulette";
 import { BlackjackGame } from "@/components/casino/game-blackjack";
+import { PoolRushGame } from "@/components/casino/game-pool-rush";
+import { ScopaGame } from "@/components/casino/game-scopa";
 
 const GAMES: Record<string, ComponentType<{ onBack: () => void; initialBalance: number }>> = {
   crash: CrashGame,
@@ -29,6 +31,8 @@ const GAMES: Record<string, ComponentType<{ onBack: () => void; initialBalance: 
   slots: SlotsGame,
   roulette: RouletteGame,
   blackjack: BlackjackGame,
+  "pool-rush": PoolRushGame,
+  scopa: ScopaGame,
 };
 
 export function GamePlayer({ slug }: { slug: string }) {

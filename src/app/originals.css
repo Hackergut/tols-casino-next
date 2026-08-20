@@ -114,3 +114,71 @@
   color: var(--color-loss);
   background: color-mix(in oklab, var(--color-loss) 12%, transparent);
 }
+
+.pool-table {
+  position: relative;
+  min-height: 280px;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, #1a5c32, #0d3a1e 70%);
+  border: 10px solid #5c3a1e;
+  box-shadow: inset 0 0 40px rgb(0 0 0 / 0.35);
+}
+.pool-pocket {
+  position: absolute;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: -0.8rem 0 0 -0.8rem;
+  border-radius: 999px;
+  background: #050505;
+  box-shadow: inset 0 0 6px #000;
+}
+.pool-ball {
+  position: absolute;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: -0.77rem 0 0 -0.77rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  box-shadow: inset -2px -2px 4px rgb(0 0 0 / 0.35), 0 2px 4px rgb(0 0 0 / 0.4);
+  transition: transform 0.45s ease, opacity 0.45s ease;
+}
+.pool-ball.pocketed {
+  transform: scale(0.2);
+  opacity: 0;
+}
+.pool-cue {
+  position: absolute;
+  left: 6%;
+  top: 48%;
+  width: 38%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #d4a574, #f5e6c8 40%, #fff 100%);
+  transform: rotate(-8deg);
+  opacity: 0.85;
+}
+.pool-banner {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0.75rem;
+}
+.scopa-table {
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in oklab, #1a5c32 35%, transparent), transparent 55%),
+    var(--color-surface);
+}
+.scopa-card.scopa-playable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.scopa-card.scopa-playable:hover:not(:disabled) {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 20px rgb(0 0 0 / 0.35);
+}

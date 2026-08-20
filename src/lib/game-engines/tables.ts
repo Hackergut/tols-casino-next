@@ -86,3 +86,7 @@ export const { SLOT_PAY, SLOT_P } = (() => {
 })();
 
 export const ROULETTE_RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+
+/** Pool Rush: pocketed-ball count → multiplier. CDF maps fairFloat → count. RTP ≈ 96.3%. */
+export const POOL_RUSH_PAY = [0, 0.4, 1.2, 2.5, 5, 8, 15, 30, 70];
+export const POOL_RUSH_CDF = [0.62, 0.8, 0.89, 0.94, 0.97, 0.986, 0.994, 0.998, 1];

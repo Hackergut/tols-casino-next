@@ -30,6 +30,8 @@ const DEFAULT_WIN: Record<string, number> = {
   slots: 6,
   roulette: 2,
   blackjack: 2,
+  "pool-rush": 2.5,
+  scopa: 1.9,
 };
 
 export interface PlayArgs {

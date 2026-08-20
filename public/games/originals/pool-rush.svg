@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 880" width="1280" height="880">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#161614"/><stop offset="1" stop-color="#080807"/>
+    </linearGradient>
+    <radialGradient id="uglow" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#e8ff00" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#e8ff00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="felt" cx="0.5" cy="0.45" r="0.7">
+      <stop offset="0" stop-color="#1f7a42"/><stop offset="1" stop-color="#0d3a1e"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="880" fill="url(#bg)"/>
+  <rect width="1280" height="880" fill="url(#uglow)"/>
+  <rect x="220" y="160" width="840" height="520" rx="48" fill="#5c3a1e"/>
+  <rect x="250" y="190" width="780" height="460" rx="32" fill="url(#felt)"/>
+  <circle cx="278" cy="218" r="22" fill="#050505"/>
+  <circle cx="640" cy="210" r="22" fill="#050505"/>
+  <circle cx="1002" cy="218" r="22" fill="#050505"/>
+  <circle cx="278" cy="622" r="22" fill="#050505"/>
+  <circle cx="640" cy="630" r="22" fill="#050505"/>
+  <circle cx="1002" cy="622" r="22" fill="#050505"/>
+  <circle cx="700" cy="380" r="28" fill="#f5d456"/>
+  <circle cx="748" cy="408" r="28" fill="#3b82f6"/>
+  <circle cx="652" cy="408" r="28" fill="#ef4444"/>
+  <circle cx="700" cy="436" r="28" fill="#22c55e"/>
+  <text x="640" y="780" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="42" fill="#e8ff00">POOL RUSH</text>
+</svg>

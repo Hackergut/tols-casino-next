@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
-  HomeIcon, Flame, Radio, LayoutGrid, Clock, Club,
+  HomeIcon, Flame, Radio, LayoutGrid, Clock, Club, Disc, Gem,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -66,6 +66,8 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
   { id: "blackjack", name: "Blackjack", icon: Club, color: "#22c55e", desc: "Classic 21 — hit, stand or double. Blackjack pays 3:2." },
+  { id: "pool-rush", name: "Pool Rush", icon: Disc, color: "#4ade80", desc: "Break the rack — pocket more balls for bigger multipliers." },
+  { id: "scopa", name: "Scopa", icon: Gem, color: "#f43f5e", desc: "Mini-scopa vs the house — capture, scopa, settebello." },
 ];
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [

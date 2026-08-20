@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
   const engine = getEngine(game);
   if (!engine) return err("Unknown game: " + game, 400);
 
-  const interactiveStart = engine.kind === "interactive" && (mode === "start" || game === "blackjack");
+  const interactiveStart =
+    engine.kind === "interactive" && (mode === "start" || game === "blackjack" || game === "scopa");
 
   try {
     const result = interactiveStart

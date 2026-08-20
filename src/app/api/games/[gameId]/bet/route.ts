@@ -25,7 +25,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ gameId: st
   const engine = getEngine(gameId);
   if (!engine) return err("Unknown game", 404);
   const mode = String(body.mode ?? "");
-  const interactiveStart = engine.kind === "interactive" && (mode === "start" || gameId === "blackjack");
+  const interactiveStart =
+    engine.kind === "interactive" && (mode === "start" || gameId === "blackjack" || gameId === "scopa");
   try {
     const result = interactiveStart
       ? await startRound({

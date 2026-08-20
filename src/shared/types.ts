@@ -13,6 +13,8 @@ export const ORIGINAL_GAME_IDS = [
   "slots",
   "roulette",
   "blackjack",
+  "pool-rush",
+  "scopa",
 ] as const;
 
 export type OriginalGameId = (typeof ORIGINAL_GAME_IDS)[number];

@@ -5,12 +5,14 @@ import {
   kenoEngine,
   limboEngine,
   plinkoEngine,
+  poolRushEngine,
   rouletteEngine,
   shootEngine,
   slotsEngine,
   wheelEngine,
 } from "./instant";
 import { blackjackEngine, crashEngine, minesEngine } from "./interactive";
+import { scopaEngine } from "./scopa";
 
 const ENGINES: Record<OriginalGameId, GameEngine> = {
   dice: diceEngine,
@@ -25,6 +27,8 @@ const ENGINES: Record<OriginalGameId, GameEngine> = {
   slots: slotsEngine,
   roulette: rouletteEngine,
   blackjack: blackjackEngine,
+  "pool-rush": poolRushEngine,
+  scopa: scopaEngine,
 };
 
 export function getEngine(id: string): GameEngine | null {
@@ -35,7 +39,8 @@ export function listEngines(): GameEngine[] {
   return Object.values(ENGINES);
 }
 
-export { blackjackEngine, crashEngine, minesEngine };
+export { blackjackEngine, crashEngine, minesEngine, poolRushEngine, scopaEngine };
 export { bjHandValue } from "./interactive";
 export type { BjCard } from "./interactive";
-export { KENO_TABLES, PLINKO_TABLES, ROULETTE_RED, WHEEL_TABLES } from "./tables";
+export type { ScopaCard } from "./scopa";
+export { KENO_TABLES, PLINKO_TABLES, POOL_RUSH_PAY, ROULETTE_RED, WHEEL_TABLES } from "./tables";

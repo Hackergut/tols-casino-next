@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 880" width="1280" height="880">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#161614"/><stop offset="1" stop-color="#080807"/>
+    </linearGradient>
+    <radialGradient id="uglow" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#e8ff00" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#e8ff00" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="880" fill="url(#bg)"/>
+  <rect width="1280" height="880" fill="url(#uglow)"/>
+  <g transform="translate(430,250) rotate(-12)">
+    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#c81e1e" stroke-width="4"/>
+    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#c81e1e">7</text>
+    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#c81e1e">♦</text>
+  </g>
+  <g transform="translate(560,230) rotate(-4)">
+    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#141414" stroke-width="4"/>
+    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#141414">A</text>
+    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#141414">♠</text>
+  </g>
+  <g transform="translate(700,250) rotate(10)">
+    <rect width="150" height="210" rx="16" fill="#f4f1ea" stroke="#c81e1e" stroke-width="4"/>
+    <text x="75" y="90" text-anchor="middle" font-size="48" fill="#c81e1e">3</text>
+    <text x="75" y="150" text-anchor="middle" font-size="42" fill="#c81e1e">♥</text>
+  </g>
+  <text x="640" y="780" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="42" fill="#e8ff00">SCOPA</text>
+</svg>

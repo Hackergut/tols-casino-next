@@ -1,7 +1,7 @@
 import { fairFloat } from "@/lib/provably-fair";
 import type { GameEngine } from "@/shared/types";
 import { KENO_DRAWS, KENO_MAX_PICKS, KENO_POOL, KENO_RISKS, PLINKO_ROWS, WHEEL_SEGMENTS } from "@/shared/constants";
-import { KENO_TABLES, PLINKO_TABLES, ROULETTE_RED, SLOT_P, SLOT_PAY, WHEEL_TABLES } from "./tables";
+import { KENO_TABLES, PLINKO_TABLES, POOL_RUSH_CDF, POOL_RUSH_PAY, ROULETTE_RED, SLOT_P, SLOT_PAY, WHEEL_TABLES } from "./tables";
 import { isRisk, okAmount, paid } from "./common";
 
 export const diceEngine: GameEngine = {
@@ -344,5 +344,44 @@ export const rouletteEngine: GameEngine = {
       won: totalPayout > 0,
       payload: { winning, isRed, bets },
     };
+  },
+};
+
+function poolRushCount(r: number): number {
+  for (let n = 0; n < POOL_RUSH_CDF.length; n++) {
+    if (r < POOL_RUSH_CDF[n]) return n;
+  }
+  return 8;
+}
+
+export const poolRushEngine: GameEngine = {
+  id: "pool-rush",
+  name: "Pool Rush",
+  kind: "instant",
+  validateBet(_p, balance, amount) {
+    return okAmount(amount, balance);
+  },
+  generateOutcome(serverSeed, clientSeed, nonce) {
+    const r = fairFloat(serverSeed, clientSeed, nonce);
+    const count = poolRushCount(r);
+    const order = Array.from({ length: 8 }, (_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(fairFloat(serverSeed, clientSeed, nonce, i) * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const pocketed = order.slice(0, count);
+    const pockets = pocketed.map((_, i) => Math.floor(fairFloat(serverSeed, clientSeed, nonce, 20 + i) * 6));
+    return { roll: Math.floor(r * 10000) / 100, count, pocketed, pockets };
+  },
+  settleBet(bet, outcome) {
+    const count = Math.max(0, Math.min(8, Number(outcome.count ?? 0)));
+    const multiplier = POOL_RUSH_PAY[count] ?? 0;
+    return paid(bet.amount, multiplier, {
+      count,
+      pocketed: outcome.pocketed,
+      pockets: outcome.pockets,
+      roll: outcome.roll,
+      mult: multiplier,
+    });
   },
 };

@@ -1,6 +1,6 @@
 import { ok, err } from "@/lib/session";
 import { getEngine, listEngines } from "@/lib/game-engines";
-import { KENO_TABLES, PLINKO_TABLES, WHEEL_TABLES } from "@/lib/game-engines/tables";
+import { KENO_TABLES, PLINKO_TABLES, POOL_RUSH_PAY, WHEEL_TABLES } from "@/lib/game-engines/tables";
 import { GAME_META, KENO_DRAWS, KENO_MAX_PICKS, KENO_POOL, MIN_BET, MAX_BET, WHEEL_SEGMENTS } from "@/shared/constants";
 import type { OriginalGameId } from "@/shared/types";
 
