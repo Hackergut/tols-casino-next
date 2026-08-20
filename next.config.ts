@@ -114,7 +114,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 
