@@ -2491,3 +2491,13 @@ real components in jsdom via esbuild bundles (`.zscripts/`, see README there):
 lobby sidebar 16/16 checks (hamburger open/close, scrim, 15 items navigate,
 auto-close on select) and admin sidebar (collapse ↔ expand, group toggles,
 store navigation, mobile hamburger). DevDeps added: `esbuild`, `jsdom`.
+
+## Arena preview: allow iframe embedding in dev (2026-08-21)
+
+The platform CSP `frame-ancestors` allowed only 'self', Telegram and the
+Governance Tower — correct for production, but it also blocked Arena/E2B's
+live preview, which embeds the dev server in an iframe: the server answered
+200 while the browser refused to render the frame. `DEV_FRAME_ANCESTORS` now
+appends `https://arena.ai https://*.arena.ai https://*.e2b.app` only when
+NODE_ENV=development (i.e. `next dev`); production keeps the strict list.
+Existing CSP tests still pass (tests/telegram.test.mjs).

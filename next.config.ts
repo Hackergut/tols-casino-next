@@ -31,6 +31,18 @@ const BRIDGE_ANCESTORS = TOWER_HOST ? ` ${TOWER_HOST}` : "";
 const BRIDGE_CONNECT = TOWER_HOST ? ` ${TOWER_HOST}` : "";
 // .tols.fun subdomains: add a wildcard for Vercel previews (*.vercel.app) if needed
 
+/*
+ * Arena/E2B renders the dev preview inside an iframe whose parent origin is
+ * arena.ai (proxied host is {port}-{sandboxId}.e2b.app). Without this the
+ * browser refuses to embed the app at all, so the preview shows nothing even
+ * though the server answers 200. Scoped to `next dev` (NODE_ENV=development);
+ * production keeps the strict Telegram/Tower-only allowlist.
+ */
+const DEV_FRAME_ANCESTORS =
+  process.env.NODE_ENV === "development"
+    ? " https://arena.ai https://*.arena.ai https://*.e2b.app"
+    : "";
+
 const securityHeaders = [
   // NOTE: X-Frame-Options is deliberately omitted. It is all-or-nothing
   // (ALLOW-FROM is dead in modern browsers) so it cannot express "Telegram
@@ -65,8 +77,9 @@ const securityHeaders = [
        */
       `connect-src 'self' https://api.telegram.org${BRIDGE_CONNECT} https://*.vercel.app`,
       // Telegram frames the Mini App; the Tower subdomain frames nothing but is
-      // allowed for the bridge. Everything else is refused.
-      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}`,
+      // allowed for the bridge. Everything else is refused. Arena/E2B preview
+      // hosts are appended in development only (see DEV_FRAME_ANCESTORS).
+      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}${DEV_FRAME_ANCESTORS}`,
       // `https:` covers the EuroVirtuals aggregator, whose games each load from
       // their own studio domain and cannot be enumerated ahead of time.
       "frame-src https:",
