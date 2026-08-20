@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * CompactGameShell — mobile game chrome.
+ * CompactGameShell — mobile game chrome + cinematic studio stage.
  *
  * Below lg the board fills the space between the app header and the bottom
  * nav, and the game's own controls panel is lifted into a fixed sheet docked
@@ -15,6 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { Settings2, X } from "lucide-react";
+import { originalArtUrl } from "./lobby-types";
 
 export function CompactGameShell({ children, gameKey }: { children: React.ReactNode; gameKey: string | null }) {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -31,7 +32,14 @@ export function CompactGameShell({ children, gameKey }: { children: React.ReactN
   }, [sheetOpen]);
 
   return (
-    <div className={`compact-game${sheetOpen ? " sheet-open" : ""}`}>
+    <div className={`compact-game game-stage${sheetOpen ? " sheet-open" : ""}`}>
+      {gameKey && (
+        <div
+          className="game-stage-atmosphere"
+          style={{ backgroundImage: `url(${originalArtUrl(gameKey)})` }}
+          aria-hidden
+        />
+      )}
       {children}
 
       {/* Settings handle — icon only, tucked under the board (mobile only). */}

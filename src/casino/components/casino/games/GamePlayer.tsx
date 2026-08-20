@@ -3,6 +3,7 @@
 import type { ComponentType } from "react";
 import { useSessionStore, useUIStore } from "@/lib/store";
 import { OriginalsRail } from "@/components/casino/OriginalsRail";
+import { originalArtUrl } from "@/components/lobby/lobby-types";
 import { CrashGame } from "@/components/casino/game-crash";
 import { DiceGame } from "@/components/casino/game-dice";
 import { MinesGame } from "@/components/casino/game-mines";

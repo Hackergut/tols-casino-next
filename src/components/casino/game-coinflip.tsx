@@ -45,59 +45,38 @@ function Coin3D({ flipping, result, choice, animKey }: {
         {/* Edge — dark metal disc between the faces, visible when the coin is edge-on */}
         <div
           className="absolute inset-0 rounded-full"
-          style={{ background: 'linear-gradient(145deg, #8a6d0b, #4a3906)', transform: 'translateZ(0px)' }}
+          style={{ background: 'linear-gradient(145deg, #3a3a34, #0f0f0d)', transform: 'translateZ(0px)' }}
         />
 
-        {/* Front Face - Heads (Gold) */}
+        {/* Front Face — photoreal TOLS chip (heads) */}
         <div
-          className="absolute inset-0 rounded-full flex flex-col items-center justify-center"
+          className="absolute inset-0 rounded-full"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'translateZ(4px)',
-            background: 'linear-gradient(145deg, #f5d456, #d9a418, #b8860b)',
+            backgroundImage: 'url(/games/props/chip-heads.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             boxShadow: result && !flipping
-              ? (result === choice ? '0 0 30px color-mix(in oklab, var(--color-lime) 50%, transparent), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3)' : '0 0 30px color-mix(in oklab, var(--color-loss) 50%, transparent)')
-              : 'inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -4px 8px rgba(0,0,0,0.4), 0 0 20px color-mix(in oklab, var(--color-pending) 20%, transparent)',
-            border: '3px solid rgba(255,215,0,0.4)',
+              ? (result === choice ? '0 0 36px color-mix(in oklab, var(--color-lime) 55%, transparent)' : '0 0 30px color-mix(in oklab, var(--color-loss) 45%, transparent)')
+              : '0 12px 28px rgb(0 0 0 / 0.45)',
           }}
-        >
-          {/* Outer ring */}
-          <div className="absolute inset-2 rounded-full" style={{ border: '1.5px solid rgba(255,255,255,0.15)' }} />
-          {/* Crown SVG */}
-          <svg width="60" height="48" viewBox="0 0 60 48" fill="none" className="mb-1">
-            <path d="M6 36V16L18 24L30 8L42 24L54 16V36H6Z" fill="rgba(139,69,19,0.6)" stroke="rgba(139,69,19,0.8)" strokeWidth="1.5" />
-            <circle cx="18" cy="24" r="3" fill="rgba(139,69,19,0.5)" />
-            <circle cx="30" cy="14" r="3.5" fill="rgba(139,69,19,0.5)" />
-            <circle cx="42" cy="24" r="3" fill="rgba(139,69,19,0.5)" />
-            <rect x="6" y="34" width="48" height="4" rx="1" fill="rgba(139,69,19,0.4)" />
-          </svg>
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: 'rgba(139,69,19,0.7)', textShadow: '0 1px 1px rgba(255,255,255,0.3)' }}>HEADS</span>
-        </div>
+        />
 
-        {/* Back Face - Tails (Silver/Dark) */}
+        {/* Back Face — photoreal TOLS chip (tails) */}
         <div
-          className="absolute inset-0 rounded-full flex flex-col items-center justify-center"
+          className="absolute inset-0 rounded-full"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateX(180deg) translateZ(4px)',
-            background: 'linear-gradient(145deg, #a8a89e, #7a7a70, #55554d)',
+            backgroundImage: 'url(/games/props/chip-tails.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             boxShadow: result && !flipping
-              ? (result === choice ? '0 0 30px color-mix(in oklab, var(--color-lime) 50%, transparent), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3)' : '0 0 30px color-mix(in oklab, var(--color-loss) 50%, transparent)')
-              : 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -4px 8px rgba(0,0,0,0.4), 0 0 20px rgba(168,180,192,0.15)',
-            border: '3px solid rgba(192,192,192,0.3)',
+              ? (result === choice ? '0 0 36px color-mix(in oklab, var(--color-lime) 55%, transparent)' : '0 0 30px color-mix(in oklab, var(--color-loss) 45%, transparent)')
+              : '0 12px 28px rgb(0 0 0 / 0.45)',
           }}
-        >
-          {/* Outer ring */}
-          <div className="absolute inset-2 rounded-full" style={{ border: '1.5px solid rgba(255,255,255,0.1)' }} />
-          {/* Shield SVG */}
-          <svg width="50" height="56" viewBox="0 0 50 56" fill="none" className="mb-1">
-            <path d="M25 4L6 14V30C6 42 25 52 25 52C25 52 44 42 44 30V14L25 4Z" fill="rgba(60,70,80,0.6)" stroke="rgba(80,90,100,0.8)" strokeWidth="1.5" />
-            <path d="M25 12L14 18V28C14 36 25 42 25 42C25 42 36 36 36 28V18L25 12Z" fill="rgba(80,90,100,0.3)" />
-            <line x1="25" y1="12" x2="25" y2="42" stroke="rgba(100,110,120,0.4)" strokeWidth="1" />
-            <line x1="14" y1="24" x2="36" y2="24" stroke="rgba(100,110,120,0.4)" strokeWidth="1" />
-          </svg>
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: 'rgba(60,70,80,0.8)', textShadow: '0 1px 1px rgba(255,255,255,0.2)' }}>TAILS</span>
-        </div>
+        />
       </div>
     </div>
   );
@@ -191,9 +170,9 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
                 className="group relative py-5 rounded-xl transition-all overflow-hidden"
                 style={{
                   background: choice === 'heads'
-                    ? 'linear-gradient(135deg, color-mix(in oklab, var(--color-pending) 15%, transparent), color-mix(in oklab, var(--color-pending) 5%, transparent))'
+                    ? 'linear-gradient(135deg, color-mix(in oklab, var(--color-lime) 14%, transparent), color-mix(in oklab, var(--color-lime) 4%, transparent))'
                     : 'rgba(255,255,255,0.02)',
-                  border: choice === 'heads' ? '1.5px solid color-mix(in oklab, var(--color-pending) 40%, transparent)' : '1px solid rgba(255,255,255,0.06)',
+                  border: choice === 'heads' ? '1.5px solid color-mix(in oklab, var(--color-lime) 40%, transparent)' : '1px solid rgba(255,255,255,0.06)',
                   cursor: flipping ? 'default' : 'pointer',
                 }}
                 disabled={flipping}
@@ -202,19 +181,16 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ background: 'radial-gradient(ellipse at center, color-mix(in oklab, var(--color-pending) 8%, transparent) 0%, transparent 70%)' }} />
                 <div className="relative flex flex-col items-center gap-2">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                  <div className="h-12 w-12 rounded-full"
                     style={{
-                      background: choice === 'heads' ? 'linear-gradient(145deg, #f5d456, #d9a418)' : 'linear-gradient(145deg, #888, #666)',
-                      boxShadow: choice === 'heads' ? '0 0 20px color-mix(in oklab, var(--color-pending) 30%, transparent)' : 'none',
+                      backgroundImage: 'url(/games/props/chip-heads.jpg)',
+                      backgroundSize: 'cover',
+                      boxShadow: choice === 'heads' ? '0 0 20px color-mix(in oklab, var(--color-lime) 40%, transparent)' : 'none',
+                      opacity: choice === 'heads' ? 1 : 0.55,
                     }}
-                  >
-                    <svg width="20" height="16" viewBox="0 0 60 48" fill="none">
-                      <path d="M6 36V16L18 24L30 8L42 24L54 16V36H6Z" fill="rgba(139,69,19,0.7)" />
-                      <rect x="6" y="34" width="48" height="4" rx="1" fill="rgba(139,69,19,0.5)" />
-                    </svg>
-                  </div>
+                  />
                   <span className="text-sm font-bold tracking-wider uppercase"
-                    style={{ color: choice === 'heads' ? '#f5d456' : 'rgba(255,255,255,0.4)' }}>
+                    style={{ color: choice === 'heads' ? 'var(--color-lime)' : 'rgba(255,255,255,0.4)' }}>
                     Heads
                   </span>
                   <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.25)' }}>1.98x</span>
@@ -227,9 +203,9 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
                 className="group relative py-5 rounded-xl transition-all overflow-hidden"
                 style={{
                   background: choice === 'tails'
-                    ? 'linear-gradient(135deg, rgba(168,180,192,0.15), rgba(168,180,192,0.05))'
+                    ? 'linear-gradient(135deg, color-mix(in oklab, var(--color-lime) 14%, transparent), color-mix(in oklab, var(--color-lime) 4%, transparent))'
                     : 'rgba(255,255,255,0.02)',
-                  border: choice === 'tails' ? '1.5px solid rgba(168,180,192,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                  border: choice === 'tails' ? '1.5px solid color-mix(in oklab, var(--color-lime) 40%, transparent)' : '1px solid rgba(255,255,255,0.06)',
                   cursor: flipping ? 'default' : 'pointer',
                 }}
                 disabled={flipping}
@@ -237,18 +213,16 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ background: 'radial-gradient(ellipse at center, rgba(168,180,192,0.08) 0%, transparent 70%)' }} />
                 <div className="relative flex flex-col items-center gap-2">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                  <div className="h-12 w-12 rounded-full"
                     style={{
-                      background: choice === 'tails' ? 'linear-gradient(145deg, #a8a89e, #7a7a70)' : 'linear-gradient(145deg, #888, #666)',
-                      boxShadow: choice === 'tails' ? '0 0 20px rgba(168,180,192,0.3)' : 'none',
+                      backgroundImage: 'url(/games/props/chip-tails.jpg)',
+                      backgroundSize: 'cover',
+                      boxShadow: choice === 'tails' ? '0 0 20px color-mix(in oklab, var(--color-lime) 40%, transparent)' : 'none',
+                      opacity: choice === 'tails' ? 1 : 0.55,
                     }}
-                  >
-                    <svg width="18" height="20" viewBox="0 0 50 56" fill="none">
-                      <path d="M25 4L6 14V30C6 42 25 52 25 52C25 52 44 42 44 30V14L25 4Z" fill="rgba(60,70,80,0.7)" />
-                    </svg>
-                  </div>
+                  />
                   <span className="text-sm font-bold tracking-wider uppercase"
-                    style={{ color: choice === 'tails' ? '#a8a89e' : 'rgba(255,255,255,0.4)' }}>
+                    style={{ color: choice === 'tails' ? 'var(--color-lime)' : 'rgba(255,255,255,0.4)' }}>
                     Tails
                   </span>
                   <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.25)' }}>1.98x</span>

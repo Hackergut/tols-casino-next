@@ -105,6 +105,32 @@
 
 /* Originals rail + Blackjack — aligned to the modular game page layout. */
 
+.game-stage {
+  position: relative;
+  isolation: isolate;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in oklab, var(--color-lime) 12%, transparent);
+  background: #0c0d10;
+  padding: 0.35rem;
+}
+.game-stage-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: blur(42px) saturate(1.35) brightness(0.42);
+  opacity: 0.5;
+  mask-image: radial-gradient(ellipse at 50% 28%, #000 18%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 28%, #000 18%, transparent 72%);
+}
+.game-stage > *:not(.game-stage-atmosphere):not(.game-sheet-toggle):not(.game-sheet-scrim) {
+  position: relative;
+  z-index: 1;
+}
+
 .originals-stage {
   display: grid;
   grid-template-columns: 1fr;
@@ -151,6 +177,13 @@
   border: 1px solid rgb(255 255 255 / 0.06);
 }
 
+.dice-area, .crash-area, .limbo-area, .wheel-area, .keno-area, .plinko-area,
+.coinflip-area, .shoot-area, .mines-board, .bj-table {
+  box-shadow:
+    inset 0 0 80px rgb(0 0 0 / 0.28),
+    0 0 0 1px color-mix(in oklab, var(--color-lime) 10%, transparent);
+}
+
 .bj-table {
   display: flex;
   flex-direction: column;
@@ -192,9 +225,11 @@
 }
 .bj-card-back {
   background:
-    repeating-linear-gradient(45deg, #1a1a16 0 6px, #0d0d0b 6px 12px);
-  border-color: color-mix(in oklab, var(--color-lime) 35%, transparent);
-  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--color-lime) 18%, transparent);
+    url("/games/props/card-back.jpg") center / cover no-repeat;
+  border-color: color-mix(in oklab, var(--color-lime) 40%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--color-lime) 22%, transparent),
+    0 8px 16px rgb(0 0 0 / 0.35);
 }
 .bj-rank {
   font-size: 1.15rem;
