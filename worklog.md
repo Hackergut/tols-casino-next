@@ -2299,3 +2299,26 @@ Stage Summary:
 - Wheel: full SVG rendering with proper arc paths, rotated text, confetti particles
 - Limbo: SVG vertical track with log-scale, animated orb, win/lose particle effects
 - Lint passes cleanly for both files (zero errors)
+
+## Promo cards → carousel + brand redesign + per-promo pages (2026-08-20)
+
+- PromotionCards (home section) converted from a grid to the shared Carousel
+  shelf (scroll-snap, arrows, next-card peek, staggered entrance). Now shows
+  all 10 official/campaign promos with an "All promos →" action that opens the
+  Promotions info list.
+- Cards redesigned with signature TOLS brand accents: lime diagonal corner cut
+  with dark icon chip, "TOLS" wordmark pill + oversized watermark stamp, reward
+  in mono lime with glow, display-font title, lime CTA, 3px lime bottom hairline
+  with hover glow. Kept 16:9 art, shimmer sweep, hover lift.
+- Every card now routes to its own info page at /promo/{id} (section
+  "promo:{id}" in the shell; parseCasinoRoute/casinoPath/isCasinoAppPath
+  extended). The page hero is the exact artwork of the tapped card, dressed in
+  the same accents (corner cut, badge, watermark, kind pill, reward, CTA →
+  promo.target e.g. register/vip/wallet/rewards/originals), plus terms list and
+  a "More promotions" rail of the other cards. Unknown ids render a friendly
+  fallback.
+- Promotions info list cards: the artwork header is now the entry to each
+  per-promo page (arrow affordance), inner CTA still jumps to the action.
+- Fonts self-hosted (src/app/fonts/*.woff2 via Fontsource builds of the same
+  Inter/Michroma/Oswald families; layout.tsx switched next/font/google →
+  next/font/local) so builds no longer depend on fonts.googleapis.com.

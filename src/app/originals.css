@@ -117,21 +117,56 @@
   transform: translateY(-1px);
 }
 .tols-promo-grid {
-  display: grid;
+  display: flex;
   gap: 1rem;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
+  overflow-x: auto;
 }
-@media (min-width: 640px) {
-  .tols-promo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Lime diagonal corner cut — the signature TOLS brand notch on every promo
+   card. The chip sits on the dark side so the icon stays readable. */
+.tols-promo-corner {
+  background: var(--color-lime);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
 }
-@media (min-width: 1280px) {
-  .tols-promo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tols-promo-card:hover .tols-promo-corner,
+.tols-promo-card:focus-visible .tols-promo-corner {
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--color-lime) 55%, transparent));
+}
+/* Chip sits centered on the cut's diagonal: lime half + dark half. */
+.tols-promo-corner + span {
+  transition: transform var(--dur-fast, 120ms) ease;
+}
+.tols-promo-card:hover .tols-promo-corner + span,
+.tols-promo-card:focus-visible .tols-promo-corner + span {
+  transform: scale(1.08);
+}
+.tols-promo-watermark {
+  pointer-events: none;
+  user-select: none;
+  opacity: 1;
+  transition: opacity var(--dur-base, 240ms) ease;
+}
+.tols-promo-card:hover .tols-promo-watermark {
+  opacity: 0.75;
+}
+.tols-promo-reward {
+  display: flex;
+  align-items: center;
+}
+.tols-promo-edge {
+  opacity: 1;
+  transition: box-shadow var(--dur-base, 240ms) ease;
+}
+.tols-promo-card:hover .tols-promo-edge {
+  box-shadow: 0 0 18px color-mix(in oklab, var(--color-lime) 45%, transparent);
 }
 @media (prefers-reduced-motion: reduce) {
   .tols-promo-card,
   .tols-promo-card:hover {
     transform: none;
     transition: none;
+  }
+  .tols-promo-card:hover .tols-promo-watermark {
+    opacity: 1;
   }
 }
 @media (min-width: 640px) {

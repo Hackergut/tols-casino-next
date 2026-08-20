@@ -23,6 +23,7 @@ import { AuthGate } from "@/components/lobby/AuthGate";
 import { OriginalsView } from "@/components/lobby/OriginalsView";
 import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
+import { PromoDetailSection } from "@/components/lobby/DiscoverInfo";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { OriginalsRail } from "@/components/casino/OriginalsRail";
@@ -31,7 +32,7 @@ import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
 import { useUIStore, useSessionStore } from "@/lib/store";
-import { casinoPath, ORIGINAL_IDS, parseCasinoRoute } from "@/lib/casino-routes";
+import { casinoPath, ORIGINAL_IDS, parseCasinoRoute, isPromoRouteSection, promoIdFromSection } from "@/lib/casino-routes";
 import { useLocale } from "@/lib/use-locale";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
 import type { OriginalId } from "@/lib/originals-registry";
@@ -442,7 +443,7 @@ function CasinoPage() {
         <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <main className={`min-w-0 flex-1 overflow-y-auto ${activeGame ? "casino-main--game" : "pb-20 lg:pb-0"}`}>
           <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
-            {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && (
+            {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && !isPromoRouteSection(activeSection) && (
               <button type="button" onClick={() => navigateBack("lobby")} className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/8 bg-surface/60 px-3 text-xs font-bold text-white/60 transition-colors hover:border-lime/30 hover:text-lime">
                 <ArrowLeft className="h-4 w-4" /> {t("common.back")}
               </button>
@@ -454,6 +455,12 @@ function CasinoPage() {
               </div>
             ) : activeSection === "rewards" ? (
               <LeaderboardHub onPlay={() => handleSectionChange("originals")} onBack={() => navigateBack("lobby")} />
+            ) : isPromoRouteSection(activeSection) ? (
+              <PromoDetailSection
+                promoId={promoIdFromSection(activeSection)}
+                onBack={() => navigateBack("lobby")}
+                onNavigate={handleSectionChange}
+              />
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => navigateBack("lobby")} onNavigate={handleSectionChange} />
             ) : activeSection === "originals" ? (
