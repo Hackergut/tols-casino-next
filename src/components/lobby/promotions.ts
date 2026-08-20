@@ -31,6 +31,8 @@ export interface TolsPromotion {
   requirements: string[];
   /** Optional corner badge (e.g. "Ends in 10 days"). */
   badge?: string;
+  /** 16:9 artwork path (public/promos/*). */
+  image: string;
 }
 
 export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
@@ -47,6 +49,7 @@ export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
     target: "register",
     cta: "Claim",
     requirements: ["First deposit only", "30× wagering requirement", "Valid for 7 days"],
+    image: "/promos/welcome.jpg",
     badge: "New players",
   },
   {
@@ -62,6 +65,7 @@ export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
     target: "vip",
     cta: "See tiers",
     requirements: ["Based on VIP tier", "Credited daily", "No wagering requirement"],
+    image: "/promos/rakeback.jpg",
     badge: "Automatic",
   },
   {
@@ -77,6 +81,7 @@ export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
     target: "wallet",
     cta: "Deposit",
     requirements: ["Minimum deposit $20", "1× wagering", "Fridays only"],
+    image: "/promos/reload.jpg",
     badge: "Fridays",
   },
   {
@@ -92,6 +97,7 @@ export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
     target: "vip",
     cta: "See tiers",
     requirements: ["Diamond+ tier", "Minimum $100 net loss", "No wagering"],
+    image: "/promos/cashback.jpg",
     badge: "1st of month",
   },
   {
@@ -107,6 +113,7 @@ export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
     target: "originals",
     cta: "Play now",
     requirements: ["Any bet qualifies", "Random trigger", "No maximum bet"],
+    image: "/promos/megadrop.jpg",
     badge: "Live",
   },
   {
@@ -122,6 +129,7 @@ export const OFFICIAL_PROMOTIONS: TolsPromotion[] = [
     target: "affiliate",
     cta: "Invite",
     requirements: ["No referral limit", "Lifetime commission", "Revshare or CPA plan"],
+    image: "/promos/referral.jpg",
   },
 ];
 
@@ -143,6 +151,7 @@ export const CAMPAIGN_PROMOTIONS: TolsPromotion[] = [
     target: "rewards",
     cta: "View leaderboard",
     requirements: ["Paid bets only", "Resets Monday", "Top 100 paid"],
+    image: "/promos/weekly-race.jpg",
     badge: "Weekly",
   },
   {
@@ -158,6 +167,7 @@ export const CAMPAIGN_PROMOTIONS: TolsPromotion[] = [
     target: "originals",
     cta: "Play Originals",
     requirements: ["Limited time", "Target multipliers", "One entry per player"],
+    image: "/promos/clutch-up.jpg",
     badge: "Ends in 10 days",
   },
   {
@@ -173,6 +183,7 @@ export const CAMPAIGN_PROMOTIONS: TolsPromotion[] = [
     target: "vip",
     cta: "See tiers",
     requirements: ["1 point per $1 wagered", "Tiers auto-upgrade", "Perks stack"],
+    image: "/promos/level-up.jpg",
   },
   {
     id: "challenges",
@@ -187,6 +198,7 @@ export const CAMPAIGN_PROMOTIONS: TolsPromotion[] = [
     target: "originals",
     cta: "Start a challenge",
     requirements: ["Daily & weekly", "Auto-tracked", "Bonus rewards"],
+    image: "/promos/challenges.jpg",
     badge: "29 open",
   },
 ];

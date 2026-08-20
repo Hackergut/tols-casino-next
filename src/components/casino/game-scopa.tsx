@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
-import { GameBetControls } from "@/components/casino/game-shared";
+import { GameBetControls, SoundToggle } from "@/components/casino/game-shared";
 import { useGameEngine } from "@/hooks/useGameEngine";
 import { useOriginalsSession } from "@/lib/originals-client";
 import { PlayingCard } from "@/components/casino/playing-card";
@@ -84,6 +84,7 @@ export function ScopaGame({ onBack, initialBalance }: Props) {
           <h1>Scopa</h1>
           <p>A quick hand against the bank — match pairs or sums to sweep. Most points wins.</p>
         </div>
+        <SoundToggle className="g-sound ml-auto" />
       </div>
 
       <div className="game-grid">

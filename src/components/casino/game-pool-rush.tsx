@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
-import { GameBetControls } from "@/components/casino/game-shared";
+import { GameBetControls, SoundToggle } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 import { POOL_RUSH_PAY } from "@/lib/game-engines/tables";
 
@@ -85,6 +85,7 @@ export function PoolRushGame({ onBack, initialBalance }: Props) {
           <h1>Pool Rush</h1>
           <p>Break the rack — more balls pocketed, bigger payout</p>
         </div>
+        <SoundToggle className="g-sound ml-auto" />
       </div>
 
       <div className="game-grid">

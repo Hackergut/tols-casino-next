@@ -43,38 +43,47 @@ function InfoShell({ title, subtitle, icon: Icon, onBack, children }: {
 function PromoDetailCard({ promo, onNavigate }: { promo: TolsPromotion; onNavigate: (target: string) => void }) {
   const Icon = promo.icon;
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-white/8 p-5"
-      style={{ background: "linear-gradient(135deg, color-mix(in oklab, var(--color-surface) 96%, transparent), color-mix(in oklab, var(--color-bg) 60%, transparent))" }}
-    >
-      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl" style={{ background: promo.accent }} />
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl border" style={{ background: `color-mix(in oklab, ${promo.accent} 14%, transparent)`, borderColor: `color-mix(in oklab, ${promo.accent} 30%, transparent)` }}>
-          <Icon className="h-5 w-5" style={{ color: promo.accent }} />
-        </span>
-        <span className="font-mono text-lg font-black tabular-nums" style={{ color: promo.accent }}>{promo.reward}</span>
+    <div className="overflow-hidden rounded-2xl border border-white/8 bg-surface/60">
+      {/* 16:9 artwork header, matching the promo card. */}
+      <div className="relative aspect-[16/9] overflow-hidden">
+        <img src={promo.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+          <div>
+            <h3 className="text-base font-bold text-white" style={{ textShadow: "0 1px 6px rgb(0 0 0 / 0.75)" }}>{promo.title}</h3>
+            {promo.badge && <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: promo.accent }}>{promo.badge}</p>}
+          </div>
+          <span className="rounded-lg bg-black/60 px-2.5 py-1 font-mono text-sm font-black tabular-nums backdrop-blur-md" style={{ color: promo.accent }}>
+            {promo.reward}
+          </span>
+        </div>
       </div>
 
-      <h3 className="mt-3 text-base font-bold text-white">{promo.title}</h3>
-      {promo.badge && <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: promo.accent }}>{promo.badge}</p>}
-      <p className="mt-2 text-sm leading-relaxed text-white/55">{promo.description}</p>
+      <div className="p-4">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg border" style={{ background: `color-mix(in oklab, ${promo.accent} 14%, transparent)`, borderColor: `color-mix(in oklab, ${promo.accent} 30%, transparent)` }}>
+            <Icon className="h-4 w-4" style={{ color: promo.accent }} />
+          </span>
+          <p className="text-sm leading-relaxed text-white/55">{promo.description}</p>
+        </div>
 
-      <ul className="mt-3 space-y-1.5">
-        {promo.requirements.map((req) => (
-          <li key={req} className="flex items-center gap-2 text-xs text-white/50">
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: promo.accent }} />
-            {req}
-          </li>
-        ))}
-      </ul>
+        <ul className="mt-3 space-y-1.5">
+          {promo.requirements.map((req) => (
+            <li key={req} className="flex items-center gap-2 text-xs text-white/50">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: promo.accent }} />
+              {req}
+            </li>
+          ))}
+        </ul>
 
-      <button
-        onClick={() => onNavigate(promo.target)}
-        className="mt-4 flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors hover:opacity-90"
-        style={{ background: promo.accent, color: "var(--color-bg)" }}
-      >
-        {promo.cta} <ArrowUpRight className="h-4 w-4" />
-      </button>
+        <button
+          onClick={() => onNavigate(promo.target)}
+          className="mt-4 flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold transition-opacity hover:opacity-90"
+          style={{ background: promo.accent, color: "var(--color-bg)" }}
+        >
+          {promo.cta} <ArrowUpRight className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

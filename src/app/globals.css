@@ -997,6 +997,8 @@ a,
 .g-header p { font-size:0.6875rem; color:var(--g-text-3); }
 .g-back { display:flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; border-radius:var(--g-radius-sm); color:var(--g-text-2); transition:var(--g-transition); cursor:pointer; }
 .g-back:hover { background:var(--g-panel-3); color:var(--g-text); }
+.g-sound { display:flex; align-items:center; justify-content:center; width:1.75rem; height:1.75rem; border-radius:var(--g-radius-sm); color:var(--g-text-2); transition:var(--g-transition); cursor:pointer; }
+.g-sound:hover { background:var(--g-panel-3); color:var(--g-text); }
 .g-panel { background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); overflow:hidden; position:relative; }
 .g-panel-2 { background:var(--g-panel-2); border:1px solid var(--g-border); border-radius:var(--g-radius); }
 .g-balance { padding:0.625rem 0.75rem; background:var(--g-panel); border:1px solid var(--g-border); border-radius:var(--g-radius); }
