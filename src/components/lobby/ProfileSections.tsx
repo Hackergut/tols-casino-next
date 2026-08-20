@@ -551,7 +551,8 @@ function RewardsSection({ onBack }: { onBack: () => void }) {
         </div>
         <div className={CARD} style={CARD_STYLE}>
           <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-vip" /><p className="text-xs font-semibold uppercase tracking-wider text-white/50">Mega Drop</p></div>
-          <p className="mt-2 text-3xl font-black text-vip font-mono">${(jackpot.data?.amount ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          {/* Pinned locale — see HomeView MegaJackpot (SSR/CSR consistency). */}
+          <p className="mt-2 text-3xl font-black text-vip font-mono">${(jackpot.data?.amount ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}</p>
           <p className="mt-3 text-xs text-white/40">Every bet feeds the progressive jackpot.</p>
         </div>
       </div>

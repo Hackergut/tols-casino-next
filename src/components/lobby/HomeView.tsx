@@ -138,8 +138,10 @@ function WeeklyRace({ onOpen }: { onOpen: () => void }) {
                 <span className="truncate text-sm font-semibold text-white">{r.username}</span>
               </div>
               <div className="shrink-0 text-right">
+                {/* Pinned "en-US" — see MegaJackpot: default-locale formatting
+                    differs between server and client and breaks hydration. */}
                 <p className="font-mono text-sm font-bold tabular-nums text-lime">
-                  ${PRIZES[i]?.toLocaleString() ?? "—"}
+                  ${PRIZES[i]?.toLocaleString("en-US") ?? "—"}
                 </p>
                 <p className="font-mono text-[11px] tabular-nums text-white/35">
                   {t("home.wagered", { amount: `$${r.wagered.toFixed(2)}` })}
@@ -227,8 +229,11 @@ function MegaJackpot() {
         <span className="h-2 w-2 animate-pulse rounded-full bg-lime" />
         <span className="text-[11px] font-black uppercase leading-tight tracking-wider text-white/45">Mega<br />Jackpot</span>
       </div>
+      {/* Pinned locale: amounts render identically on server and client.
+          `undefined` picks up the browser locale (e.g. "0,00" in Italian vs
+          the server's "0.00"), which breaks hydration for every non-en user. */}
       <span className="font-mono text-2xl font-black tabular-nums text-lime sm:text-3xl">
-        ${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
     </div>
   );

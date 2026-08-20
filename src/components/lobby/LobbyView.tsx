@@ -95,8 +95,9 @@ function MegaJackpot() {
         <span className="h-2 w-2 animate-pulse rounded-full bg-lime" />
         <span className="text-[11px] font-black uppercase leading-tight tracking-wider text-white/45">Mega<br />Jackpot</span>
       </div>
+      {/* Pinned locale (see HomeView MegaJackpot): avoids SSR/CSR mismatch. */}
       <span className="font-mono text-3xl font-black tabular-nums text-lime sm:text-4xl">
-        ${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        ${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
     </div>
   );
