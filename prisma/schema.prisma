@@ -485,6 +485,38 @@ model CasinoChatMessage {
   createdAt   DateTime @default(now())
 }
 
+// ==================== SUPPORT LIVE CHAT ====================
+// Player-facing live support, bridged to the Governance Tower. A player opens
+// a ticket and their messages are pushed out to Governance
+// (`casino.support_message`); agent replies arrive back through the bridge
+// webhook (`governance.support_reply`) and are delivered to the player in real
+// time over the SSE gateway. `status` tracks the ticket lifecycle.
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String   @default("")
+  status    String   @default("open") // open | closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages SupportMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model SupportMessage {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender    String        @default("player") // player | agent
+  author    String        @default("")
+  content   String
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
 // ==================== CASINO SETTINGS ====================
 
 model PlatformSetting {

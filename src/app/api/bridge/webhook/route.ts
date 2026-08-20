@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRuntimeBridgeSignature, isKnownInboundType } from "@/lib/governance-bridge";
 import { db } from "@/lib/db";
+import { publish } from "@/lib/realtime";
+import { serializeSupportMessage } from "@/lib/support";
 
 /**
  * POST /api/bridge/webhook — Governance Tower → Casino
@@ -139,6 +141,40 @@ export async function POST(req: NextRequest) {
         const { userId, blocked } = payload as { userId?: string; blocked?: boolean };
         if (!userId) return NextResponse.json({ success: false, error: "userId required" }, { status: 400 });
         await db.casinoUser.update({ where: { id: String(userId) }, data: { status: blocked ? "blocked" : "active" } }).catch(() => {});
+        break;
+      }
+      case "governance.support_reply": {
+        // An agent on the Governance Tower replied to a player's support
+        // ticket. Persist the message and push it to the player in real time.
+        const { ticketId, userId, content, agentName } = payload as { ticketId?: string; userId?: string; content?: string; agentName?: string };
+        if (!ticketId || !userId || !content) {
+          return NextResponse.json({ success: false, error: "ticketId, userId and content are required" }, { status: 400 });
+        }
+        const ticket = await db.supportTicket.findFirst({ where: { id: String(ticketId), userId: String(userId) } });
+        if (!ticket) return NextResponse.json({ success: false, error: "Support ticket not found" }, { status: 404 });
+
+        const message = await db.supportMessage.create({
+          data: { ticketId: ticket.id, sender: "agent", author: agentName || "Support", content: String(content).slice(0, 2000) },
+        });
+        await db.supportTicket.update({ where: { id: ticket.id }, data: { status: "open" } });
+
+        publish({
+          event: "support:message",
+          userId: ticket.userId,
+          data: { ticketId: ticket.id, message: serializeSupportMessage(message) },
+        });
+        break;
+      }
+      case "governance.support_close": {
+        const { ticketId, userId } = payload as { ticketId?: string; userId?: string };
+        if (!ticketId || !userId) {
+          return NextResponse.json({ success: false, error: "ticketId and userId are required" }, { status: 400 });
+        }
+        const ticket = await db.supportTicket.findFirst({ where: { id: String(ticketId), userId: String(userId) } });
+        if (ticket) {
+          await db.supportTicket.update({ where: { id: ticket.id }, data: { status: "closed" } });
+          publish({ event: "support:ticket", userId: ticket.userId, data: { ticket: { id: ticket.id, status: "closed" } } });
+        }
         break;
       }
       case "governance.feature_flag": {

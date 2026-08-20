@@ -9,6 +9,8 @@ export type RealtimeEvent =
   | { event: "round:started"; userId: string; data: Record<string, unknown> }
   | { event: "round:result"; userId: string; data: Record<string, unknown> }
   | { event: "auto-bet:status"; userId: string; data: Record<string, unknown> | object }
+  | { event: "support:message"; userId: string; data: { ticketId: string; message: unknown } }
+  | { event: "support:ticket"; userId: string; data: { ticket: unknown } }
   | { event: "error"; userId: string; data: { code: string; message?: string } };
 
 type Handler = (e: RealtimeEvent) => void;

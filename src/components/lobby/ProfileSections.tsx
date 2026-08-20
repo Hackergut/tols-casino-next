@@ -17,6 +17,7 @@ import { useLocale } from "@/lib/use-locale";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import { useGameSettings } from "@/lib/game-settings";
 import { setSoundEnabled } from "@/lib/game-audio";
+import { SupportChat } from "./SupportChat";
 
 const PROFILE_SECTIONS = new Set([
   "wallet", "vip", "vault", "token", "affiliate", "notifications",
@@ -493,14 +494,8 @@ function LiveSupportSection({ onBack }: { onBack: () => void }) {
     ["How do I redeem a code?", "Use Redeem code in the profile menu."],
   ];
   return (
-    <Shell title="Live Support" subtitle="We're here to help" icon={LifeBuoy} onBack={onBack}>
-      <div className={CARD} style={CARD_STYLE}>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>Start a live chat with support, or reach us on Telegram.</p>
-        <div className="mt-3 flex gap-2">
-          <button className="rounded-lg px-4 py-2.5 text-sm font-bold" style={{ background: "var(--color-lime)", color: "var(--color-bg)" }}>Start Live Chat</button>
-          <button className="rounded-lg px-4 py-2.5 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>Telegram</button>
-        </div>
-      </div>
+    <Shell title="Live Support" subtitle="Chat with an agent in real time" icon={LifeBuoy} onBack={onBack}>
+      <SupportChat />
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>FAQ</p>
         <div className="space-y-3">
