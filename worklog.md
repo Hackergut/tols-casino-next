@@ -2338,3 +2338,37 @@ Stage Summary:
   Promotions-list card headers.
 - Removed the previous promo-specific chrome (corner cut, watermark, wordmark
   pill, edge hairline) and its CSS — one card language for the whole lobby.
+
+## Skills audit + optimizations from egorfedorov/stake-skills repo (2026-08-20)
+
+Cloned and analyzed all 34 skills; implemented the applicable ones on TOLS
+(full mapping in docs/skills-audit.md):
+
+- rng-crypto-specialist: bias-free integer mapping — fairIntUnbiased (rejection
+  sampling over 32-bit HMAC chunks, `:u32` namespace) in new pure core
+  src/lib/provably-fair-core.ts; wheel/roulette/keno/mines/blackjack-shoe/
+  pool-rush switched to it; /api/fair PUT now replays full engine outcomes
+  with dual-algorithm support (current + legacyOutcome) so pre-switch bets
+  still verify.
+- rtp-optimizer / senior-game-math-engineer: tests/rtp-simulation.test.mjs —
+  Monte Carlo over real outcome formulas (dice 99% ±0.5%, wheel-medium 94%
+  ±0.5%) with 99.7% CI + uniform segment spread.
+- autoplay-system-designer: deterministic stop reasons (rounds-limit,
+  stop-loss, take-profit, insufficient-balance, manual, error) on
+  AutoBetStatus.stopReason; insufficient balance stops instead of retrying;
+  pure math extracted to src/lib/auto-bet-math.ts + tests.
+- css-motion-designer: brand recipes in globals.css — idle spark grid (hero
+  carousel), win accent scan (WinCelebration), loading orbit (busy BetButton),
+  inter-round sweep; all reduced-motion gated.
+- telemetry-analytics: TelemetryEvent model, POST /api/telemetry (rate-limited
+  + validated), client track() via sendBeacon (src/lib/client-telemetry.ts),
+  wired to navigate/game_open/auth.
+- low-latency-systems: edge caching on /api/games-lobby (s-maxage=60+SWR600),
+  /api/casino-stats (15+60), /api/jackpot (30+120).
+- slot-qa-engineer: 25 new tests (provably-fair 17, auto-bet 10 incl. shared,
+  rtp-simulation 4) — all pass alongside the 94 existing RTP tests.
+
+Note: 16 pre-existing test failures across 7 suites (stale regex specs, sandbox
+DB stub) verified identical on the base commit — not regressions.
+prisma generate needed for the TelemetryEvent column (engine download blocked
+in this sandbox).

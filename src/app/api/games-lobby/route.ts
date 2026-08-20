@@ -76,7 +76,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, data: catalog });
+    // Catalog is public, changes rarely, and is re-fetched on every lobby
+    // mount — cache it at the edge (low-latency-systems skill) so repeat
+    // visits skip the DB read entirely.
+    return NextResponse.json({ success: true, data: catalog }, {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=600",
+      },
+    });
   } catch (error) {
     console.error("[games-lobby] GET error:", error);
     return NextResponse.json(

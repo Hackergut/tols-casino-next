@@ -286,6 +286,28 @@
    applies to enabled buttons only, so nothing extra is needed there. */
 .tols-btn[data-busy] {
   cursor: progress;
+  position: relative;
+  overflow: hidden;
+}
+/* Loading orbit (css-motion-designer recipe) — a rotating lime band that
+   signals "bet locked, resolving" without a layout shift. */
+.tols-btn[data-busy]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0%, rgb(255 255 255 / 0.28) 18%, transparent 40%, transparent 100%);
+  animation: tolsBtnOrbit 900ms linear infinite;
+}
+@keyframes tolsBtnOrbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tols-btn[data-busy]::after {
+    animation: none;
+    opacity: 0.5;
+  }
 }
 
 /* ── Stat rows ── */

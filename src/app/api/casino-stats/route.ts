@@ -16,7 +16,7 @@ export async function GET() {
     take: 100,
   });
 
-  return ok({
+  const res = ok({
     totalBets: betCount,
     totalWagered: houseAgg._sum.wager || 0,
     houseProfit: houseAgg._sum.houseProfit || 0,
@@ -24,4 +24,7 @@ export async function GET() {
     onlinePlayers: recent.length + 1247, // base mock + active
     totalPlayers: 84213,
   });
+  // Public aggregate, polled every 30s by every client — short edge cache.
+  res.headers.set("Cache-Control", "public, s-maxage=15, stale-while-revalidate=60");
+  return res;
 }

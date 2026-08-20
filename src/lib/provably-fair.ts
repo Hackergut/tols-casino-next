@@ -1,8 +1,10 @@
-import { createHash, createHmac, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
+import { hashServerSeed, generateServerSeed, fairFloat, fairInt, fairIntUnbiased } from "@/lib/provably-fair-core";
 
 /*
- * Provably-fair engine (server only).
+ * Provably-fair engine (server only) — DB-backed seed lifecycle on top of the
+ * pure crypto core (provably-fair-core.ts).
  *
  * What was here before could not support the claim on the tin: outcomes came
  * from a non-cryptographic 32-bit mixing function, the "commitment" hash used
@@ -21,39 +23,13 @@ import { db } from "@/lib/db";
  * outcome it produced and confirm it hashes to the commitment they were shown.
  */
 
+export { hashServerSeed, generateServerSeed, fairFloat, fairInt, fairIntUnbiased } from "@/lib/provably-fair-core";
+
 export interface ActiveSeed {
   id: string;
   serverSeedHash: string;
   clientSeed: string;
   nonce: number;
-}
-
-/** SHA-256 commitment a player can check the revealed seed against. */
-export function hashServerSeed(serverSeed: string): string {
-  return createHash("sha256").update(serverSeed).digest("hex");
-}
-
-/** Cryptographically secure server seed. */
-export function generateServerSeed(): string {
-  return randomBytes(32).toString("hex");
-}
-
-/**
- * Deterministic float in [0,1) for one roll. `cursor` yields extra independent
- * values for the same bet (Plinko needs one per row, Keno one per draw).
- */
-export function fairFloat(serverSeed: string, clientSeed: string, nonce: number, cursor = 0): number {
-  const hmac = createHmac("sha256", serverSeed)
-    .update(`${clientSeed}:${nonce}:${cursor}`)
-    .digest("hex");
-  // Take 52 bits — the full precision of a double — so the value is uniform.
-  const slice = hmac.slice(0, 13);
-  return parseInt(slice, 16) / 0x10000000000000;
-}
-
-/** Integer in [0, max) from the same stream. */
-export function fairInt(serverSeed: string, clientSeed: string, nonce: number, max: number, cursor = 0): number {
-  return Math.floor(fairFloat(serverSeed, clientSeed, nonce, cursor) * max);
 }
 
 /**

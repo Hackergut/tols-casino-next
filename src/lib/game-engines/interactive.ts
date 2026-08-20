@@ -1,4 +1,4 @@
-import { fairFloat } from "@/lib/provably-fair";
+import { fairFloat, fairIntUnbiased } from "@/lib/provably-fair";
 import type { GameEngine, InteractiveRoundState, SettledOutcome } from "@/shared/types";
 import { MINES_TILES } from "@/shared/constants";
 import { okAmount, paid } from "./common";
@@ -82,7 +82,7 @@ function minesLayout(serverSeed: string, clientSeed: string, nonce: number, mine
   const arr = new Array(tiles).fill(false);
   const indices = Array.from({ length: tiles }, (_, i) => i);
   for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(fairFloat(serverSeed, clientSeed, nonce, i) * (i + 1));
+    const j = fairIntUnbiased(serverSeed, clientSeed, nonce, i + 1, i);
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
   for (let k = 0; k < mines; k++) arr[indices[k]] = true;
@@ -189,7 +189,7 @@ function shuffleShoe(serverSeed: string, clientSeed: string, nonce: number): BjC
   const deck: BjCard[] = [];
   for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ r, s });
   for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(fairFloat(serverSeed, clientSeed, nonce, i) * (i + 1));
+    const j = fairIntUnbiased(serverSeed, clientSeed, nonce, i + 1, i);
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;

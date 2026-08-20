@@ -25,6 +25,7 @@ import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
 import { PromoDetailSection } from "@/components/lobby/DiscoverInfo";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
+import { track } from "@/lib/client-telemetry";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { OriginalsRail } from "@/components/casino/OriginalsRail";
 import { LeaderboardHub } from "@/components/lobby/LeaderboardHub";
@@ -313,6 +314,7 @@ function CasinoPage() {
       setGateDismissed(false);
       return;
     }
+    track("navigate", { section });
     navigate(section);
   }, [navigate]);
 
@@ -338,6 +340,7 @@ function CasinoPage() {
     // Guests never had a wallet to bet from — the game opened anyway and the
     // first bet silently failed. Intercept here with the real next step.
     if (authed !== true) { setShowSignupPrompt(true); return; }
+    track("game_open", { game: game.slug || game.id });
     if (game.gameType === "original") {
       navigate("originals", game.slug);
     } else if (game.gameType === "external_virtual") {
@@ -529,7 +532,7 @@ function CasinoPage() {
       {authed === false && !gateDismissed && (
         <AuthGate
           initialMode={gateMode}
-          onAuthenticated={() => { setAuthed(true); setGateDismissed(true); window.location.reload(); }}
+          onAuthenticated={() => { track("auth", { mode: gateMode }); setAuthed(true); setGateDismissed(true); window.location.reload(); }}
           onDismiss={() => setGateDismissed(true)}
         />
       )}
