@@ -2409,3 +2409,15 @@ transparent. Made the glass FADED (opaque, frosted):
   still glows at the top but every label sits on a quiet surface
 - Chrome (pills/play/bar) raised to z-index 1 above the veil
 - reduced-transparency variants bumped to match (≥94% opacity)
+
+## Promo cards: light "faded" glass + brighter art (2026-08-20, fix)
+
+The previous heavy fade (82-96% opaque) was worse — it killed the artwork.
+Real cause of low visibility was the over-darkened art. Fixed both:
+
+- Artwork brightened back (~17% → ~24% avg luminance, ×1.55 + slight contrast)
+  so the painting is the hero again; still moody/painted, game-tile family
+- Glass made light and airy ("faded" = subtle): pills rgb(18,20,26)/0.5 with
+  blur 16px + bright inner top edge, play circle /0.45, bar = classic scrim
+  (92% bottom → 60% mid → 15% top, blur 8px), whole-card veil reduced to a
+  light legibility gradient (5% → 38%)
