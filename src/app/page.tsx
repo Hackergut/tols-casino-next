@@ -455,7 +455,7 @@ function CasinoPage() {
             ) : activeSection === "rewards" ? (
               <LeaderboardHub onPlay={() => handleSectionChange("originals")} onBack={() => navigateBack("lobby")} />
             ) : isProfileSection(activeSection) ? (
-              <ProfileSectionView section={activeSection} onBack={() => navigateBack("lobby")} />
+              <ProfileSectionView section={activeSection} onBack={() => navigateBack("lobby")} onNavigate={handleSectionChange} />
             ) : activeSection === "originals" ? (
               <OriginalsView onGameSelect={handleOriginalSelect} query={searchQuery} />
             ) : activeSection === "lobby" ? (

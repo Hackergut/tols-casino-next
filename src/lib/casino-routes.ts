@@ -5,7 +5,8 @@ export const ORIGINAL_IDS = new Set<OriginalId>([
 ]);
 export const PROFILE_ROUTE_SECTIONS = new Set([
   "wallet", "vip", "vault", "token", "affiliate", "notifications", "transactions",
-  "redeem", "settings", "play-responsibly", "live-support",
+  "redeem", "settings", "play-responsibly", "live-support", "rewards",
+  "promotions", "challenges",
 ]);
 export interface CasinoRoute { section: string; game: OriginalId | null }
 

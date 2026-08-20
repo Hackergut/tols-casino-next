@@ -18,11 +18,12 @@ import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import { useGameSettings } from "@/lib/game-settings";
 import { setSoundEnabled } from "@/lib/game-audio";
 import { SupportChat } from "./SupportChat";
+import { PromotionsInfoSection, ChallengesInfoSection } from "./DiscoverInfo";
 
 const PROFILE_SECTIONS = new Set([
   "wallet", "vip", "vault", "token", "affiliate", "notifications",
   "transactions", "redeem", "settings", "play-responsibly", "live-support",
-  "rewards",
+  "rewards", "promotions", "challenges",
 ]);
 export function isProfileSection(id: string): boolean {
   return PROFILE_SECTIONS.has(id);
@@ -626,7 +627,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export function ProfileSectionView({ section, onBack }: { section: string; onBack: () => void }) {
+export function ProfileSectionView({ section, onBack, onNavigate }: { section: string; onBack: () => void; onNavigate?: (section: string) => void }) {
   switch (section) {
     case "wallet": return <WalletSection onBack={onBack} />;
     case "vip": return <VipSection onBack={onBack} />;
@@ -640,6 +641,8 @@ export function ProfileSectionView({ section, onBack }: { section: string; onBac
     case "play-responsibly": return <PlayResponsiblySection onBack={onBack} />;
     case "live-support": return <LiveSupportSection onBack={onBack} />;
     case "rewards": return <RewardsSection onBack={onBack} />;
+    case "promotions": return <PromotionsInfoSection onBack={onBack} onNavigate={onNavigate ?? ((s) => s)} />;
+    case "challenges": return <ChallengesInfoSection onBack={onBack} onNavigate={onNavigate ?? ((s) => s)} />;
     default: return null;
   }
 }

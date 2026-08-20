@@ -22,6 +22,7 @@ import { Carousel } from "./Carousel";
 import { HeroCarousel } from "./HeroCarousel";
 import { LobbyGameCard } from "./GameCards";
 import { EurovirtualsRow } from "./EurovirtualsRow";
+import { PromotionCards } from "./PromotionCards";
 import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
 
@@ -260,6 +261,9 @@ export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
           primary Originals shelf before any secondary lobby content. */}
       <HeroCarousel onSelect={onNavigate} />
       <CategoryNav active="lobby" onNavigate={onNavigate} />
+
+      {/* Official promotions — visible pre sign-up / login. */}
+      <PromotionCards onNavigate={onNavigate} />
 
       {loading ? (
         <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">

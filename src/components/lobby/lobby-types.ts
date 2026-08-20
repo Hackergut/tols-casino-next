@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
   HomeIcon, Flame, Radio, LayoutGrid, Clock, Trophy, Swords,
-  Wallet, Settings, Receipt, Headphones, Share2,
+  Wallet, Settings, Receipt, Headphones, Share2, Gift,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -167,6 +167,8 @@ export const SIDEBAR_SECTIONS: SidebarSectionDef[] = [
     id: "discover",
     titleKey: "sidebar.discover",
     items: [
+      { id: "promotions", labelKey: "nav.promotions", icon: Gift },
+      { id: "challenges", labelKey: "nav.challenges", icon: Swords },
       { id: "rewards", labelKey: "nav.leaderboards", icon: Trophy },
       { id: "affiliate", labelKey: "profile.affiliate", icon: Share2 },
       { id: "transactions", labelKey: "profile.transactions", icon: Receipt },

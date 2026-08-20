@@ -55,7 +55,7 @@ const PLATFORM_STRINGS: Record<Locale, Dict> = {
 
   en: {
     "common.back":"Back","common.carousel":"Carousel","common.goTo":"Go to {target}","common.previous":"Previous","common.next":"Next","common.close":"Close","common.loading":"Loading…","common.viewAll":"View all","common.showMore":"Show more","common.showLess":"Show less","common.spin":"Spin","common.enter":"Enter","common.new":"New","common.hot":"Hot","common.live":"Live",
-    "nav.home":"Home","nav.originals":"Originals","nav.slots":"Slots","nav.liveCasino":"Live Casino","nav.virtual":"Virtual Games","nav.table":"Table Games","nav.recent":"Recent","nav.leaderboards":"Leaderboards","nav.settings":"Settings",
+    "nav.home":"Home","nav.originals":"Originals","nav.slots":"Slots","nav.liveCasino":"Live Casino","nav.virtual":"Virtual Games","nav.table":"Table Games","nav.recent":"Recent","nav.leaderboards":"Leaderboards","nav.promotions":"Promotions","nav.challenges":"Challenges","nav.settings":"Settings",
     "sidebar.personal":"Personal","sidebar.games":"Game Categories","sidebar.discover":"Discover",
     "header.notifications":"Notifications","header.community":"Community chat","header.openWallet":"Open wallet","header.signup":"Sign up","header.player":"Player","header.logout":"Logout","header.toggleMenu":"Toggle menu",
     "profile.vault":"Vault","profile.vip":"VIP","profile.language":"Language","profile.languageHint":"Automatically detected from your region. You can override it here.","profile.preferences":"Preferences","profile.account":"Account","profile.token":"Token","profile.affiliate":"Affiliate Program","profile.transactions":"Transactions","profile.redeem":"Redeem Code","profile.responsible":"Play Responsibly","profile.support":"Live Support",
