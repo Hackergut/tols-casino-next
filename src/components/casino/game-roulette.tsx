@@ -17,6 +17,7 @@ import {
 } from 'react';
 import { ArrowLeft, RotateCcw, Undo2 } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -218,8 +219,8 @@ const DOZENS = [
 ];
 
 export function RouletteGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [chip, setChip] = useState(5);
+  const { balance, setBalance } = useOriginalsSession("roulette", { color: "red" }, chip, initialBalance);
   const [bets, setBets] = useState<Map<string, Bet>>(new Map());
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<null | { winning: number; won: boolean; payout: number }>(null);
@@ -248,21 +249,14 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
     setResult(null);
     const betList = Array.from(bets.values());
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'roulette', amount: totalStaked, payload: { bets: betList } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { winning: number };
-        await wheelRef.current?.spin(payload.winning);
-        setResult({ winning: payload.winning, won: data.data.won, payout: data.data.payout });
-        setBalance(data.data.newBalance);
-        setHistory((prev) =>
-          [{ winning: payload.winning, result: data.data.won ? 'win' : 'lose', payout: data.data.payout }, ...prev].slice(0, 12),
-        );
-      }
+      const data = await placeOriginalsBet("roulette", totalStaked, { bets: betList });
+      const payload = data.payload as { winning: number };
+      await wheelRef.current?.spin(payload.winning);
+      setResult({ winning: payload.winning, won: data.won, payout: data.payout });
+      setBalance(data.newBalance);
+      setHistory((prev) =>
+        [{ winning: payload.winning, result: data.won ? 'win' : 'lose', payout: data.payout }, ...prev].slice(0, 12),
+      );
     } catch { /* ignore */ }
     setSpinning(false);
   }, [spinning, bets, totalStaked, balance]);

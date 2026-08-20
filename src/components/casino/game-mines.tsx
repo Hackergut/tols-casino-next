@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Minus, Plus } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { originalsAction, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -95,9 +96,9 @@ function ConfettiParticle({ delay, x, color }: { delay: number; x: number; color
 }
 
 export function MinesGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [mineCount, setMineCount] = useState(3);
+  const { balance, setBalance } = useOriginalsSession("mines", { mines: mineCount, tilesToReveal: 3 }, betAmount, initialBalance);
   const [phase, setPhase] = useState<'betting' | 'playing' | 'done'>('betting');
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [mines, setMines] = useState<Set<number>>(new Set());
@@ -233,29 +234,24 @@ export function MinesGame({ onBack, initialBalance }: Props) {
   }, [phase, revealed, betAmount, mineCount]);
 
   const cashOut = useCallback(async () => {
-    if (phase !== 'playing' || revealed.size === 0) return;
-    setPhase('done');
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 2500);
+    if (phase !== 'playing' || revealed.size === 0 || !roundIdRef.current) return;
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'mines', amount: betAmount, payload: { mines: mineCount, picks: currentPicks } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { layout: boolean[] };
+      const data = await originalsAction("mines", roundIdRef.current, { type: "cashout" });
+      const payload = data.payload as { layout?: boolean[] };
+      if (payload.layout) {
         const minePositions = new Set<number>();
         payload.layout.forEach((m, i) => { if (m) minePositions.add(i); });
         setMines(minePositions);
-        setResult({ won: true, payout: data.data.payout, hitMine: false });
-        setPayout(data.data.payout);
-        setBalance(data.data.newBalance);
-        setHistory(prev => [{ result: 'win', payout: data.data.payout, mines: mineCount, picks: currentPicks.length }, ...prev].slice(0, 10));
       }
+      setPhase('done');
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2500);
+      setResult({ won: true, payout: data.payout, hitMine: false });
+      setPayout(data.payout);
+      setBalance(data.newBalance);
+      setHistory(prev => [{ result: 'win', payout: data.payout, mines: mineCount, picks: currentPicks.length }, ...prev].slice(0, 10));
     } catch { /* ignore */ }
-  }, [phase, revealed, betAmount, mineCount, currentPicks]);
+  }, [phase, revealed, mineCount, currentPicks]);
 
   const reset = useCallback(() => {
     setPhase('betting');

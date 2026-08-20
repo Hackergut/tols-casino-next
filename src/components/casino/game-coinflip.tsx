@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 import { useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
@@ -103,9 +104,9 @@ function Coin3D({ flipping, result, choice, animKey }: {
 }
 
 export function CoinflipGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [choice, setChoice] = useState<'heads' | 'tails'>('heads');
+  const { balance, setBalance } = useOriginalsSession("coinflip", { choice }, betAmount, initialBalance);
   const [flipping, setFlipping] = useState(false);
   const [result, setResult] = useState<null | { won: boolean; flip: string; payout: number; multiplier: number }>(null);
   const [history, setHistory] = useState<Array<{ result: string; payout: number; choice: string; flip: string }>>([]);
@@ -118,19 +119,12 @@ export function CoinflipGame({ onBack, initialBalance }: Props) {
     setAnimKey(k => k + 1);
 
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'coinflip', amount: betAmount, payload: { choice } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { flip: string };
-        const r = { won: data.data.won, flip: payload.flip, payout: data.data.payout, multiplier: data.data.multiplier };
-        setResult(r);
-        setBalance(data.data.newBalance);
-        setHistory(prev => [{ result: r.won ? 'win' : 'lose', payout: r.payout, choice, flip: payload.flip }, ...prev].slice(0, 10));
-      }
+      const data = await placeOriginalsBet("coinflip", betAmount, { choice });
+      const payload = data.payload as { flip: string };
+      const r = { won: data.won, flip: payload.flip, payout: data.payout, multiplier: data.multiplier };
+      setResult(r);
+      setBalance(data.newBalance);
+      setHistory(prev => [{ result: r.won ? 'win' : 'lose', payout: r.payout, choice, flip: payload.flip }, ...prev].slice(0, 10));
     } catch { /* ignore */ }
     setTimeout(() => setFlipping(false), 2800);
   }, [flipping, betAmount, balance, choice]);

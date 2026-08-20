@@ -5,6 +5,7 @@ import { useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Minus, Plus, Star } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -110,9 +111,9 @@ const KENO_STYLES = [
 ].join('\n');
 
 export function KenoGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const { balance, setBalance } = useOriginalsSession("keno", { picks: Array.from(selected), risk: "classic" }, betAmount, initialBalance);
   const [drawn, setDrawn] = useState<Set<number>>(new Set());
   const [drawnOrder, setDrawnOrder] = useState<number[]>([]);
   const [phase, setPhase] = useState<'betting' | 'drawing' | 'done'>('betting');
@@ -153,54 +154,34 @@ export function KenoGame({ onBack, initialBalance }: Props) {
     setDrawnOrder([]);
     drawCountRef.current = 0;
 
-    const nums = new Set<number>();
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      const uintArr = new Uint32Array(80);
-      crypto.getRandomValues(uintArr);
-      const shuffled = Array.from({ length: 80 }, (_, i) => i + 1)
-        .map((v, i) => ({ v, sort: uintArr[i] }))
-        .sort((a, b) => a.sort - b.sort)
-        .map(x => x.v);
-      for (let i = 0; i < 20; i++) nums.add(shuffled[i]);
-    } else {
-      while (nums.size < 20) {
-        nums.add(Math.floor(Math.random() * 80) + 1);
+    try {
+      const data = await placeOriginalsBet("keno", betAmount, {
+        picks: Array.from(selected),
+        risk: "classic",
+      });
+      const arr = ((data.payload as { drawn?: number[] }).drawn ?? []).slice(0, 10);
+      if (reduced) {
+        setDrawn(new Set(arr));
+        setDrawnOrder(arr);
+        drawCountRef.current = arr.length;
+      } else {
+        for (let i = 0; i < arr.length; i++) {
+          setCurrentDrawBall(arr[i]);
+          await new Promise(r => setTimeout(r, 120));
+          setDrawn(prev => new Set([...prev, arr[i]]));
+          setDrawnOrder(prev => [...prev, arr[i]]);
+          drawCountRef.current = i + 1;
+        }
       }
+      setCurrentDrawBall(null);
+      const hitCount = Number((data.payload as { hits?: number }).hits ?? 0);
+      setPhase('done');
+      setResult({ won: data.won, payout: data.payout, hits: hitCount });
+      setBalance(data.newBalance);
+      setHistory(prev => [{ result: data.won ? 'win' : 'lose', picks: selected.size, hits: hitCount, payout: data.payout }, ...prev].slice(0, 10));
+    } catch {
+      setPhase('betting');
     }
-
-    const arr = Array.from(nums);
-    if (reduced) {
-      // Static fallback: reveal the full draw at once
-      setDrawn(new Set(arr));
-      setDrawnOrder(arr);
-      drawCountRef.current = arr.length;
-    } else {
-      for (let i = 0; i < arr.length; i++) {
-        setCurrentDrawBall(arr[i]);
-        await new Promise(r => setTimeout(r, 120));
-        setDrawn(prev => new Set([...prev, arr[i]]));
-        setDrawnOrder(prev => [...prev, arr[i]]);
-        drawCountRef.current = i + 1;
-      }
-    }
-    setCurrentDrawBall(null);
-
-    let hitCount = 0;
-    selected.forEach(n => { if (nums.has(n)) hitCount++; });
-    const table = PAYOUT_TABLE[selected.size];
-    const mult = table ? (table[Math.min(hitCount, table.length - 1)] || 0) : 0;
-    const won = mult > 0;
-    const payoutAmount = won ? betAmount * mult : 0;
-
-    setPhase('done');
-    setResult({ won, payout: payoutAmount, hits: hitCount });
-
-    if (won) {
-      setBalance(prev => prev + payoutAmount - betAmount);
-    } else {
-      setBalance(prev => prev - betAmount);
-    }
-    setHistory(prev => [{ result: won ? 'win' : 'lose', picks: selected.size, hits: hitCount, payout: payoutAmount }, ...prev].slice(0, 10));
   }, [selected, betAmount, balance, reduced]);
 
   const reset = useCallback(() => {
@@ -238,7 +219,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">Keno</h1>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick 1-10 numbers from 80 and match to win!</p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick 1-10 numbers from 40 — 10 drawn, provably fair</p>
           </div>
         </div>
       </div>
@@ -267,8 +248,8 @@ export function KenoGame({ onBack, initialBalance }: Props) {
               )}
               <span className="text-xs font-medium tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 {phase === 'drawing'
-                  ? 'Drawing ' + drawnOrder.length + '/20...'
-                  : 'Drawn ' + drawnOrder.length + '/20'}
+                  ? 'Drawing ' + drawnOrder.length + '/10...'
+                  : 'Drawn ' + drawnOrder.length + '/10'}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -282,7 +263,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
             <div
               className="h-full rounded-full transition-all duration-300 ease-out relative"
               style={{
-                width: (drawnOrder.length / 20) * 100 + '%',
+                width: (drawnOrder.length / 10) * 100 + '%',
                 background: 'linear-gradient(90deg, var(--color-pending), var(--color-pending))',
                 boxShadow: '0 0 8px color-mix(in oklab, var(--color-pending) 30%, transparent)',
               }}
@@ -321,7 +302,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
             )}
 
             <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5 sm:gap-2">
-              {Array.from({ length: 80 }, (_, i) => i + 1).map(n => {
+              {Array.from({ length: 40 }, (_, i) => i + 1).map(n => {
                 const isSelected = selected.has(n);
                 const isDrawn = drawn.has(n);
                 const isHit = isSelected && isDrawn;

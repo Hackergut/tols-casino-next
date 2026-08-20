@@ -5,6 +5,7 @@ import { useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -35,9 +36,9 @@ function multToY(mult: number, trackHeight: number): number {
 }
 
 export function LimboGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [target, setTarget] = useState(2);
+  const { balance, setBalance } = useOriginalsSession("limbo", { target }, betAmount, initialBalance);
   const [rolling, setRolling] = useState(false);
   const [result, setResult] = useState<null | { won: boolean; roll: number; payout: number; multiplier: number }>(null);
   const [displayValue, setDisplayValue] = useState(1);
@@ -49,10 +50,6 @@ export function LimboGame({ onBack, initialBalance }: Props) {
   const targetRollRef = useRef(0);
   const isAnimatingRef = useRef(false);
   const reduced = useReducedMotion();
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("tols:game-params", { detail: { gameId: "limbo", params: { target }, bet: betAmount } }));
-  }, [target, betAmount]);
 
   const winChance = target > 1 ? ((99 / target) * 100) : 99;
 
@@ -105,18 +102,13 @@ export function LimboGame({ onBack, initialBalance }: Props) {
     }, 40);
 
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'limbo', amount: betAmount, payload: { target } }),
-      });
-      const data = await res.json();
+      const data = await placeOriginalsBet("limbo", betAmount, { target });
       if (scrambleInterval) clearInterval(scrambleInterval);
 
-      if (data.success) {
-        const payload = data.data.payload as { roll: number };
+      if (data) {
+        const payload = data.payload as { roll: number };
         const finalRoll = payload.roll;
-        const won = data.data.won;
+        const won = data.won;
 
         // Smooth animation to final value (instant under reduced motion)
         if (reduced) {
@@ -126,12 +118,10 @@ export function LimboGame({ onBack, initialBalance }: Props) {
         }
 
         setTimeout(() => {
-          const r = { won, roll: finalRoll, payout: data.data.payout, multiplier: data.data.multiplier };
+          const r = { won, roll: finalRoll, payout: data.payout, multiplier: data.multiplier };
           setResult(r);
-          setBalance(data.data.newBalance);
-          setHistory(prev => [{ roll: finalRoll, target, result: won ? 'win' : 'lose', payout: won ? data.data.payout : -betAmount }, ...prev].slice(0, 10));
-          window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
-          window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
+          setBalance(data.newBalance);
+          setHistory(prev => [{ roll: finalRoll, target, result: won ? 'win' : 'lose', payout: won ? data.payout : -betAmount }, ...prev].slice(0, 10));
           setRolling(false);
 
           if (won) {

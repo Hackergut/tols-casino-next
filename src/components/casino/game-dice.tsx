@@ -4,16 +4,17 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props { onBack: () => void; initialBalance: number; }
 type Result = null | { won: boolean; roll: number; payout: number; multiplier: number };
 
 export function DiceGame({ onBack, initialBalance }: Props) {
   const reduced = useReducedMotion();
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [target, setTarget] = useState(50);
   const [isOver, setIsOver] = useState(true);
+  const { balance, setBalance } = useOriginalsSession("dice", { target, isOver }, betAmount, initialBalance);
   const [rolling, setRolling] = useState(false);
   const [result, setResult] = useState<Result>(null);
   const [animatedRoll, setAnimatedRoll] = useState(50);
@@ -22,10 +23,6 @@ export function DiceGame({ onBack, initialBalance }: Props) {
   const [pfData, setPfData] = useState<{ serverSeedHash: string; clientSeed: string; nonce: number } | null>(null);
   const [showResult, setShowResult] = useState(false);
   const rollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("tols:game-params", { detail: { gameId: "dice", params: { target, isOver }, bet: betAmount } }));
-  }, [target, isOver, betAmount]);
 
   const winChance = useMemo(() => isOver ? (100 - target).toFixed(2) : target.toFixed(2), [target, isOver]);
   const potentialMultiplier = useMemo(() => winChance !== '0.00' ? (99 / Number(winChance)).toFixed(4) : '\u221e', [winChance]);
@@ -37,19 +34,14 @@ export function DiceGame({ onBack, initialBalance }: Props) {
     const interval = reduced ? undefined : setInterval(() => setAnimatedRoll(Math.floor(Math.random() * 10000) / 100), 50);
     if (interval) rollIntervalRef.current = interval;
     try {
-      const res = await fetch('/api/bets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: 'dice', amount: betAmount, payload: { target, isOver } }) });
-      const data = await res.json();
+      const data = await placeOriginalsBet("dice", betAmount, { target, isOver });
       if (interval) clearInterval(interval);
-      if (data.success) {
-        const payload = data.data.payload as { roll: number; target: number; isOver: boolean };
-        const r = { won: data.data.won, roll: payload.roll, payout: data.data.payout, multiplier: data.data.multiplier };
-        setResult(r); setAnimatedRoll(payload.roll); setBalance(data.data.newBalance);
-        setPfData({ serverSeedHash: data.data.serverSeedHash, clientSeed: data.data.clientSeed, nonce: data.data.nonce });
-        setHistory(prev => [{ roll: payload.roll, target, isOver, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 15));
-        window.dispatchEvent(new CustomEvent('tols:bet', { detail: data.data }));
-        window.dispatchEvent(new CustomEvent('tols:balance', { detail: data.data.newBalance }));
-        setTimeout(() => setShowResult(true), 50);
-      }
+      const payload = data.payload as { roll: number; target: number; isOver: boolean };
+      const r = { won: data.won, roll: payload.roll, payout: data.payout, multiplier: data.multiplier };
+      setResult(r); setAnimatedRoll(payload.roll); setBalance(data.newBalance);
+      setPfData({ serverSeedHash: data.serverSeedHash, clientSeed: data.clientSeed, nonce: data.nonce });
+      setHistory(prev => [{ roll: payload.roll, target, isOver, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 15));
+      setTimeout(() => setShowResult(true), 50);
     } catch { if (interval) clearInterval(interval); }
     setTimeout(() => setRolling(false), 400);
   }, [rolling, betAmount, balance, target, isOver, reduced]);

@@ -5,6 +5,7 @@ import { useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Target, Crosshair } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -168,13 +169,12 @@ function TargetSVG({ multiplier, revealed, hit, isResult, won, shooting, index }
 }
 
 export function ShootGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [targetMult, setTargetMult] = useState(2);
+  const { balance, setBalance } = useOriginalsSession("shoot", {}, betAmount, initialBalance);
   const [gameState, setGameState] = useState<'idle' | 'ready' | 'shooting' | 'result'>('idle');
   const [targets, setTargets] = useState<number[]>([]);
   const [chosenIdx, setChosenIdx] = useState<number | null>(null);
-  const [seed, setSeed] = useState('');
   const [result, setResult] = useState<null | { won: boolean; multiplier: number; payout: number }>(null);
   const [history, setHistory] = useState<Array<{ result: string; target: number; mult: number; payout: number }>>([]);
   const [flash, setFlash] = useState(false);
@@ -184,17 +184,13 @@ export function ShootGame({ onBack, initialBalance }: Props) {
 
   const startRound = useCallback(() => {
     if (betAmount <= 0 || betAmount > balance) return;
-    const newSeed = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    const newTargets = generateTargets(targetMult, newSeed);
-    setSeed(newSeed);
-    setTargets(newTargets);
+    setTargets([0, 0, 0, 0, 0]);
     setChosenIdx(null);
     setResult(null);
     setGameState('ready');
-    setBalance(b => b - betAmount);
-  }, [betAmount, balance, targetMult]);
+  }, [betAmount, balance]);
 
-  const shootTarget = useCallback((idx: number) => {
+  const shootTarget = useCallback(async (idx: number) => {
     if (gameState !== 'ready') return;
     setGameState('shooting');
     setChosenIdx(idx);
@@ -202,23 +198,25 @@ export function ShootGame({ onBack, initialBalance }: Props) {
       setFlash(true);
       setTimeout(() => setFlash(false), 200);
     }
-
-    setTimeout(() => {
-      const mult = targets[idx];
-      const won = mult >= targetMult;
-      const payout = won ? betAmount * mult : 0;
-
-      setResult({ won, multiplier: mult, payout });
-      setBalance(b => b + payout);
+    try {
+      const data = await placeOriginalsBet("shoot", betAmount, {});
+      const mult = Number((data.payload as { mult?: number }).mult ?? data.multiplier);
+      const shown = [0, 1.5, 2.2, 4, 9];
+      shown[idx] = mult;
+      setTargets(shown);
+      setResult({ won: data.won, multiplier: mult, payout: data.payout });
+      setBalance(data.newBalance);
       setGameState('result');
       setHistory(prev => [{
-        result: won ? 'win' : 'lose',
+        result: data.won ? 'win' : 'lose',
         target: targetMult,
         mult,
-        payout: won ? payout - betAmount : -betAmount,
+        payout: data.won ? data.payout : -betAmount,
       }, ...prev].slice(0, 10));
-    }, 600);
-  }, [gameState, targets, targetMult, betAmount, reduced]);
+    } catch {
+      setGameState('ready');
+    }
+  }, [gameState, betAmount, targetMult, reduced]);
 
   const resetRound = useCallback(() => {
     setGameState('idle');

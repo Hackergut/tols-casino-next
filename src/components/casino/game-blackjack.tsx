@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
 import { GameBetControls } from "@/components/casino/game-shared";
 import { useGameEngine } from "@/hooks/useGameEngine";
+import { useOriginalsSession } from "@/lib/originals-client";
 
 type BjCard = { r: number; s: number };
 
@@ -30,8 +31,8 @@ function CardView({ card, hidden }: { card?: BjCard; hidden?: boolean }) {
 }
 
 export function BlackjackGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(10);
+  const { balance, setBalance } = useOriginalsSession("blackjack", { strategy: "basic" }, betAmount, initialBalance);
   const { round, result, pending, error, placeBet, sendAction, setRound, setResult } = useGameEngine("blackjack");
 
   const playing = Boolean(round?.pending);
@@ -43,12 +44,6 @@ export function BlackjackGame({ onBack, initialBalance }: Props) {
   const dealerTotal = payload.dealerTotal as number | undefined;
   const canDouble = Boolean(payload.canDouble);
   const outcome = payload.result as string | undefined;
-
-  useEffect(() => {
-    window.dispatchEvent(
-      new CustomEvent("tols:game-params", { detail: { gameId: "blackjack", params: { strategy: "basic" }, bet: betAmount } }),
-    );
-  }, [betAmount]);
 
   useEffect(() => {
     const latest = result ?? round;

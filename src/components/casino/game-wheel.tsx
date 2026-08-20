@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -90,9 +91,9 @@ const SIZE = CENTER * 2;
 const SPIN_MS = 4400; // 3.8s decel + spring-settle overshoot
 
 export function WheelGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [risk, setRisk] = useState<'low' | 'medium' | 'high'>('medium');
+  const { balance, setBalance } = useOriginalsSession("wheel", { risk, segments: 20 }, betAmount, initialBalance);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<null | { won: boolean; segment: number; multiplier: number; payout: number }>(null);
@@ -135,14 +136,9 @@ export function WheelGame({ onBack, initialBalance }: Props) {
     }
 
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'wheel', amount: betAmount, payload: { segments: 20, risk } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { segment: number; mult: number };
+      const data = await placeOriginalsBet("wheel", betAmount, { segments: 20, risk });
+      if (data) {
+        const payload = data.payload as { segment: number; mult: number };
         const seg = payload.segment;
         // pointer is at top (12 o'clock = 0deg). Segment i spans from i*18 to (i+1)*18.
         // We want the middle of segment i to align with 0deg (top).
@@ -154,10 +150,10 @@ export function WheelGame({ onBack, initialBalance }: Props) {
         setRotation(prev => prev + targetRotation);
 
         setTimeout(() => {
-          const r = { won: data.data.won, segment: payload.segment, multiplier: data.data.multiplier, payout: data.data.payout };
+          const r = { won: data.won, segment: payload.segment, multiplier: data.multiplier, payout: data.payout };
           setResult(r);
           setWinningSegment(seg);
-          setBalance(data.data.newBalance);
+          setBalance(data.newBalance);
           setHistory(prev => [{ result: r.won ? 'win' : 'lose', multiplier: r.multiplier, payout: r.payout }, ...prev].slice(0, 10));
           setSpinning(false);
           if (r.won) {

@@ -21,6 +21,7 @@ import {
 import { Application, Assets, Sprite, Container, Graphics, Texture } from 'pixi.js';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -247,8 +248,8 @@ const SlotReels = forwardRef<SlotsHandle, unknown>(function SlotReels(_props, re
 });
 
 export function SlotsGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
+  const { balance, setBalance } = useOriginalsSession("slots", {}, betAmount, initialBalance);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<null | { won: boolean; multiplier: number; payout: number }>(null);
   const [history, setHistory] = useState<Array<{ multiplier: number; result: string; payout: number }>>([]);
@@ -259,22 +260,15 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
     setSpinning(true);
     setResult(null);
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'slots', amount: betAmount }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { grid: number[][]; winSym: number };
-        await reelsRef.current?.spin(payload.grid, payload.winSym);
-        const r = { won: data.data.won, multiplier: data.data.multiplier, payout: data.data.payout };
-        setResult(r);
-        setBalance(data.data.newBalance);
-        setHistory((prev) =>
-          [{ multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
-        );
-      }
+      const data = await placeOriginalsBet("slots", betAmount, {});
+      const payload = data.payload as { grid: number[][]; winSym: number };
+      await reelsRef.current?.spin(payload.grid, payload.winSym);
+      const r = { won: data.won, multiplier: data.multiplier, payout: data.payout };
+      setResult(r);
+      setBalance(data.newBalance);
+      setHistory((prev) =>
+        [{ multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
+      );
     } catch {
       /* ignore */
     }

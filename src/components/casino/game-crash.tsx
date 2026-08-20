@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -32,9 +33,9 @@ const PAD = 40;
 
 export function CrashGame({ onBack, initialBalance }: Props) {
   const reduced = useReducedMotion();
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [autoCashout, setAutoCashout] = useState(2);
+  const { balance, setBalance } = useOriginalsSession("crash", { cashOutAt: autoCashout }, betAmount, initialBalance);
   const [phase, setPhase] = useState<Phase>('betting');
   const [multiplier, setMultiplier] = useState(1);
   const [crashPoint, setCrashPoint] = useState(0);

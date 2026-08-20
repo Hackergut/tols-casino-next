@@ -13,6 +13,7 @@ import Matter from 'matter-js';
 import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { PostedAmount } from '@/casino/components/casino/PostedAmount';
 import { GameBetControls } from "@/components/casino/game-shared";
+import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
@@ -471,10 +472,10 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 export function PlinkoGame({ onBack, initialBalance }: Props) {
-  const [balance, setBalance] = useState(initialBalance);
   const [betAmount, setBetAmount] = useState(5);
   const [rows, setRows] = useState<8 | 12 | 16>(12);
   const [risk, setRisk] = useState<'low' | 'medium' | 'high'>('medium');
+  const { balance, setBalance } = useOriginalsSession("plinko", { rows, risk }, betAmount, initialBalance);
   const [dropping, setDropping] = useState(false);
   const [result, setResult] = useState<null | { won: boolean; slot: number; multiplier: number; payout: number }>(null);
   const [history, setHistory] = useState<Array<{ slot: number; multiplier: number; result: string; payout: number }>>([]);
@@ -492,28 +493,20 @@ export function PlinkoGame({ onBack, initialBalance }: Props) {
     setResult(null);
 
     try {
-      const res = await fetch('/api/bets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game: 'plinko', amount: betAmount, payload: { rows, risk } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        const payload = data.data.payload as { slot: number };
-        // Animate the ball to the server-decided slot, then reveal the result.
-        await boardRef.current?.drop(payload.slot);
-        const r = {
-          won: data.data.won,
-          slot: payload.slot,
-          multiplier: data.data.multiplier,
-          payout: data.data.payout,
-        };
-        setResult(r);
-        setBalance(data.data.newBalance);
-        setHistory((prev) =>
-          [{ slot: payload.slot, multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
-        );
-      }
+      const data = await placeOriginalsBet("plinko", betAmount, { rows, risk });
+      const payload = data.payload as { slot: number };
+      await boardRef.current?.drop(payload.slot);
+      const r = {
+        won: data.won,
+        slot: payload.slot,
+        multiplier: data.multiplier,
+        payout: data.payout,
+      };
+      setResult(r);
+      setBalance(data.newBalance);
+      setHistory((prev) =>
+        [{ slot: payload.slot, multiplier: r.multiplier, result: r.won ? 'win' : 'lose', payout: r.payout }, ...prev].slice(0, 10),
+      );
     } catch {
       /* ignore */
     }
