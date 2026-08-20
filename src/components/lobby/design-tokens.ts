@@ -84,10 +84,10 @@ export const HIT_TARGET = 44;
 export type CardSize = 'small' | 'medium' | 'large' | 'xl';
 
 export const CARD_WIDTHS: Record<CardSize, number> = {
-  small:  140,
-  medium: 180,
-  large:  220,
-  xl:     280,
+  small:  128,
+  medium: 160,
+  large:  200,
+  xl:     248,
 };
 
 export function cardWidth(size: CardSize = 'medium'): number {

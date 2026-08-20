@@ -264,7 +264,7 @@ export function HomeView({ games, loading, onGameClick, onNavigate }: Props) {
       {loading ? (
         <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="skeleton-shimmer aspect-[16/11] rounded-2xl bg-surface" />
+            <div key={i} className="skeleton-shimmer aspect-[3/4] rounded-2xl bg-surface" />
           ))}
         </div>
       ) : row("TOLS Originals", <Flame className="h-5 w-5 shrink-0 text-lime" />, originals, "originals", "originals")}

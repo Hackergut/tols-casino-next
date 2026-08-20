@@ -20,15 +20,13 @@ import {
 } from 'react';
 import { Application, Assets, Sprite, Container, Graphics, Texture } from 'pixi.js';
 import { RotateCcw } from 'lucide-react';
-import { GameBalance, GameHeader } from "@/components/casino/game-shared";
+import { GameBalance, GameBetControls, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
   onBack: () => void;
   initialBalance: number;
 }
-
-const QUICK_BETS = [1, 5, 10, 50, 100];
 
 /* Backend paytable (normalised pays from src/app/api/bets/route.ts) — display only. */
 const PAYTABLE: { sym: number; label: string; pay: number }[] = [
@@ -308,29 +306,7 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
         {/* Controls */}
         <div className="space-y-3">
           <GameBalance value={balance} />
-
-          {/* Bet Amount */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Bet Amount</p>
-            <div className="flex gap-1.5 mb-2 flex-wrap">
-              {QUICK_BETS.map((v) => (
-                <button key={v} onClick={() => setBetAmount(v)}
-                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
-                  style={betAmount === v
-                    ? { background: 'color-mix(in oklab, var(--color-lime) 15%, transparent)', color: 'var(--color-lime)', border: '1px solid color-mix(in oklab, var(--color-lime) 30%, transparent)' }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  disabled={spinning}
-                >
-                  ${v}
-                </button>
-              ))}
-            </div>
-            <input type="number" value={betAmount} onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-              className="w-full h-9 px-3 rounded-lg text-sm font-bold text-white text-center outline-none"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-              disabled={spinning}
-            />
-          </div>
+          <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={spinning} />
 
           {/* Spin Button */}
           <button onClick={spin}

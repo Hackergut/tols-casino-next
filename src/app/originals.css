@@ -3,7 +3,11 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 11;
+  /* Portrait crop — matches the admin casino GameCard (3/4) so the whole
+     platform shares one card silhouette. Originals art is portrait-native,
+     and slot/virtual thumbnails are portrait, so this crops instead of
+     letterboxing. */
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   border-radius: 1rem;
   border: 1px solid rgb(255 255 255 / 0.06);

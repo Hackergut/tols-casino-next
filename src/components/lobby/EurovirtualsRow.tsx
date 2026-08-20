@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Rocket, Trophy, Layers, Gamepad2, Sparkles, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Carousel } from "./Carousel";
-import { LobbyGameCard } from "./GameCards";
+import { VirtualGameCard, VIRTUAL_CATEGORY_META, virtualCategoryMeta } from "./VirtualGameCard";
 import type { LobbyGame } from "./lobby-types";
 
 /*
@@ -41,20 +41,11 @@ function toLobbyGame(g: EvApiGame): LobbyGame {
   };
 }
 
-// Preferred display order + icon per vendor category. Anything unmatched falls
-// through after these, alphabetically, with a default icon.
-const CATEGORY_META: { match: string; label: string; icon: LucideIcon }[] = [
-  { match: "crash", label: "Crash Games", icon: Rocket },
-  { match: "virtual", label: "Virtual Sport", icon: Trophy },
-  { match: "slot", label: "Slots", icon: Layers },
-  { match: "arcade", label: "Arcade", icon: Gamepad2 },
-  { match: "jackpot", label: "Jackpot Games", icon: Sparkles },
-];
+// Preferred display order + icon per vendor category (shared with the card).
+const CATEGORY_META = VIRTUAL_CATEGORY_META;
 
 function metaFor(category: string): { label: string; icon: LucideIcon } {
-  const c = category.toLowerCase();
-  const found = CATEGORY_META.find((m) => c.includes(m.match));
-  return found ? { label: found.label, icon: found.icon } : { label: category, icon: Gamepad2 };
+  return virtualCategoryMeta(category);
 }
 
 function orderIndex(category: string): number {
@@ -99,7 +90,7 @@ export function EurovirtualsRow({ onSelect }: { onSelect: (game: LobbyGame) => v
         const list = groups.get(cat)!;
         return (
           <Carousel key={cat} title={label} size="large" icon={<Icon className="h-5 w-5 shrink-0 text-lime" />}>
-            {list.map((g) => <LobbyGameCard key={g.id} game={g} onClick={() => onSelect(g)} />)}
+            {list.map((g) => <VirtualGameCard key={g.id} game={g} onClick={() => onSelect(g)} />)}
           </Carousel>
         );
       })}

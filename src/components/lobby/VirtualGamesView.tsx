@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { Gamepad2 } from "lucide-react";
-import { LobbyGameCard } from "./GameCards";
+import { VirtualGameCard } from "./VirtualGameCard";
 import { GamesGridSkeleton, EmptyGames } from "./LobbyView";
 import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
@@ -124,7 +124,7 @@ export function VirtualGamesView({
       </div>
       <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
         {games.map((g) => (
-          <LobbyGameCard key={g.id} game={g} onClick={() => onGameSelect(g)} />
+          <VirtualGameCard key={g.id} game={g} onClick={() => onGameSelect(g)} />
         ))}
       </div>
     </section>
