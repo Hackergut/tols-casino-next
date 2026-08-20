@@ -21,9 +21,9 @@ export function GameHeader({
   onBack: () => void;
 }) {
   return (
-    <div className="game-header">
-      <button onClick={onBack} className="game-back-btn btn-press" aria-label="Back">
-        <ArrowLeft className="w-5 h-5" />
+    <div className="g-header">
+      <button onClick={onBack} className="g-back" aria-label="Back">
+        <ArrowLeft className="w-4 h-4" />
       </button>
       <div>
         <h1>{title}</h1>
@@ -36,9 +36,9 @@ export function GameHeader({
 // ── Game Balance ───────────────────────────────────────────────────────
 export function GameBalance({ value }: { value: number }) {
   return (
-    <div className="game-balance">
-      <p className="game-balance-label">Balance</p>
-      <PostedAmount value={value} format={(n) => `$${n.toFixed(2)}`} className="game-balance-value" />
+    <div className="g-balance">
+      <p className="g-balance-label">Balance</p>
+      <PostedAmount value={value} format={(n) => `$${n.toFixed(2)}`} className="g-balance-value" />
     </div>
   );
 }
@@ -203,7 +203,7 @@ export function GameActionButton({
   const reduced = useReducedMotion();
   if (variant === 'secondary') {
     return (
-      <button onClick={onClick} disabled={disabled} className="game-action-btn-secondary btn-press">
+      <button onClick={onClick} disabled={disabled} className="g-btn g-btn-secondary">
         {children}
       </button>
     );
@@ -213,7 +213,7 @@ export function GameActionButton({
       onClick={onClick}
       disabled={disabled}
       whileTap={reduced ? undefined : { scale: 0.97 }}
-      className="game-action-btn"
+      className="g-btn g-btn-play"
     >
       {children}
     </motion.button>

@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
@@ -156,15 +155,7 @@ export function LimboGame({ onBack, initialBalance }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-white">Limbo</h1>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Set your target — how high can you go?</p>
-        </div>
-      </div>
+      <GameHeader title="Limbo" subtitle="Set your target — how high can you go?" onBack={onBack} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_300px] gap-5 items-start">
         {/* Vertical Track */}
@@ -388,10 +379,7 @@ export function LimboGame({ onBack, initialBalance }: Props) {
         {/* Controls */}
         <div className="space-y-3">
           {/* Balance */}
-          <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="text-2xl font-black text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           {/* Target Multiplier */}
           <div className="rounded-2xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
@@ -445,14 +433,7 @@ export function LimboGame({ onBack, initialBalance }: Props) {
           <button
             onClick={roll}
             disabled={rolling || betAmount <= 0 || betAmount > balance || target <= 1}
-            className="w-full py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all disabled:opacity-30 hover:shadow-lg"
-            style={{
-              background: rolling
-                ? 'rgba(255,255,255,0.05)'
-                : 'linear-gradient(135deg, var(--color-lime) 0%, #c2e600 100%)',
-              color: rolling ? 'rgba(255,255,255,0.3)' : 'var(--color-bg)',
-              boxShadow: rolling ? 'none' : '0 4px 24px color-mix(in oklab, var(--color-lime) 25%, transparent)',
-            }}
+            className="g-btn g-btn-play"
           >
             {rolling ? 'Rolling...' : 'Bet'}
           </button>

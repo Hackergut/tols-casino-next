@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Minus, Plus, Star } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 import { KENO_TABLES } from "@/lib/game-engines/tables";
 
@@ -189,30 +188,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
     <div className="keno-game-wrapper">
       <style dangerouslySetInnerHTML={{ __html: KENO_STYLES }} />
 
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={onBack}
-          className="p-2.5 rounded-xl transition-all duration-200 hover:bg-white/5"
-          style={{ color: 'rgba(255,255,255,0.7)' }}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, color-mix(in srgb, var(--vip) 20%, transparent), color-mix(in srgb, var(--vip) 5%, transparent))',
-              border: '1px solid color-mix(in srgb, var(--vip) 20%, transparent)',
-            }}
-          >
-            <Star className="w-5 h-5" style={{ color: 'var(--vip)' }} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Keno</h1>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick 1-10 numbers from 40 — 10 drawn, provably fair</p>
-          </div>
-        </div>
-      </div>
+      <GameHeader title="Keno" subtitle="Pick 1-10 numbers from 40 — 10 drawn, provably fair" onBack={onBack} />
 
       {(phase === 'drawing' || (phase === 'done' && drawnOrder.length > 0)) && (
         <div
@@ -354,16 +330,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
         </div>
 
         <div className="space-y-4">
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: 'linear-gradient(135deg, var(--color-surface), var(--color-bg))',
-              border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)',
-            }}
-          >
-            <p className="text-xs font-medium tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           <div
             className="rounded-2xl p-4"
@@ -404,12 +371,7 @@ export function KenoGame({ onBack, initialBalance }: Props) {
               <button
                 onClick={play}
                 disabled={selected.size < 1 || betAmount <= 0 || betAmount > balance}
-                className="w-full py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(135deg, var(--color-lime), #a8d600)',
-                  color: 'var(--color-bg)',
-                  boxShadow: '0 0 20px color-mix(in oklab, var(--color-lime) 20%, transparent), 0 4px 15px color-mix(in oklab, var(--color-lime) 15%, transparent)',
-                }}
+                className="g-btn g-btn-play"
               >
                 Play Keno
               </button>

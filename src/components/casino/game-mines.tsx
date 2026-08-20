@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Minus, Plus } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { originalsAction, placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
@@ -279,24 +278,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
       {/* Shaking container */}
       <div className={shaking && !reduced ? 'mines-screen-shake' : ''}>
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={onBack}
-            className="p-2.5 rounded-xl transition-all duration-200 hover:bg-white/5"
-            style={{ color: 'rgba(255,255,255,0.7)' }}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, color-mix(in oklab, var(--color-pending) 20%, transparent), color-mix(in oklab, var(--color-pending) 5%, transparent))', border: '1px solid color-mix(in oklab, var(--color-pending) 20%, transparent)' }}>
-              <BombIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Mines</h1>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Reveal safe tiles — avoid the mines!</p>
-            </div>
-          </div>
-        </div>
+        <GameHeader title="Mines" subtitle="Reveal safe tiles — avoid the mines!" onBack={onBack} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Grid Area */}
@@ -439,16 +421,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
 
           {/* Controls Panel */}
           <div className="space-y-4">
-            {/* Balance Card */}
-            <div className="rounded-2xl p-4 relative overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, var(--color-surface), var(--color-bg))',
-                border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)',
-              }}
-            >
-              <p className="text-xs font-medium tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-              <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-            </div>
+            <GameBalance value={balance} />
 
             {/* Multiplier Display (Playing) */}
             {phase === 'playing' && (
@@ -541,12 +514,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
                 <button
                   onClick={startGame}
                   disabled={betAmount <= 0 || betAmount > balance}
-                  className="w-full py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    background: 'linear-gradient(135deg, var(--color-lime), #c2e600)',
-                    color: 'var(--color-bg)',
-                    boxShadow: '0 0 20px color-mix(in oklab, var(--color-lime) 20%, transparent), 0 4px 15px color-mix(in oklab, var(--color-lime) 15%, transparent)',
-                  }}
+                  className="g-btn g-btn-play"
                 >
                   Start Game
                 </button>
@@ -558,18 +526,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
               <button
                 onClick={cashOut}
                 disabled={revealed.size === 0}
-                className="w-full py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                style={revealed.size > 0
-                  ? {
-                      background: 'linear-gradient(135deg, var(--color-win), #b8e600)',
-                      color: 'var(--color-bg)',
-                      boxShadow: '0 0 25px color-mix(in oklab, var(--color-win) 30%, transparent), 0 4px 15px color-mix(in oklab, var(--color-win) 20%, transparent)',
-                    }
-                  : {
-                      background: 'rgba(255,255,255,0.05)',
-                      color: 'rgba(255,255,255,0.3)',
-                    }
-                }
+                className="g-btn g-btn-play cashout"
               >
                 Cash Out ${(betAmount * displayMultiplier).toFixed(2)}
               </button>
@@ -579,12 +536,7 @@ export function MinesGame({ onBack, initialBalance }: Props) {
             {phase === 'done' && (
               <button
                 onClick={reset}
-                className="w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-200"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
+                className="g-btn g-btn-secondary"
               >
                 Play Again
               </button>

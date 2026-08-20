@@ -1010,11 +1010,11 @@ a,
 .g-btn { display:flex; align-items:center; justify-content:center; gap:0.25rem; border-radius:var(--g-radius-sm); font-weight:600; transition:var(--g-transition); cursor:pointer; user-select:none; border:none; outline:none; font-family:var(--g-font); }
 .g-btn:active:not(:disabled){ transform:scale(0.97); }
 .g-btn:disabled { opacity:0.4; cursor:not-allowed; }
-.g-btn-play { width:100%; padding:0.75rem; font-size:0.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; background:var(--g-green); color:#0f0f0f; border-radius:var(--g-radius); }
-.g-btn-play:hover:not(:disabled){ background:var(--g-green-dim); }
-.g-btn-play.cashout { background:var(--g-amber); color:#0f0f0f; }
-.g-btn-secondary { width:100%; padding:0.75rem; font-size:0.75rem; font-weight:600; text-transform:uppercase; background:var(--g-panel-3); color:var(--g-text-2); border:1px solid var(--g-border-2); border-radius:var(--g-radius); }
-.g-btn-secondary:hover:not(:disabled){ background:var(--g-panel-hover); color:var(--g-text); }
+.g-btn-play { width:100%; padding:0.85rem; font-size:0.8125rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; background:var(--color-lime); color:var(--color-bg); border-radius:0.75rem; box-shadow:0 4px 22px color-mix(in oklab, var(--color-lime) 32%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.28); }
+.g-btn-play:hover:not(:disabled){ background:var(--lime-200); box-shadow:0 6px 28px color-mix(in oklab, var(--color-lime) 42%, transparent); }
+.g-btn-play.cashout { background:var(--g-amber); color:#0f0f0f; box-shadow:0 4px 22px color-mix(in oklab, var(--g-amber) 32%, transparent); }
+.g-btn-secondary { width:100%; padding:0.75rem; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; background:rgb(255 255 255 / 0.05); color:rgb(255 255 255 / 0.75); border:1px solid rgb(255 255 255 / 0.08); border-radius:0.75rem; }
+.g-btn-secondary:hover:not(:disabled){ background:rgb(255 255 255 / 0.09); color:#fff; border-color:color-mix(in oklab, var(--color-lime) 25%, transparent); }
 .g-btn-toggle { flex:1; padding:0.5rem; font-size:0.75rem; font-weight:600; text-transform:uppercase; border-radius:var(--g-radius-sm); }
 .g-btn-toggle.active { background:var(--g-green); color:#0a0a0b; border:none; font-weight:700; }
 .g-btn-toggle.inactive { background:var(--g-panel); color:var(--g-text-2); border:1px solid var(--g-border); }

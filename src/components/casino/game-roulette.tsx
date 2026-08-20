@@ -15,8 +15,8 @@ import {
   useImperativeHandle,
   forwardRef,
 } from 'react';
-import { ArrowLeft, RotateCcw, Undo2 } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
+import { RotateCcw, Undo2 } from 'lucide-react';
+import { GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
@@ -275,16 +275,7 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-white">Roulette</h1>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>European single-zero — place your bets and spin!</p>
-        </div>
-      </div>
+      <GameHeader title="Roulette" subtitle="European single-zero — place your bets and spin!" onBack={onBack} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Wheel + table */}
@@ -358,10 +349,7 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
 
         {/* Controls */}
         <div className="space-y-3">
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           {/* Chip selector */}
           <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
@@ -386,12 +374,7 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
           {/* Spin + clear */}
           <button onClick={spin}
             disabled={spinning || bets.size === 0 || totalStaked > balance}
-            className="w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-30"
-            style={{
-              background: spinning ? 'color-mix(in oklab, var(--color-lime) 30%, transparent)' : 'var(--color-lime)',
-              color: 'var(--color-bg)',
-              boxShadow: spinning ? 'none' : '0 0 20px color-mix(in oklab, var(--color-lime) 30%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}>
+            className="g-btn g-btn-play">
             {spinning ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(10,12,16,0.3)', borderTopColor: 'var(--color-bg)' }} />
@@ -400,8 +383,7 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
             ) : 'Spin'}
           </button>
           <button onClick={clearBets} disabled={spinning || bets.size === 0}
-            className="w-full py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all disabled:opacity-30 flex items-center justify-center gap-2"
-            style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            className="g-btn g-btn-secondary">
             <Undo2 className="w-3.5 h-3.5" /> Clear Bets
           </button>
 
@@ -431,8 +413,15 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
 
 function Chip({ amount }: { amount: number }) {
   return (
-    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center"
-      style={{ background: 'var(--color-lime)', color: 'var(--color-bg)', boxShadow: '0 0 6px color-mix(in oklab, var(--color-lime) 40%, transparent)' }}>
+    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black flex items-center justify-center"
+      style={{
+        backgroundImage: 'url(/games/props/chip-heads.jpg)',
+        backgroundSize: 'cover',
+        color: 'var(--color-lime)',
+        textShadow: '0 1px 2px #000',
+        boxShadow: '0 0 8px color-mix(in oklab, var(--color-lime) 40%, transparent)',
+        border: '1px solid color-mix(in oklab, var(--color-lime) 45%, transparent)',
+      }}>
       {amount}
     </span>
   );

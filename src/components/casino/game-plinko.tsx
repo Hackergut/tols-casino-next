@@ -10,9 +10,8 @@ import {
   forwardRef,
 } from 'react';
 import Matter from 'matter-js';
-import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 import { PLINKO_TABLES } from "@/lib/game-engines/tables";
 
@@ -505,16 +504,7 @@ export function PlinkoGame({ onBack, initialBalance }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-white">Plinko</h1>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Drop the ball and watch it bounce to a multiplier!</p>
-        </div>
-      </div>
+      <GameHeader title="Plinko" subtitle="Drop the ball and watch it bounce to a multiplier!" onBack={onBack} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Game Board */}
@@ -546,10 +536,7 @@ export function PlinkoGame({ onBack, initialBalance }: Props) {
         {/* Controls Panel */}
         <div className="space-y-3">
           {/* Balance */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           {/* Rows */}
           <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
@@ -607,12 +594,7 @@ export function PlinkoGame({ onBack, initialBalance }: Props) {
 {/* Bet Button */}
           <button onClick={dropBall}
             disabled={dropping || betAmount <= 0 || betAmount > balance}
-            className="w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-wider transition-all disabled:opacity-30"
-            style={{
-              background: dropping ? 'color-mix(in oklab, var(--color-lime) 30%, transparent)' : 'var(--color-lime)',
-              color: 'var(--color-bg)',
-              boxShadow: dropping ? 'none' : '0 0 20px color-mix(in oklab, var(--color-lime) 30%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}
+            className="g-btn g-btn-play"
           >
             {dropping ? (
               <span className="flex items-center justify-center gap-2">

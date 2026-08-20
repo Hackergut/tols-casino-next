@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, ChevronDown, ChevronUp, Shield } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { originalsAction, placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
@@ -233,16 +232,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
   return (
     <div className="space-y-4">
       
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="btn-press rounded-lg p-2 text-foreground/70 transition-colors hover:bg-secondary/50" aria-label="Back">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Crash</h1>
-          <p className="text-xs text-muted-foreground">Watch the multiplier rise — cash out before it crashes!</p>
-        </div>
-      </div>
+      <GameHeader title="Crash" subtitle="Watch the multiplier rise — cash out before it crashes!" onBack={onBack} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         {/* Chart Area */}
@@ -457,10 +447,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
         {/* Controls Panel */}
         <div className="space-y-3">
           {/* Balance — posted-tick signature */}
-          <div className="rounded-xl border border-lime/10 bg-gradient-to-br from-surface to-surface-raised p-4">
-            <p className="mb-1 text-xs text-muted-foreground">Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="text-2xl font-bold text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           {/* Current Multiplier / Potential Payout */}
           <div className="grid grid-cols-2 gap-3">
@@ -497,12 +484,12 @@ export function CrashGame({ onBack, initialBalance }: Props) {
             <motion.button
               onClick={cashOut}
               whileTap={reduced ? undefined : { scale: 0.97 }}
-              className="w-full rounded-xl bg-lime py-4 text-sm font-black uppercase tracking-widest text-bg shadow-[0_0_30px] shadow-lime/30 transition-shadow hover:shadow-lime/45"
+              className="g-btn g-btn-play cashout"
             >
               Cash Out ${potentialPayout}
             </motion.button>
           ) : (phase === 'crashed' || phase === 'cashed') ? (
-            <button onClick={reset} className="btn-press flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-secondary/50 py-4 text-sm font-bold uppercase tracking-wide text-foreground/70 transition-colors hover:text-foreground">
+            <button onClick={reset} className="g-btn g-btn-secondary">
               <RotateCcw className="w-4 h-4" /> Bet Again
             </button>
           ) : (
@@ -510,7 +497,7 @@ export function CrashGame({ onBack, initialBalance }: Props) {
               onClick={startGame}
               disabled={betAmount <= 0 || betAmount > balance}
               whileTap={reduced ? undefined : { scale: 0.97 }}
-              className="w-full rounded-xl bg-lime py-4 text-sm font-black uppercase tracking-widest text-bg shadow-[0_0_30px] shadow-lime/20 transition-shadow hover:shadow-lime/35 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+              className="g-btn g-btn-play"
             >
               Place Bet
             </motion.button>

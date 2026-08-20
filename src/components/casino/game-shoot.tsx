@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { ArrowLeft, RotateCcw, Target, Crosshair } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
-import { GameBetControls } from "@/components/casino/game-shared";
+import { RotateCcw, Target } from 'lucide-react';
+import { GameBetControls, GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
@@ -199,19 +198,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-2">
-          <Crosshair className="w-5 h-5" style={{ color: 'var(--color-lime)' }} />
-          <div>
-            <h1 className="text-xl font-bold text-white">Target Shoot</h1>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Hit a multiplier ≥ your target — you win the revealed payout</p>
-          </div>
-        </div>
-      </div>
+      <GameHeader title="Target Shoot" subtitle="Hit a multiplier ≥ your target — you win the revealed payout" onBack={onBack} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Game Area */}
@@ -325,20 +312,14 @@ export function ShootGame({ onBack, initialBalance }: Props) {
                 <div className="flex items-center gap-3">
                   {gameState === 'result' && (
                     <button onClick={resetRound}
-                      className="px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    className="g-btn g-btn-secondary"
                     >
                       New Round
                     </button>
                   )}
                   <button onClick={gameState === 'idle' ? startRound : resetRound}
                     disabled={(gameState !== 'idle' && gameState !== 'result') || betAmount <= 0 || betAmount > balance}
-                    className="px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-30"
-                    style={{
-                      background: 'var(--color-lime)',
-                      color: 'var(--color-bg)',
-                      boxShadow: '0 0 15px color-mix(in oklab, var(--color-lime) 25%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)',
-                    }}
+                    className="g-btn g-btn-play"
                   >
                     {gameState === 'idle' ? 'Start Round' : 'New Round'}
                   </button>
@@ -351,10 +332,7 @@ export function ShootGame({ onBack, initialBalance }: Props) {
         {/* Controls */}
         <div className="space-y-3">
           {/* Balance */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           {/* Bet Amount */}
           <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={gameState === 'shooting' || gameState === 'result'} />

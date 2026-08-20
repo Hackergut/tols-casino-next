@@ -19,8 +19,8 @@ import {
   forwardRef,
 } from 'react';
 import { Application, Assets, Sprite, Container, Graphics, Texture } from 'pixi.js';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
-import { PostedAmount } from '@/casino/components/casino/PostedAmount';
+import { RotateCcw } from 'lucide-react';
+import { GameBalance, GameHeader } from "@/components/casino/game-shared";
 import { placeOriginalsBet, useOriginalsSession } from "@/lib/originals-client";
 
 interface Props {
@@ -277,16 +277,7 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg transition-colors hover:bg-white/5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-white">Slots</h1>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Spin the reels — match symbols on the centre payline!</p>
-        </div>
-      </div>
+      <GameHeader title="Slots" subtitle="Spin the reels — match symbols on the centre payline!" onBack={onBack} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Reels */}
@@ -316,10 +307,7 @@ export function SlotsGame({ onBack, initialBalance }: Props) {
 
         {/* Controls */}
         <div className="space-y-3">
-          <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="mt-1 text-2xl font-bold text-lime" />
-          </div>
+          <GameBalance value={balance} />
 
           {/* Bet Amount */}
           <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
