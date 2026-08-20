@@ -81,15 +81,13 @@ export function glowShadow(color: 'lime' | 'win' | 'loss' = 'lime'): React.CSSPr
 // Legacy carousel tokens (Carousel.tsx compatibility)
 export const HIT_TARGET = 44;
 
-export type CardSize = 'small' | 'medium' | 'large' | 'xl' | 'portrait';
+export type CardSize = 'small' | 'medium' | 'large' | 'xl';
 
 export const CARD_WIDTHS: Record<CardSize, number> = {
   small:  176,
   medium: 224,
   large:  280,
   xl:     344,
-  /** 9:16 vertical card — same width as large, ~497px tall. */
-  portrait: 280,
 };
 
 export function cardWidth(size: CardSize = 'medium'): number {

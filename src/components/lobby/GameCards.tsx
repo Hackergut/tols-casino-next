@@ -49,10 +49,10 @@ function rtpFor(g: LobbyGame): number | null {
   return null;
 }
 
-function artFor(g: LobbyGame, vertical = false): string[] {
+function artFor(g: LobbyGame): string[] {
   const slug = g.slug || g.id;
   if (g.gameType === "original" || g.category === "originals" || g.provider === "TOLS") {
-    return originalArtCandidates(slug, g.imageUrl, vertical);
+    return originalArtCandidates(slug, g.imageUrl);
   }
   const u = g.imageUrl || g.thumbnailUrl || "";
   if (!u) return [];
@@ -105,27 +105,18 @@ function cardBadge(g: LobbyGame): string | null {
   return null;
 }
 
-export function LobbyGameCard({ game, onClick, variant = "landscape" }: {
-  game: LobbyGame;
-  onClick: () => void;
-  /** "portrait" renders the 9:16 optimized card (same chrome, vertical art). */
-  variant?: "landscape" | "portrait";
-}) {
+export function LobbyGameCard({ game, onClick }: { game: LobbyGame; onClick: () => void }) {
   const isOriginal = game.gameType === "original" || game.category === "originals";
-  const isPortrait = variant === "portrait";
   const badge = cardBadge(game);
   const rtp = rtpFor(game);
-  const candidates = useMemo(
-    () => artFor(game, isPortrait),
-    [game.slug, game.id, game.imageUrl, game.gameType, game.category, game.provider, isPortrait],
-  );
+  const candidates = useMemo(() => artFor(game), [game.slug, game.id, game.imageUrl, game.gameType, game.category, game.provider]);
 
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={`Play ${game.name}`}
-      className={`tols-game-card group ${isPortrait ? "tols-game-card--portrait" : ""}`}
+      className="tols-game-card group"
     >
       <ArtImage candidates={candidates} />
 
@@ -167,12 +158,8 @@ export function LobbyGameCard({ game, onClick, variant = "landscape" }: {
   );
 }
 
-export function OriginalGameCard({ game, onClick, variant = "landscape" }: {
-  game: OriginalGameDef;
-  onClick: () => void;
-  variant?: "landscape" | "portrait";
-}) {
-  return <LobbyGameCard game={originalToLobbyGame(game)} onClick={onClick} variant={variant} />;
+export function OriginalGameCard({ game, onClick }: { game: OriginalGameDef; onClick: () => void }) {
+  return <LobbyGameCard game={originalToLobbyGame(game)} onClick={onClick} />;
 }
 
 export function GamesShelfGrid({ children }: { children: ReactNode }) {

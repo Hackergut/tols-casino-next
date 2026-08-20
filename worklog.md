@@ -2433,16 +2433,3 @@ card) and its backdrop-blur band visually bisected the artwork.
   gradient alone keeps text legible (transparent 0% → 55% → 94% bottom)
 - Removed the ::before top hairline (another visible horizontal cut line)
 - Whole-card veil lightened slightly (bottom 30%)
-
-## Game cards: 9:16 vertical variant with cloned art (2026-08-20)
-
-- Cloned all 16 Originals artworks to vertical 9:16 (810×1440) with the
-  blur-pad technique: the original image is placed pixel-identical at center
-  (verified RMSE <1.6% = JPEG recompression only), background extends above/
-  below as a blurred, darkened continuation — same style, no AI reinterpretation.
-- LobbyGameCard gains variant="portrait": same chrome, aspect-ratio 9/16,
-  art candidates prefer {slug}-vertical.jpg with landscape fallback
-  (originalArtCandidates(…, vertical=true)).
-- New CardSize "portrait" (280px wide → ~497px tall) for the shared Carousel.
-- Applied to the Originals surfaces: Home "TOLS Originals" row + OriginalsView
-  (carousel and grid). Slots/live/table stay landscape (no vertical art).
