@@ -173,6 +173,10 @@ const BridgePage = dynamic(
   () => import('@/components/admin/modules/bridge-page').then((m) => ({ default: m.BridgePage })),
   { loading: () => <PageLoader /> },
 );
+const CmsPage = dynamic(
+  () => import('@/components/admin/modules/cms-page').then((m) => ({ default: m.CmsPage })),
+  { loading: () => <PageLoader /> },
+);
 
 /* ------------------------------------------------------------------ */
 /*  Page Router                                                        */
@@ -257,6 +261,8 @@ function PageRouter() {
       return <LiveMonitorPage />;
     case 'bridge':
       return <BridgePage />;
+    case 'cms':
+      return <CmsPage />;
     default:
       return <DashboardPage />;
   }

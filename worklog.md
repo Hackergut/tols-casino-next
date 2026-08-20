@@ -2299,3 +2299,159 @@ Stage Summary:
 - Wheel: full SVG rendering with proper arc paths, rotated text, confetti particles
 - Limbo: SVG vertical track with log-scale, animated orb, win/lose particle effects
 - Lint passes cleanly for both files (zero errors)
+
+## Promo cards → carousel + brand redesign + per-promo pages (2026-08-20)
+
+- PromotionCards (home section) converted from a grid to the shared Carousel
+  shelf (scroll-snap, arrows, next-card peek, staggered entrance). Now shows
+  all 10 official/campaign promos with an "All promos →" action that opens the
+  Promotions info list.
+- Cards redesigned with signature TOLS brand accents: lime diagonal corner cut
+  with dark icon chip, "TOLS" wordmark pill + oversized watermark stamp, reward
+  in mono lime with glow, display-font title, lime CTA, 3px lime bottom hairline
+  with hover glow. Kept 16:9 art, shimmer sweep, hover lift.
+- Every card now routes to its own info page at /promo/{id} (section
+  "promo:{id}" in the shell; parseCasinoRoute/casinoPath/isCasinoAppPath
+  extended). The page hero is the exact artwork of the tapped card, dressed in
+  the same accents (corner cut, badge, watermark, kind pill, reward, CTA →
+  promo.target e.g. register/vip/wallet/rewards/originals), plus terms list and
+  a "More promotions" rail of the other cards. Unknown ids render a friendly
+  fallback.
+- Promotions info list cards: the artwork header is now the entry to each
+  per-promo page (arrow affordance), inner CTA still jumps to the action.
+- Fonts self-hosted (src/app/fonts/*.woff2 via Fontsource builds of the same
+  Inter/Michroma/Oswald families; layout.tsx switched next/font/google →
+  next/font/local) so builds no longer depend on fonts.googleapis.com.
+
+## Promo cards → game-card design language (2026-08-20, follow-up)
+
+- All 10 promo artworks regenerated as painted illustrations in the game-tile
+  style (dark charcoal-navy scene, neon-lime rim light, golden subject) and
+  darkened to match the tile mood; served from /promos/*.jpg (1376×768).
+- Promo card chrome is now EXACTLY the game-card chrome (tols-game-card):
+  lime "Original"-style kind pill top-left (Welcome/Rakeback/Reload/Cashback/
+  Jackpot/Referral/Campaign), badge pill top-right, lime play circle with
+  arrow revealed on hover, bottom gradient bar with title + "kind · tagline"
+  meta and the reward as a mono-lime chip in the RTP-chip slot.
+- Same treatment applied to the per-promo page hero (static, no hover lift,
+  larger center icon chip) and to the "More promotions" rail and the
+  Promotions-list card headers.
+- Removed the previous promo-specific chrome (corner cut, watermark, wordmark
+  pill, edge hairline) and its CSS — one card language for the whole lobby.
+
+## Skills audit + optimizations from egorfedorov/stake-skills repo (2026-08-20)
+
+Cloned and analyzed all 34 skills; implemented the applicable ones on TOLS
+(full mapping in docs/skills-audit.md):
+
+- rng-crypto-specialist: bias-free integer mapping — fairIntUnbiased (rejection
+  sampling over 32-bit HMAC chunks, `:u32` namespace) in new pure core
+  src/lib/provably-fair-core.ts; wheel/roulette/keno/mines/blackjack-shoe/
+  pool-rush switched to it; /api/fair PUT now replays full engine outcomes
+  with dual-algorithm support (current + legacyOutcome) so pre-switch bets
+  still verify.
+- rtp-optimizer / senior-game-math-engineer: tests/rtp-simulation.test.mjs —
+  Monte Carlo over real outcome formulas (dice 99% ±0.5%, wheel-medium 94%
+  ±0.5%) with 99.7% CI + uniform segment spread.
+- autoplay-system-designer: deterministic stop reasons (rounds-limit,
+  stop-loss, take-profit, insufficient-balance, manual, error) on
+  AutoBetStatus.stopReason; insufficient balance stops instead of retrying;
+  pure math extracted to src/lib/auto-bet-math.ts + tests.
+- css-motion-designer: brand recipes in globals.css — idle spark grid (hero
+  carousel), win accent scan (WinCelebration), loading orbit (busy BetButton),
+  inter-round sweep; all reduced-motion gated.
+- telemetry-analytics: TelemetryEvent model, POST /api/telemetry (rate-limited
+  + validated), client track() via sendBeacon (src/lib/client-telemetry.ts),
+  wired to navigate/game_open/auth.
+- low-latency-systems: edge caching on /api/games-lobby (s-maxage=60+SWR600),
+  /api/casino-stats (15+60), /api/jackpot (30+120).
+- slot-qa-engineer: 25 new tests (provably-fair 17, auto-bet 10 incl. shared,
+  rtp-simulation 4) — all pass alongside the 94 existing RTP tests.
+
+Note: 16 pre-existing test failures across 7 suites (stale regex specs, sandbox
+DB stub) verified identical on the base commit — not regressions.
+prisma generate needed for the TelemetryEvent column (engine download blocked
+in this sandbox).
+
+## Promo cards → TOLS × Apple design system (2026-08-20)
+
+Redesigned the promo card surfaces following the Apple Design skill (fluid
+interfaces) as the design system:
+
+- Cards are motion.button with critically damped springs (bounce 0 ≈ damping
+  1.0, response 0.4): whileHover lift, whileTap scale 0.97 on pointer-DOWN
+  (instant press feedback), fully interruptible — no CSS keyframes on the
+  interactive card.
+- Translucent material language (tols-promo-*): blur(16px)+saturate pills with
+  bright 1px top edge (light catching the glass), glass play circle with lime
+  ring, bottom bar = gradient scrim + backdrop blur + hairline top edge.
+  Color (lime reward) on a SOLID chip per Apple's legibility rule.
+- Typography: title tightens as it grows (-0.02em, leading 1.12), small labels
+  open tracking (+0.08em uppercase), numbers mono + tabular.
+- touch-action: manipulation kills the 300ms tap delay; tap highlight removed.
+- prefers-reduced-motion: springs collapse to static (useReducedMotion), play
+  reveal is a plain opacity toggle; prefers-reduced-transparency: glass goes
+  frosty/solid.
+- Shared Carousel child entrance switched to a critically damped spring.
+- Detail hero, "More promotions" rail and the Promotions list all reuse the
+  same PromoCard / static hero chrome — one material language everywhere.
+
+## Promo cards: faded glassmorphism (2026-08-20)
+
+Cards were hard to read over the artwork — the translucent chrome was too
+transparent. Made the glass FADED (opaque, frosted):
+
+- Pills: rgba(12,13,17/.5) → rgb(9,10,14/.82), blur 16→18px, border white/.12→.18,
+  added drop shadow + brighter inner top edge
+- Play circle: .45 → .72 opacity, blur 14px, lime ring 60%
+- Bottom bar: gradient now 96% → 80% → 35% (was 92% → 55% → 0), blur 10px
+- New card-level veil (::after, z-index 0): bottom-weighted fade so the art
+  still glows at the top but every label sits on a quiet surface
+- Chrome (pills/play/bar) raised to z-index 1 above the veil
+- reduced-transparency variants bumped to match (≥94% opacity)
+
+## Promo cards: light "faded" glass + brighter art (2026-08-20, fix)
+
+The previous heavy fade (82-96% opaque) was worse — it killed the artwork.
+Real cause of low visibility was the over-darkened art. Fixed both:
+
+- Artwork brightened back (~17% → ~24% avg luminance, ×1.55 + slight contrast)
+  so the painting is the hero again; still moody/painted, game-tile family
+- Glass made light and airy ("faded" = subtle): pills rgb(18,20,26)/0.5 with
+  blur 16px + bright inner top edge, play circle /0.45, bar = classic scrim
+  (92% bottom → 60% mid → 15% top, blur 8px), whole-card veil reduced to a
+  light legibility gradient (5% → 38%)
+
+## Promo cards: glass no longer cuts the card in half (2026-08-20)
+
+The bottom glass bar was too tall (44px top padding + 2 lines ≈ half the 16:9
+card) and its backdrop-blur band visually bisected the artwork.
+
+- Bar compacted: padding 2.75rem → 0.8rem/0.72rem, align-items center — now
+  occupies only the bottom ~30% of the card
+- Removed backdrop-filter from the bar (the blur band was the "cut"); the
+  gradient alone keeps text legible (transparent 0% → 55% → 94% bottom)
+- Removed the ::before top hairline (another visible horizontal cut line)
+- Whole-card veil lightened slightly (bottom 30%)
+
+## Card CMS — governance section for game & promo cards (2026-08-20)
+
+Every card on the platform is now replaceable from the governance admin
+without touching code or redeploying:
+
+- CmsCard model (entity game|promo, key, title/tagline/reward/badge/cta/
+  target/accent/imageUrl/enabled/sortOrder, unique (entity,key)) — stores ONLY
+  overrides; deleting a row reverts to the built-in default.
+- API: GET /api/cms/cards (public, enabled only), PUT + DELETE (admin-gated
+  via requireAdmin + auditLog) at /api/cms/cards.
+- Client layer: use-cms-cards.ts (module-cached fetch, refreshCmsCards(),
+  useEffectivePromotions / useEffectiveGames / useEffectiveOriginalGames);
+  cms-cards.ts pure merge helpers (applyCmsToPromo / applyCmsToGame).
+- Platform wiring: PromotionCards, PromotionsInfoSection and PromoDetailSection
+  read effective promos; page.tsx merges overrides into games-lobby results;
+  OriginalsView merges into the static Originals registry. CMS unavailable →
+  built-in defaults, never a broken lobby.
+- Admin module "Card CMS" (sidebar Operations group, /control/admin): tabs
+  Promo cards (10) + Game cards (13), live card preview, image URL field with
+  datalist of existing artwork, enable toggle, Save / Reset-to-default,
+  per-card override badge, refresh across the whole app after save.

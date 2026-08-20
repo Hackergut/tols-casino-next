@@ -90,6 +90,9 @@ export interface AutoBetStatus {
   id: string;
   gameId: string;
   status: "running" | "stopped" | "completed" | "failed";
+  /** Deterministic stop reason (autoplay-system-designer): rounds-limit,
+   *  stop-loss, take-profit, insufficient-balance, manual, error. */
+  stopReason?: string;
   roundsPlayed: number;
   currentBet: number;
   currentProfit: number;

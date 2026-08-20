@@ -2,8 +2,11 @@ import { db } from "@/lib/db";
 import { playInstantBet, BetError } from "@/lib/settle-bet";
 import { publish } from "@/lib/realtime";
 import { getEngine } from "@/lib/game-engines";
-import { DEFAULT_AUTO_BET, GAME_META } from "@/shared/constants";
-import type { AutoBetParams, AutoBetStatus, AutoAdjustMode, OriginalGameId } from "@/shared/types";
+import { GAME_META } from "@/shared/constants";
+import { normalizeAutoBetParams, nextStake } from "@/lib/auto-bet-math";
+import type { AutoBetParams, AutoBetStatus, OriginalGameId } from "@/shared/types";
+
+const normalizeParams = normalizeAutoBetParams;
 
 function parseParams(raw: unknown): AutoBetParams {
   if (typeof raw === "string") {
@@ -16,34 +19,7 @@ function parseParams(raw: unknown): AutoBetParams {
   return raw as AutoBetParams;
 }
 
-function nextStake(current: number, base: number, mode: AutoAdjustMode, percent: number): number {
-  const p = Math.max(0, percent) / 100;
-  switch (mode) {
-    case "increase":
-      return Math.max(0.01, Math.round(current * (1 + p) * 100) / 100);
-    case "decrease":
-      return Math.max(0.01, Math.round(current * Math.max(0.01, 1 - p) * 100) / 100);
-    case "fixed":
-      return current;
-    case "reset":
-    default:
-      return base;
-  }
-}
-
-export function normalizeParams(input: Partial<AutoBetParams> & { baseBet: number; gameParams?: Record<string, unknown> }): AutoBetParams {
-  return {
-    rounds: Math.max(1, Math.min(1000, Math.floor(Number(input.rounds ?? DEFAULT_AUTO_BET.rounds)))),
-    baseBet: Math.max(0.01, Number(input.baseBet)),
-    onWin: (input.onWin ?? DEFAULT_AUTO_BET.onWin) as AutoAdjustMode,
-    onLoss: (input.onLoss ?? DEFAULT_AUTO_BET.onLoss) as AutoAdjustMode,
-    onWinPercent: Math.max(0, Number(input.onWinPercent ?? DEFAULT_AUTO_BET.onWinPercent)),
-    onLossPercent: Math.max(0, Number(input.onLossPercent ?? DEFAULT_AUTO_BET.onLossPercent)),
-    stopLoss: Math.max(0, Number(input.stopLoss ?? DEFAULT_AUTO_BET.stopLoss)),
-    takeProfit: Math.max(0, Number(input.takeProfit ?? DEFAULT_AUTO_BET.takeProfit)),
-    gameParams: input.gameParams ?? {},
-  };
-}
+export { nextStake } from "@/lib/auto-bet-math";
 
 interface StoredAutoBet {
   id: string;
@@ -56,6 +32,7 @@ interface StoredAutoBet {
   currentProfit: number;
   lastError: string;
   lastBetId: string;
+  stopReason?: string;
 }
 
 function settingKey(userId: string, gameId: string) {
@@ -67,6 +44,7 @@ function toStatus(row: StoredAutoBet): AutoBetStatus {
     id: row.id,
     gameId: row.gameId,
     status: row.status,
+    stopReason: row.stopReason,
     roundsPlayed: row.roundsPlayed,
     currentBet: row.currentBet,
     currentProfit: row.currentProfit,
@@ -122,6 +100,7 @@ export async function startAutoBet(opts: {
     currentProfit: 0,
     lastError: "",
     lastBetId: "",
+    stopReason: "",
   });
 
   const status = toStatus(row);
@@ -133,6 +112,7 @@ export async function stopAutoBet(userId: string, gameId: string): Promise<AutoB
   const row = await readSession(userId, gameId);
   if (!row || row.status !== "running") return row ? toStatus(row) : null;
   row.status = "stopped";
+  row.stopReason = "manual";
   await writeSession(row);
   const status = toStatus(row);
   publish({ event: "auto-bet:status", userId, data: { ...status } });
@@ -154,6 +134,7 @@ export async function tickAutoBet(userId: string, gameId: string): Promise<{
   const params = parseParams(row.params);
   if (row.roundsPlayed >= params.rounds) {
     row.status = "completed";
+    row.stopReason = "rounds-limit";
     await writeSession(row);
     return { status: toStatus(row), bet: null };
   }
@@ -204,9 +185,9 @@ export async function tickAutoBet(userId: string, gameId: string): Promise<{
     row.lastBetId = bet.betId;
     row.lastError = "";
 
-    if (row.roundsPlayed >= params.rounds) row.status = "completed";
-    if (params.stopLoss > 0 && row.currentProfit <= -params.stopLoss) row.status = "stopped";
-    if (params.takeProfit > 0 && row.currentProfit >= params.takeProfit) row.status = "stopped";
+    if (row.roundsPlayed >= params.rounds) { row.status = "completed"; row.stopReason = "rounds-limit"; }
+    if (params.stopLoss > 0 && row.currentProfit <= -params.stopLoss) { row.status = "stopped"; row.stopReason = "stop-loss"; }
+    if (params.takeProfit > 0 && row.currentProfit >= params.takeProfit) { row.status = "stopped"; row.stopReason = "take-profit"; }
 
     await writeSession(row);
     const out = toStatus(row);
@@ -214,7 +195,12 @@ export async function tickAutoBet(userId: string, gameId: string): Promise<{
     return { status: out, bet };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Auto-bet failed";
-    row.status = "failed";
+    // "Stop on balance below min bet" — an insufficient-balance rejection is a
+    // deterministic stop condition, not a crash: auto-play must never retry a
+    // bet the wallet cannot cover.
+    const insufficient = /insufficient balance/i.test(message);
+    row.status = insufficient ? "stopped" : "failed";
+    row.stopReason = insufficient ? "insufficient-balance" : "error";
     row.lastError = message;
     await writeSession(row);
     const out = toStatus(row);

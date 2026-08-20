@@ -112,9 +112,10 @@ export function Carousel({ title, subtitle, icon, action, size = "medium", child
             initial={reduced ? false : { opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "0px 120px 0px 0px" }}
-            // Stagger only the first screenful; later cards appear as they
-            // scroll in, so a long shelf never feels like it is loading slowly.
-            transition={{ delay: Math.min(i, 5) * 0.055, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            // Critically damped spring (Apple: damping 1.0) — interruptible and
+            // velocity-aware; stagger only the first screenful, later cards
+            // appear as they scroll in so a long shelf never loads slowly.
+            transition={reduced ? { duration: 0 } : { delay: Math.min(i, 5) * 0.055, type: "spring", bounce: 0, duration: 0.45 }}
           >
             {child}
           </motion.div>

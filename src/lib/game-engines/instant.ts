@@ -1,4 +1,4 @@
-import { fairFloat } from "@/lib/provably-fair";
+import { fairFloat, fairIntUnbiased } from "@/lib/provably-fair";
 import type { GameEngine } from "@/shared/types";
 import { KENO_DRAWS, KENO_MAX_PICKS, KENO_POOL, KENO_RISKS, PLINKO_ROWS, WHEEL_SEGMENTS } from "@/shared/constants";
 import { KENO_TABLES, PLINKO_TABLES, POOL_RUSH_CDF, POOL_RUSH_PAY, ROULETTE_RED, SLOT_P, SLOT_PAY, WHEEL_TABLES } from "./tables";
@@ -123,7 +123,8 @@ export const wheelEngine: GameEngine = {
   },
   generateOutcome(serverSeed, clientSeed, nonce, params) {
     const segments = Number(params.segments ?? 20);
-    const idx = Math.floor(fairFloat(serverSeed, clientSeed, nonce) * segments);
+    // Bias-free: rejection sampling, never floor(float * n) over a non-divisible range.
+    const idx = fairIntUnbiased(serverSeed, clientSeed, nonce, segments);
     return { segment: idx, segments };
   },
   settleBet(bet, outcome) {
@@ -154,7 +155,7 @@ export const kenoEngine: GameEngine = {
   generateOutcome(serverSeed, clientSeed, nonce) {
     const pool = Array.from({ length: KENO_POOL }, (_, i) => i + 1);
     for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(fairFloat(serverSeed, clientSeed + ":k" + i, nonce) * (i + 1));
+      const j = fairIntUnbiased(serverSeed, clientSeed + ":k" + i, nonce, i + 1);
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     return { drawn: pool.slice(0, KENO_DRAWS) };
@@ -267,7 +268,8 @@ export const rouletteEngine: GameEngine = {
     return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce) {
-    return { winning: Math.floor(fairFloat(serverSeed, clientSeed, nonce) * 37) };
+    // 37 is prime — floor(float*37) is measurably biased; rejection sampling fixes it.
+    return { winning: fairIntUnbiased(serverSeed, clientSeed, nonce, 37) };
   },
   settleBet(bet, outcome) {
     const bets = normalizeRouletteBets(bet.params, bet.amount);
@@ -345,7 +347,7 @@ export const rouletteEngine: GameEngine = {
   },
 };
 
-function poolRushCount(r: number): number {
+export function poolRushCount(r: number): number {
   for (let n = 0; n < POOL_RUSH_CDF.length; n++) {
     if (r < POOL_RUSH_CDF[n]) return n;
   }
@@ -364,11 +366,11 @@ export const poolRushEngine: GameEngine = {
     const count = poolRushCount(r);
     const order = Array.from({ length: 8 }, (_, i) => i);
     for (let i = order.length - 1; i > 0; i--) {
-      const j = Math.floor(fairFloat(serverSeed, clientSeed, nonce, i) * (i + 1));
+      const j = fairIntUnbiased(serverSeed, clientSeed, nonce, i + 1, i);
       [order[i], order[j]] = [order[j], order[i]];
     }
     const pocketed = order.slice(0, count);
-    const pockets = pocketed.map((_, i) => Math.floor(fairFloat(serverSeed, clientSeed, nonce, 20 + i) * 6));
+    const pockets = pocketed.map((_, i) => fairIntUnbiased(serverSeed, clientSeed, nonce, 6, 20 + i));
     return { roll: Math.floor(r * 10000) / 100, count, pocketed, pockets };
   },
   settleBet(bet, outcome) {

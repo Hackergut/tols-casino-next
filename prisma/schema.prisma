@@ -864,3 +864,45 @@ model VendorTxn {
   @@index([userId])
   @@index([roundId])
 }
+
+// ==================== TELEMETRY ====================
+// Structured product events (telemetry-analytics skill): one row per event,
+// session-scoped, KPI-queryable. Written fire-and-forget; never blocks play.
+model TelemetryEvent {
+  id        String   @id @default(cuid())
+  event     String // e.g. "navigate", "game_open", "auth"
+  userId    String?
+  sessionId String?
+  props     Json?
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@index([event, createdAt])
+  @@index([userId, createdAt])
+  @@index([sessionId])
+}
+
+// ==================== CARD CMS ====================
+// Content overrides for game & promo cards (governance → platform).
+// The code ships defaults; this table stores ONLY what an operator changed,
+// so deleting a row reverts the card to its built-in default instantly.
+model CmsCard {
+  id        String   @id @default(cuid())
+  entity    String // "game" | "promo"
+  key       String // game slug or promo id ("crash", "welcome", ...)
+  title     String?
+  tagline   String?
+  reward    String?
+  badge     String?
+  cta       String?
+  target    String?
+  accent    String?
+  imageUrl  String?
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([entity, key])
+  @@index([entity, enabled])
+}

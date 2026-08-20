@@ -39,6 +39,8 @@ export const LIMITS = {
   bet: { max: 120, windowMs: 60_000 },
   /** Money movement deserves a much smaller budget. */
   money: { max: 10, windowMs: 60_000 },
+  /** Telemetry: generous enough for a session, tight enough to stop flooding. */
+  telemetry: { max: 240, windowMs: 60_000 },
   /** Everything else. */
   general: { max: 300, windowMs: 60_000 },
 } satisfies Record<string, Limit>;

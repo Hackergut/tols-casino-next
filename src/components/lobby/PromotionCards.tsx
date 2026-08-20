@@ -1,99 +1,142 @@
 "use client";
 
 /*
- * Promotional cards — the official TOLS promotions, shown on the main screen
- * (visible pre sign-up / login, since the lobby renders behind the auth gate).
+ * Promotional cards — TOLS × Apple design system.
  *
- * Each card is a 16:9 art card in the same TOLS style as the game cards:
- * full-bleed promo artwork, a bottom scrim for legibility, the reward as a lime
- * badge, the hook tagline, and the same shimmer-sweep + hover lift language.
+ * Built on the Apple design skill (Designing Fluid Interfaces distilled):
+ *
+ *  · Response — feedback fires on pointer-*down*, not release: the card
+ *    presses (scale 0.97) the instant the finger lands, and touch-action:
+ *    manipulation kills the 300 ms tap delay.
+ *  · Interruptibility — every transform is a critically damped spring
+ *    (bounce 0 ≈ damping 1.0, response ~0.4 s). Springs start from the
+ *    current on-screen value, so a press can be cancelled mid-flight and a
+ *    hover can be re-targeted without a hard cut. No CSS keyframes on the
+ *    interactive card itself.
+ *  · Materials & depth — chrome is a translucent material: backdrop blur +
+ *    saturate, a bright 1px top edge (light catching the glass) and heavier
+ *    shadows under the art. Color (the lime reward) lives on a SOLID chip,
+ *    never the translucent foreground, so legibility holds over any art.
+ *  · Typography — size-specific tracking: the title tightens as it grows
+ *    (-0.02em, leading 1.12); small labels open up (+0.08em uppercase).
+ *    Numbers stay mono + tabular.
+ *  · Spatial consistency — the center affordance anchors to the card and
+ *    points at the destination (↗); the detail page hero is the same card
+ *    dressed statically, so the card → page jump is seamless.
+ *  · Reduced motion & transparency — springs collapse to static, glass goes
+ *    frosty/solid.
  */
 
-import { useMemo, useState } from "react";
-import { ArrowUpRight, Gift } from "lucide-react";
-import { OFFICIAL_PROMOTIONS, type TolsPromotion } from "./promotions";
+import { useMemo } from "react";
+import { ArrowUpRight, ChevronRight, Gift } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Carousel } from "./Carousel";
+import { PROMO_KIND_LABEL, type TolsPromotion } from "./promotions";
+import { useEffectivePromotions } from "@/lib/use-cms-cards";
+import { promoSection } from "@/lib/casino-routes";
 
-function PromoArt({ promo }: { promo: TolsPromotion }) {
-  const [loaded, setLoaded] = useState(false);
+/* House spring — critically damped (Apple: damping 1.0, response ≈ 0.4). */
+const SPRING = { type: "spring", bounce: 0, duration: 0.4 } as const;
+
+function PromoArt({ image }: { image: string }) {
   return (
     <>
-      {!loaded && <div className="skeleton-shimmer absolute inset-0" />}
+      <div className="skeleton-shimmer absolute inset-0" />
       <img
-        src={promo.image}
+        src={image}
         alt=""
         loading="lazy"
         decoding="async"
         draggable={false}
-        onLoad={() => setLoaded(true)}
-        className={`absolute inset-0 h-full w-full select-none object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
+        onLoad={(e) => (e.currentTarget.style.opacity = "1")}
+        className="absolute inset-0 h-full w-full select-none object-cover opacity-0 transition-opacity duration-500"
       />
     </>
   );
 }
 
-function PromoCard({ promo, onNavigate }: { promo: TolsPromotion; onNavigate: (target: string) => void }) {
+export function PromoCard({ promo, onNavigate }: { promo: TolsPromotion; onNavigate: (target: string) => void }) {
+  const reduced = useReducedMotion();
   const Icon = useMemo(() => promo.icon ?? Gift, [promo.icon]);
-  return (
-    <button
-      type="button"
-      onClick={() => onNavigate(promo.target)}
-      aria-label={`${promo.title} — ${promo.reward}`}
-      className="tols-promo-card group"
-    >
-      <PromoArt promo={promo} />
+  const kind = PROMO_KIND_LABEL[promo.kind] ?? promo.kind;
 
-      {/* Shimmer sweep on hover, matching the game cards. */}
+  return (
+    <motion.button
+      type="button"
+      onClick={() => onNavigate(promoSection(promo.id))}
+      aria-label={`${promo.title} — ${promo.reward} — details`}
+      className="tols-promo-card group"
+      whileHover={reduced ? undefined : { y: -4 }}
+      whileTap={reduced ? undefined : { scale: 0.97 }}
+      transition={SPRING}
+    >
+      <PromoArt image={promo.image} />
+
+      {/* Shimmer sweep on hover — subtle, never on the input path. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/12 to-transparent transition-all duration-700 group-hover:left-full" />
+        <div className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-all duration-700 group-hover:left-full" />
       </div>
 
-      {/* Icon chip (top-left) + reward badge (top-right). */}
-      <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/12 bg-black/45 backdrop-blur-md">
-          <Icon className="h-4 w-4" style={{ color: promo.accent }} />
+      {/* Kind pill (top-left) — translucent material, lime accent. */}
+      <div className="tols-promo-pill tols-promo-pill-kind absolute left-3 top-3">
+        <Icon className="h-3 w-3" />
+        {kind}
+      </div>
+
+      {/* Badge pill (top-right) — translucent material. */}
+      {promo.badge && (
+        <div className="tols-promo-pill tols-promo-pill-badge absolute right-3 top-3">{promo.badge}</div>
+      )}
+
+      {/* Center affordance — glass play circle, revealed on hover. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="tols-promo-play">
+          <ArrowUpRight className="h-5 w-5" />
         </span>
-        <span
-          className="rounded-full px-2.5 py-1 font-mono text-[11px] font-black tabular-nums backdrop-blur-md"
-          style={{ background: "rgba(0,0,0,0.6)", color: promo.accent, border: `1px solid color-mix(in oklab, ${promo.accent} 40%, transparent)` }}
-        >
+      </div>
+
+      {/* Bottom translucent bar: title + meta left, solid lime reward right. */}
+      <div className="tols-promo-bar">
+        <div className="min-w-0">
+          <p className="tols-promo-title truncate">{promo.title}</p>
+          <p className="tols-promo-meta truncate">
+            {kind} · {promo.tagline}
+          </p>
+        </div>
+        <span className="tols-promo-reward" title={promo.reward}>
           {promo.reward}
         </span>
       </div>
-
-      {/* Bottom scrim: title + tagline + CTA. */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent p-3 pt-12">
-        <p className="truncate text-[15px] font-bold text-white" style={{ textShadow: "0 1px 6px rgb(0 0 0 / 0.75)" }}>
-          {promo.title}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-white/60" style={{ textShadow: "0 1px 5px rgb(0 0 0 / 0.7)" }}>
-          {promo.tagline}
-        </p>
-        <span className="mt-2 inline-flex items-center gap-1 rounded-lg border border-lime/40 bg-lime/10 px-2.5 py-1 text-[11px] font-bold text-lime backdrop-blur-sm transition-colors group-hover:bg-lime group-hover:text-bg">
-          {promo.cta} <ArrowUpRight className="h-3 w-3" />
-        </span>
-      </div>
-    </button>
+    </motion.button>
   );
 }
 
 export function PromotionCards({ onNavigate }: { onNavigate: (target: string) => void }) {
+  const promotions = useEffectivePromotions();
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-base uppercase text-white">Promotions</h2>
-          <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-lime">Official</span>
-        </div>
-        <span className="text-[11px] text-white/35">Claim and play — no hidden terms</span>
-      </div>
-
-      <div className="tols-promo-grid">
-        {OFFICIAL_PROMOTIONS.map((promo) => (
+      <Carousel
+        title="Promotions"
+        subtitle="Every official TOLS offer — tap a card for full details"
+        size="xl"
+        icon={
+          <span className="tols-promo-pill tols-promo-pill-kind h-8 w-8 justify-center !p-0">
+            <Gift className="h-4 w-4" />
+          </span>
+        }
+        action={
+          <button
+            onClick={() => onNavigate("promotions")}
+            className="tols-promo-pill tols-promo-pill-cta"
+          >
+            All promos <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        }
+      >
+        {promotions.map((promo) => (
           <PromoCard key={promo.id} promo={promo} onNavigate={onNavigate} />
         ))}
-      </div>
+      </Carousel>
     </section>
   );
 }

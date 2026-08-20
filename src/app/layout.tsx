@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
-import { Inter, Michroma, Oswald } from "next/font/google";
+import localFont from "next/font/local";
+
 import "./globals.css";
 import Script from "next/script";
 import TelegramWebApp from "@/components/TelegramWebApp";
@@ -13,17 +14,20 @@ import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
 // body copy and every number stay on Inter.
 // Wordmark face. The supplied brand SVGs specify Oswald, so the logotype is
 // set in the real thing rather than the Arial fallback an <img> would use.
-const oswald = Oswald({
+// Self-hosted (src/app/fonts/*.woff2, from the Fontsource builds of the same
+// Google families) so builds never depend on fonts.googleapis.com.
+const oswald = localFont({
   variable: "--font-wordmark",
-  subsets: ["latin"],
-  weight: ["500", "700"],
+  src: [
+    { path: "./fonts/oswald-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/oswald-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
   display: "swap",
 });
 
-const michroma = Michroma({
+const michroma = localFont({
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: "400",
+  src: [{ path: "./fonts/michroma-latin-400-normal.woff2", weight: "400", style: "normal" }],
   display: "swap",
 });
 
@@ -32,11 +36,17 @@ const michroma = Michroma({
 // also cover the numeric slot — so there is no second family to fall out of
 // sync. Both theme variables point at it; `font-mono` differs only by
 // switching on tabular numerals (see globals.css).
-const inter = Inter({
+const inter = localFont({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  src: [
+    { path: "./fonts/inter-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/inter-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/inter-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/inter-latin-700-normal.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/inter-latin-800-normal.woff2", weight: "800", style: "normal" },
+    { path: "./fonts/inter-latin-900-normal.woff2", weight: "900", style: "normal" },
+  ],
   display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 const SITE_URL = process.env.APP_URL || "https://tols.fun";

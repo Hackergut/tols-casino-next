@@ -93,6 +93,13 @@ export function WinCelebration({ trigger }: { trigger: { payout: number; multipl
             <motion.div className="absolute inset-0 bg-black" initial={{ opacity: 0 }} animate={{ opacity: 0.55 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} />
           )}
 
+          {/* Win accent scan — one lime band across the screen (css-motion-designer
+              recipe; sits above the dim but behind the win card, so the payout
+              text is never obscured). */}
+          {!reduced && (
+            <div aria-hidden className="win-accent-scan pointer-events-none absolute inset-0" />
+          )}
+
           {/* Letterbox bars (massive) */}
           {active.tier === "massive" && !reduced && (
             <>

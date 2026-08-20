@@ -23,6 +23,9 @@ export async function GET() {
         lastWinDate: jp.lastWinDate,
         description: jp.description,
       },
+    }, {
+      // Public ticker — the polled jackpot number can be a little behind.
+      headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" },
     });
   } catch (error) {
     console.error("[jackpot] GET error:", error);

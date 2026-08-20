@@ -87,6 +87,9 @@ export function HeroCarousel({ onSelect }: { onSelect: (target: string) => void 
             className="absolute inset-0"
           >
             <img src={promo.image} alt="" aria-hidden className="h-full w-full object-cover" />
+            {/* Idle spark grid — low-contrast brand texture (css-motion-designer
+                recipe; disabled under reduced motion). */}
+            <div aria-hidden className="idle-spark-grid pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay" />
             {/* Scrim keeps the copy legible over any part of the art. */}
             <div
               className="absolute inset-0"

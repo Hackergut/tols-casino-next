@@ -17,7 +17,19 @@ Never paste secrets into this file; it is committed to the repo.
    ```bash
    npx prisma db push
    ```
-   (Reads `DIRECT_URL`. Creates all 41 tables. Fresh production DB — no test data carried over.)
+   (Reads `DIRECT_URL`. Creates all **43 tables** — including `CmsCard` and
+   `TelemetryEvent`. Run this again after any schema change; until then the
+   CMS and telemetry APIs return 500 at runtime. Fresh production DB — no test
+   data carried over.)
+
+## 1b. Which branch to deploy
+
+- **Production deploys `master`.** All active work lives on
+  `arena/01a020ac-tols-casino-next`; merge it into `master` (or open the PR)
+  before deploying — `master` without the merge is 10 commits behind and
+  still builds fonts from Google Fonts, which fails intermittently on Vercel.
+- Fonts are now **self-hosted** (`src/app/fonts/*.woff2`, `next/font/local`),
+  so the build no longer depends on fonts.googleapis.com.
 
 ## 2. Vercel
 

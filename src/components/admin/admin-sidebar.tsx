@@ -43,6 +43,7 @@ import {
   X,
   Activity,
   Link2,
+  Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminStore, type AdminPage } from '@/stores/admin';
@@ -91,6 +92,7 @@ const NAV_DESCRIPTIONS: Record<AdminPage, string> = {
   'virtual-games': 'EuroVirtuals integration: config, transactions, test launch',
   'deposit-addresses': 'Set the public receive address per chain for player deposit QR codes',
   bridge: 'Governance Tower ↔ Casino bridge — health, sync, SSO, webhooks',
+  cms: 'Replace game & promo cards from the governance — live, no redeploy',
 };
 
 interface NavGroup {
@@ -182,6 +184,7 @@ const navGroups: NavGroup[] = [
       { page: 'deposit-tracker', label: 'Deposit Tracker', icon: <TrendingUp className="h-4 w-4" /> },
       { page: 'telegram-alerts', label: 'Telegram Alerts', icon: <Bell className="h-4 w-4" />, badge: true },
       { page: 'live-monitor', label: 'Live Monitor', icon: <Activity className="h-4 w-4" />, badge: true },
+      { page: 'cms', label: 'Card CMS', icon: <Palette className="h-4 w-4" />, badge: true },
       { page: 'bridge', label: 'Bridge — Governance ↔ Casino', icon: <Link2 className="h-4 w-4" />, badge: true },
     ],
   },

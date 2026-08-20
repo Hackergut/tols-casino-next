@@ -41,6 +41,7 @@ export type AdminPage =
   | 'live-monitor'
   | 'virtual-games'
   | 'deposit-addresses'
+  | 'cms'
   | 'bridge';
 
 export interface ActionLogEntry {
@@ -93,6 +94,7 @@ const PAGE_LABELS: Record<AdminPage, string> = {
   'live-monitor': 'Live Monitor',
   'virtual-games': 'Virtual Games',
   'deposit-addresses': 'Deposit Addresses',
+  cms: 'Card CMS — replace game & promo cards',
   bridge: 'Bridge — Governance ↔ Casino',
 };
 

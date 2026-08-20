@@ -204,3 +204,14 @@ export const CAMPAIGN_PROMOTIONS: TolsPromotion[] = [
 ];
 
 export const ALL_PROMOTIONS: TolsPromotion[] = [...OFFICIAL_PROMOTIONS, ...CAMPAIGN_PROMOTIONS];
+
+/** Human label per promo kind — shared by every card surface. */
+export const PROMO_KIND_LABEL: Record<string, string> = {
+  welcome: "Welcome",
+  rakeback: "Rakeback",
+  reload: "Reload",
+  cashback: "Cashback",
+  jackpot: "Jackpot",
+  referral: "Referral",
+  campaign: "Campaign",
+};

@@ -23,7 +23,11 @@ import { AuthGate } from "@/components/lobby/AuthGate";
 import { OriginalsView } from "@/components/lobby/OriginalsView";
 import { MobileBottomNav } from "@/components/lobby/MobileBottomNav";
 import { ProfileSectionView, isProfileSection } from "@/components/lobby/ProfileSections";
+import { PromoDetailSection } from "@/components/lobby/DiscoverInfo";
 import { ChatPanel, NotificationsPanel, VaultSheet } from "@/components/lobby/CommunityPanels";
+import { track } from "@/lib/client-telemetry";
+import { useCmsOverrides } from "@/lib/use-cms-cards";
+import { applyCmsToGame } from "@/lib/cms-cards";
 import { CompactGameShell } from "@/components/lobby/CompactGameShell";
 import { OriginalsRail } from "@/components/casino/OriginalsRail";
 import { LeaderboardHub } from "@/components/lobby/LeaderboardHub";
@@ -31,7 +35,7 @@ import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
 import { useUIStore, useSessionStore } from "@/lib/store";
-import { casinoPath, ORIGINAL_IDS, parseCasinoRoute } from "@/lib/casino-routes";
+import { casinoPath, ORIGINAL_IDS, parseCasinoRoute, isPromoRouteSection, promoIdFromSection } from "@/lib/casino-routes";
 import { useLocale } from "@/lib/use-locale";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
 import type { OriginalId } from "@/lib/originals-registry";
@@ -129,6 +133,7 @@ function CasinoPage() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const { setDepositOpen } = useUIStore();
+  const cmsOverrides = useCmsOverrides();
   const setSessionUser = useSessionStore((s) => s.setUser);
   const setSessionWallet = useSessionStore((s) => s.setWallet);
 
@@ -252,7 +257,7 @@ function CasinoPage() {
               const origData = await origRes.json();
               if (origData.success) {
                 const filtered = origData.data.filter((g: LobbyGame) => gameIds.includes(g.slug) || gameIds.includes(g.name.toLowerCase()));
-                setGames(filtered.length > 0 ? filtered : origData.data);
+                setGames((filtered.length > 0 ? filtered : origData.data).map((g: LobbyGame) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`))));
               }
             } else {
               setGames([]);
@@ -267,7 +272,8 @@ function CasinoPage() {
         const res = await fetch(`/api/games-lobby?category=${cat}`, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
-          setGames(data.data || []);
+          const list = (data.data || []) as LobbyGame[];
+          setGames(list.map((g) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`))));
         }
       } catch {
         if (!controller.signal.aborted) setGames([]);
@@ -276,7 +282,7 @@ function CasinoPage() {
     };
     void fetchGames();
     return () => controller.abort();
-  }, [activeSection, routeReady]);
+  }, [activeSection, routeReady, cmsOverrides]);
 
   // Fetch stats
   useEffect(() => {
@@ -312,6 +318,7 @@ function CasinoPage() {
       setGateDismissed(false);
       return;
     }
+    track("navigate", { section });
     navigate(section);
   }, [navigate]);
 
@@ -337,6 +344,7 @@ function CasinoPage() {
     // Guests never had a wallet to bet from — the game opened anyway and the
     // first bet silently failed. Intercept here with the real next step.
     if (authed !== true) { setShowSignupPrompt(true); return; }
+    track("game_open", { game: game.slug || game.id });
     if (game.gameType === "original") {
       navigate("originals", game.slug);
     } else if (game.gameType === "external_virtual") {
@@ -442,7 +450,7 @@ function CasinoPage() {
         <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <main className={`min-w-0 flex-1 overflow-y-auto ${activeGame ? "casino-main--game" : "pb-20 lg:pb-0"}`}>
           <div className={`casino-content mx-auto w-full max-w-[1600px] ${activeGame ? "p-2 sm:p-4 lg:p-6" : "p-3 sm:p-6 lg:p-8"}`}>
-            {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && (
+            {!activeGame && activeSection !== "lobby" && activeSection !== "rewards" && !isProfileSection(activeSection) && !isPromoRouteSection(activeSection) && (
               <button type="button" onClick={() => navigateBack("lobby")} className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/8 bg-surface/60 px-3 text-xs font-bold text-white/60 transition-colors hover:border-lime/30 hover:text-lime">
                 <ArrowLeft className="h-4 w-4" /> {t("common.back")}
               </button>
@@ -454,6 +462,12 @@ function CasinoPage() {
               </div>
             ) : activeSection === "rewards" ? (
               <LeaderboardHub onPlay={() => handleSectionChange("originals")} onBack={() => navigateBack("lobby")} />
+            ) : isPromoRouteSection(activeSection) ? (
+              <PromoDetailSection
+                promoId={promoIdFromSection(activeSection)}
+                onBack={() => navigateBack("lobby")}
+                onNavigate={handleSectionChange}
+              />
             ) : isProfileSection(activeSection) ? (
               <ProfileSectionView section={activeSection} onBack={() => navigateBack("lobby")} onNavigate={handleSectionChange} />
             ) : activeSection === "originals" ? (
@@ -522,7 +536,7 @@ function CasinoPage() {
       {authed === false && !gateDismissed && (
         <AuthGate
           initialMode={gateMode}
-          onAuthenticated={() => { setAuthed(true); setGateDismissed(true); window.location.reload(); }}
+          onAuthenticated={() => { track("auth", { mode: gateMode }); setAuthed(true); setGateDismissed(true); window.location.reload(); }}
           onDismiss={() => setGateDismissed(true)}
         />
       )}
