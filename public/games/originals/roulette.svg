@@ -5,33 +5,19 @@
     </linearGradient>
     <radialGradient id="uglow" cx="0.5" cy="0.42" r="0.62">
       <stop offset="0" stop-color="#e8ff00" stop-opacity="0.20"/>
-      <stop offset="0.55" stop-color="#e8ff00" stop-opacity="0.05"/>
       <stop offset="1" stop-color="#e8ff00" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="vig" cx="0.5" cy="0.45" r="0.75">
       <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
       <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
     </radialGradient>
-    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#000" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#000" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="obj" x1="0" y1="0" x2="0.2" y2="1">
-      <stop offset="0" stop-color="#3a3a34"/><stop offset="1" stop-color="#0f0f0d"/>
-    </linearGradient>
-    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
   </defs>
   <rect width="1280" height="880" fill="url(#bg)"/>
   <rect width="1280" height="880" fill="url(#uglow)"/>
-  <ellipse cx="640" cy="602" rx="330" ry="52" fill="url(#shadow)"/>
-  <g transform="translate(640,352) scale(2)"><g><circle r="136" fill="#0a0a09" stroke="#e8ff00" stroke-width="3"/><path d="M0,0 L0.0,-126.0 A126,126 0 0 1 32.6,-121.7 Z" fill="#e8ff00" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L32.6,-121.7 A126,126 0 0 1 63.0,-109.1 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L63.0,-109.1 A126,126 0 0 1 89.1,-89.1 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L89.1,-89.1 A126,126 0 0 1 109.1,-63.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L109.1,-63.0 A126,126 0 0 1 121.7,-32.6 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L121.7,-32.6 A126,126 0 0 1 126.0,0.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L126.0,0.0 A126,126 0 0 1 121.7,32.6 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L121.7,32.6 A126,126 0 0 1 109.1,63.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L109.1,63.0 A126,126 0 0 1 89.1,89.1 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L89.1,89.1 A126,126 0 0 1 63.0,109.1 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L63.0,109.1 A126,126 0 0 1 32.6,121.7 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L32.6,121.7 A126,126 0 0 1 0.0,126.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L0.0,126.0 A126,126 0 0 1 -32.6,121.7 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-32.6,121.7 A126,126 0 0 1 -63.0,109.1 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-63.0,109.1 A126,126 0 0 1 -89.1,89.1 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-89.1,89.1 A126,126 0 0 1 -109.1,63.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-109.1,63.0 A126,126 0 0 1 -121.7,32.6 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-121.7,32.6 A126,126 0 0 1 -126.0,0.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-126.0,0.0 A126,126 0 0 1 -121.7,-32.6 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-121.7,-32.6 A126,126 0 0 1 -109.1,-63.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-109.1,-63.0 A126,126 0 0 1 -89.1,-89.1 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-89.1,-89.1 A126,126 0 0 1 -63.0,-109.1 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-63.0,-109.1 A126,126 0 0 1 -32.6,-121.7 Z" fill="#101010" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/><path d="M0,0 L-32.6,-121.7 A126,126 0 0 1 -0.0,-126.0 Z" fill="#1e1e1a" stroke="#e8ff00" stroke-opacity="0.35" stroke-width="1.5"/>
-      <circle r="62" fill="url(#obj)" stroke="#e8ff00" stroke-width="2.5"/>
-      <circle r="20" fill="#0a0a09" stroke="#e8ff00" stroke-width="2"/>
-      <circle cx="0" cy="-112" r="11" fill="#e8ff00" filter="url(#glow)"/>
-      <circle cx="0" cy="-112" r="8" fill="#fff"/></g></g>
+  <circle cx="640" cy="420" r="240" fill="#0f0f0d" stroke="#e8ff00" stroke-width="8"/>
+  <circle cx="640" cy="420" r="170" fill="#141412" stroke="#e8ff00" stroke-width="2"/>
+  <circle cx="640" cy="420" r="70" fill="#1a1a16" stroke="#e8ff00" stroke-width="3"/>
+  <text x="640" y="432" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="#e8ff00">TOLS</text>
+  <circle cx="790" cy="300" r="16" fill="#e8ff00"/>
   <rect width="1280" height="880" fill="url(#vig)"/>
 </svg>

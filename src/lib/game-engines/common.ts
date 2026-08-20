@@ -17,6 +17,29 @@ export function isRisk(value: unknown): value is (typeof RISK_LEVELS)[number] {
   return typeof value === "string" && (RISK_LEVELS as readonly string[]).includes(value);
 }
 
+export type RouletteChip = { type: string; value?: number; amount: number };
+
+const ROULETTE_TYPES = new Set([
+  "straight", "red", "black", "odd", "even", "low", "high",
+  "dozen1", "dozen2", "dozen3", "col1", "col2", "col3",
+]);
+
+/** UI sends `{ bets }`; Auto Bet may send `{ color: "red" }` — both become chips. */
+export function normalizeRouletteBets(params: Record<string, unknown>, amount: number): RouletteChip[] {
+  if (Array.isArray(params.bets) && params.bets.length) {
+    return (params.bets as RouletteChip[])
+      .map((b) => ({
+        type: String(b.type),
+        value: typeof b.value === "number" ? b.value : undefined,
+        amount: Number(b.amount) || 0,
+      }))
+      .filter((b) => b.amount > 0 && ROULETTE_TYPES.has(b.type));
+  }
+  const raw = String(params.color ?? params.type ?? "red");
+  const type = ROULETTE_TYPES.has(raw) && raw !== "straight" ? raw : "red";
+  return [{ type, amount }];
+}
+
 export function betResultTag(result: {
   won: boolean;
   multiplier: number;

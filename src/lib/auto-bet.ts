@@ -161,8 +161,24 @@ export async function tickAutoBet(userId: string, gameId: string): Promise<{
   try {
     const gameParams: Record<string, unknown> = { ...params.gameParams, autoBetId: row.id };
     if (gameId === "roulette") {
-      const kind = String(gameParams.color ?? "red");
-      gameParams.bets = [{ type: kind === "black" ? "black" : "red", amount: row.currentBet }];
+      const raw = Array.isArray(gameParams.bets)
+        ? (gameParams.bets as Array<{ type: string; value?: number; amount: number }>)
+        : [];
+      const staked = raw.reduce((s, b) => s + (Number(b.amount) || 0), 0);
+      if (staked > 0) {
+        const scale = row.currentBet / staked;
+        let mapped = raw.map((b) => ({
+          ...b,
+          amount: Math.round(Number(b.amount) * scale * 100) / 100,
+        }));
+        const sum = mapped.reduce((s, b) => s + b.amount, 0);
+        const drift = Math.round((row.currentBet - sum) * 100) / 100;
+        if (mapped.length && drift !== 0) mapped[0] = { ...mapped[0], amount: mapped[0].amount + drift };
+        gameParams.bets = mapped;
+      } else {
+        const kind = String(gameParams.color ?? "red");
+        gameParams.bets = [{ type: kind === "black" ? "black" : "red", amount: row.currentBet }];
+      }
     }
     if (gameId === "keno" && !Array.isArray(gameParams.picks)) {
       gameParams.picks = [1, 2, 3, 4, 5];

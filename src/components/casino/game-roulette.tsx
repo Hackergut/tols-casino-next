@@ -32,7 +32,7 @@ const WHEEL_ORDER = [
 ];
 
 function numColor(n: number): string {
-  if (n === 0) return '#9bc400';
+  if (n === 0) return '#cdf32b';
   return RED.has(n) ? '#e33b26' : '#141412';
 }
 
@@ -118,6 +118,11 @@ const RouletteWheel = forwardRef<RouletteHandle, unknown>(function RouletteWheel
     ctx.lineWidth = 2;
     ctx.strokeStyle = 'rgba(205,243,43,0.25)';
     ctx.stroke();
+    ctx.fillStyle = '#cdf32b';
+    ctx.font = '800 26px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TOLS', CX, CY);
 
     // Ball
     const b = ballRef.current;
@@ -126,8 +131,8 @@ const RouletteWheel = forwardRef<RouletteHandle, unknown>(function RouletteWheel
     ctx.beginPath();
     ctx.arc(bx, by, 10, 0, Math.PI * 2);
     const bg = ctx.createRadialGradient(bx - 3, by - 3, 1.5, bx, by, 10);
-    bg.addColorStop(0, '#ffffff');
-    bg.addColorStop(1, '#c8c8c2');
+    bg.addColorStop(0, '#f4ff9a');
+    bg.addColorStop(1, '#cdf32b');
     ctx.fillStyle = bg;
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 9;
@@ -217,6 +222,11 @@ const DOZENS = [
   { key: 'dozen2', label: '2nd 12', type: 'dozen2' },
   { key: 'dozen3', label: '3rd 12', type: 'dozen3' },
 ];
+const COLUMNS = [
+  { key: 'col3', label: '2:1', type: 'col3' },
+  { key: 'col2', label: '2:1', type: 'col2' },
+  { key: 'col1', label: '2:1', type: 'col1' },
+];
 
 export function RouletteGame({ onBack, initialBalance }: Props) {
   const [chip, setChip] = useState(5);
@@ -226,11 +236,14 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
   const [history, setHistory] = useState<Array<{ winning: number; result: string; payout: number }>>([]);
   const wheelRef = useRef<RouletteHandle | null>(null);
 
-  const totalStaked = Array.from(bets.values()).reduce((s, b) => s + b.amount, 0);
-  const autoColor = Array.from(bets.values()).some((b) => b.type === "black") && !Array.from(bets.values()).some((b) => b.type === "red")
-    ? "black"
-    : "red";
-  const { balance, setBalance } = useOriginalsSession("roulette", { color: autoColor }, totalStaked || chip, initialBalance);
+  const betList = Array.from(bets.values());
+  const totalStaked = betList.reduce((s, b) => s + b.amount, 0);
+  const { balance, setBalance } = useOriginalsSession(
+    "roulette",
+    betList.length ? { bets: betList } : { color: "red" },
+    totalStaked || chip,
+    initialBalance,
+  );
 
   const placeBet = useCallback((type: string, value?: number) => {
     if (spinning) return;
@@ -296,11 +309,11 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
 
           {/* Betting table */}
           <div className="rounded-xl p-3 overflow-x-auto" style={{ background: 'var(--color-surface)', border: '1px solid color-mix(in oklab, var(--color-lime) 8%, transparent)' }}>
-            <div className="flex gap-1 min-w-[520px]">
+            <div className="flex gap-1 min-w-[560px]">
               {/* Zero */}
               <button onClick={() => placeBet('straight', 0)} disabled={spinning}
-                className="relative w-10 rounded-md text-white text-sm font-bold flex items-center justify-center"
-                style={{ background: numColor(0) }}>
+                className="relative w-10 self-stretch rounded-md text-sm font-black flex items-center justify-center"
+                style={{ background: numColor(0), color: '#0f1015' }}>
                 0
                 {chipOn('straight', 0) > 0 && <Chip amount={chipOn('straight', 0)} />}
               </button>
@@ -316,6 +329,17 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
                     </button>
                   )),
                 )}
+              </div>
+              {/* 2:1 columns — engine types col3 / col2 / col1 match the three table rows */}
+              <div className="grid grid-rows-3 gap-1 w-12 shrink-0">
+                {COLUMNS.map((c) => (
+                  <button key={c.key} onClick={() => placeBet(c.type)} disabled={spinning}
+                    className="relative rounded-md text-[10px] font-black text-white/80 flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    {c.label}
+                    {chipOn(c.type) > 0 && <Chip amount={chipOn(c.type)} />}
+                  </button>
+                ))}
               </div>
             </div>
             {/* Dozens */}
@@ -357,10 +381,16 @@ export function RouletteGame({ onBack, initialBalance }: Props) {
             <div className="grid grid-cols-5 gap-1.5">
               {CHIPS.map((c) => (
                 <button key={c} onClick={() => setChip(c)}
-                  className="py-2 rounded-lg text-[11px] font-bold transition-all"
-                  style={chip === c
-                    ? { background: 'color-mix(in oklab, var(--color-lime) 15%, transparent)', color: 'var(--color-lime)', border: '1px solid color-mix(in oklab, var(--color-lime) 30%, transparent)' }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  className="aspect-square rounded-full text-[10px] font-black transition-all"
+                  style={{
+                    backgroundImage: 'url(/games/props/chip-heads.jpg)',
+                    backgroundSize: 'cover',
+                    color: chip === c ? 'var(--color-lime)' : 'rgba(255,255,255,0.7)',
+                    opacity: chip === c ? 1 : 0.5,
+                    boxShadow: chip === c ? '0 0 14px color-mix(in oklab, var(--color-lime) 40%, transparent)' : 'none',
+                    border: chip === c ? '2px solid var(--color-lime)' : '2px solid transparent',
+                    textShadow: '0 1px 3px #000',
+                  }}>
                   ${c}
                 </button>
               ))}

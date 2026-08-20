@@ -2,7 +2,7 @@ import { fairFloat } from "@/lib/provably-fair";
 import type { GameEngine } from "@/shared/types";
 import { KENO_DRAWS, KENO_MAX_PICKS, KENO_POOL, KENO_RISKS, PLINKO_ROWS, WHEEL_SEGMENTS } from "@/shared/constants";
 import { KENO_TABLES, PLINKO_TABLES, POOL_RUSH_CDF, POOL_RUSH_PAY, ROULETTE_RED, SLOT_P, SLOT_PAY, WHEEL_TABLES } from "./tables";
-import { isRisk, okAmount, paid } from "./common";
+import { isRisk, normalizeRouletteBets, okAmount, paid } from "./common";
 
 export const diceEngine: GameEngine = {
   id: "dice",
@@ -260,19 +260,17 @@ export const rouletteEngine: GameEngine = {
   validateBet(params, balance, amount) {
     const base = okAmount(amount, balance);
     if (!base.valid) return base;
-    const bets = Array.isArray(params.bets) ? (params.bets as Array<{ amount: number }>) : [];
-    const staked = bets.reduce((s, b) => s + (Number(b.amount) || 0), 0);
+    const bets = normalizeRouletteBets(params, amount);
+    const staked = bets.reduce((s, b) => s + b.amount, 0);
     if (bets.length === 0) return { valid: false, error: "Place at least one chip" };
-    if (Math.abs(staked - amount) > 1e-6) return { valid: false, error: "Bet total mismatch" };
+    if (Math.abs(staked - amount) > 0.05) return { valid: false, error: "Bet total mismatch" };
     return { valid: true };
   },
   generateOutcome(serverSeed, clientSeed, nonce) {
     return { winning: Math.floor(fairFloat(serverSeed, clientSeed, nonce) * 37) };
   },
   settleBet(bet, outcome) {
-    const bets = Array.isArray(bet.params.bets)
-      ? (bet.params.bets as Array<{ type: string; value?: number; amount: number }>)
-      : [];
+    const bets = normalizeRouletteBets(bet.params, bet.amount);
     const winning = Number(outcome.winning);
     const isRed = winning !== 0 && ROULETTE_RED.has(winning);
     let totalPayout = 0;
