@@ -15,10 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useUIStore, useSessionStore } from "@/lib/store";
+import { useBalanceStore } from "@/lib/balance-store";
 import { formatCurrency, shortAddress } from "@/lib/types";
 import { toast } from "sonner";
 import DepositPanel from "@/components/casino/DepositPanel";
 import BuyCrypto from "@/components/casino/BuyCrypto";
+import CoinIcon from "@/components/casino/CoinIcon";
 
 // Chains offered for deposit. Addresses/QRs come from the server (set by an
 // admin from Trust Wallet) — none are hardcoded here.
@@ -45,7 +47,18 @@ interface AddressData {
 
 export function DepositModal() {
   const { depositOpen, setDepositOpen, setAuthOpen } = useUIStore();
-  const { balance, user } = useSessionStore();
+  const { user } = useSessionStore();
+  /*
+   * Read the balance from the ordered store, not from useSessionStore.
+   *
+   * The lobby poll mirrors the balance into useSessionStore as well, but that
+   * write carries no sequence token — so a poll response that started before a
+   * bet settled still applied there after being correctly discarded by the
+   * ordered store. The wallet modal then showed the pre-bet figure while the
+   * game showed the settled one: the same number, two values, on screen at
+   * once. There is one authoritative balance and this is it.
+   */
+  const balance = useBalanceStore((s) => s.balance);
   const qc = useQueryClient();
 
   const [chain, setChain] = useState("btc");
@@ -92,7 +105,7 @@ export function DepositModal() {
 
   const withdraw = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/withdrawals", {
+      const r = await fetch("/api/casino-withdrawals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: Number(withdrawAmount), walletAddress: withdrawAddress, chain: withdrawChain }),
@@ -180,7 +193,7 @@ export function DepositModal() {
                   }`}
                   style={withdrawChain === c.id ? { background: "color-mix(in oklab, var(--color-lime) 8%, transparent)" } : undefined}
                 >
-                  <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+                  <CoinIcon chain={c.id} size={20} />
                   {c.symbol}
                 </button>
               ))}

@@ -466,3 +466,14 @@ button.bj-card.scopa-playable { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .tols-die-cube.is-rolling { animation: none; }
 }
+
+/* Casino shell classes from master — needed after merging production routes. */
+.casino-content { container-type: inline-size; }
+@media (max-width: 767px) {
+  .casino-main--game {
+    height: calc(100dvh - 56px - env(safe-area-inset-top));
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .casino-main--game .casino-content { height: 100%; }
+}

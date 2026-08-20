@@ -6,6 +6,8 @@ import { ok, err } from "@/lib/session";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { randomBytes } from "crypto";
 import { sendMail, appUrl } from "@/lib/mailer";
+import { isOfAge, MIN_AGE } from "@/lib/compliance";
+import { WEB_WELCOME_BONUS } from "@/lib/welcome-bonus";
 
 const RANDOM_COLORS = ["#ccff00", "#22d3ee", "#a855f7", "#f59e0b", "#ec4899", "#4ade80"];
 
@@ -28,13 +30,19 @@ export async function POST(req: NextRequest) {
   if (password.length < 8) return err("Password must be at least 8 characters", 400);
 
   // ── Age verification (legal minimum) ──
-  const LEGAL_AGE = Number(process.env.LEGAL_AGE ?? 18);
+  // Calendar-correct, not an average-year division: 365.25 days per year drifts
+  // by up to a day around a birthday, which on the boundary either admits a
+  // minor or refuses someone who turned 18 today. Both are wrong here.
+  const LEGAL_AGE = Number(process.env.LEGAL_AGE ?? MIN_AGE);
   const dobRaw = String(body.dateOfBirth ?? "");
   const dob = new Date(dobRaw);
   if (!dobRaw || isNaN(dob.getTime())) return err("Date of birth is required", 400);
-  const ageYears = (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-  if (ageYears < LEGAL_AGE) return err("You must be at least " + LEGAL_AGE + " years old to register", 403);
-  if (ageYears > 130) return err("Invalid date of birth", 400);
+  if (dob.getTime() > Date.now()) return err("Invalid date of birth", 400);
+  if (!isOfAge(dob, LEGAL_AGE)) {
+    return err("You must be at least " + LEGAL_AGE + " years old to register", 403);
+  }
+  // Implausible age — a typo'd year, not a real player.
+  if (isOfAge(dob, 130)) return err("Invalid date of birth", 400);
 
   // ── Uniqueness ──
   const existing = await db.casinoUser.findFirst({
@@ -61,7 +69,7 @@ export async function POST(req: NextRequest) {
       dateOfBirth: dob,
       kycStatus: "unverified",
       emailVerifyToken: verifyToken,
-      wallet: { create: { balance: 0, currency: "USDT", vipLevel: 1, totalWagered: 0, totalWon: 0 } },
+      wallet: { create: { balance: WEB_WELCOME_BONUS, currency: "USDT", vipLevel: 1, totalWagered: 0, totalWon: 0 } },
     },
     include: { wallet: true },
   });

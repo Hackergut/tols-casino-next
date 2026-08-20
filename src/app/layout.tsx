@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Inter, Michroma, Oswald } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import TelegramWebApp from "@/components/TelegramWebApp";
+import { ComplianceLayer } from "@/components/compliance/ComplianceLayer";
+import { LocaleProvider } from "@/lib/use-locale";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
 
 // Display face — wide, geometric, futuristic. Single weight (400) and
 // non-tabular figures, so it is scoped to the wordmark and section headings;
@@ -85,12 +88,16 @@ export default async function RootLayout({
 }>) {
   // Language chosen by the middleware from the visitor's region (or their saved
   // preference), so the document advertises the right language to the browser.
-  const locale = (await cookies()).get("locale")?.value || "en";
+  const cookieLocale = (await cookies()).get("locale")?.value;
+  const edgeLocale = (await headers()).get("x-locale");
+  const candidate = cookieLocale || edgeLocale || DEFAULT_LOCALE;
+  const locale: Locale = (LOCALES as readonly string[]).includes(candidate) ? candidate as Locale : DEFAULT_LOCALE;
   return (
     <html lang={locale} suppressHydrationWarning>
       <body
         className={`${inter.variable} ${michroma.variable} ${oswald.variable} antialiased bg-background text-foreground`}
       >
+        <LocaleProvider initialLocale={locale}>
         {/* afterInteractive (not beforeInteractive): a beforeInteractive script
             placed in the App Router <body> renders an inline <script> during SSR
             that isn't part of React's client tree, mismatching hydration on every
@@ -99,6 +106,11 @@ export default async function RootLayout({
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
         <TelegramWebApp />
         {children}
+        {/* Last in the body so it paints above the app without needing a
+            portal, and so the lobby's own markup streams first. The gate's
+            own z-index — not DOM order — is what keeps it on top. */}
+        <ComplianceLayer />
+        </LocaleProvider>
       </body>
     </html>
   );

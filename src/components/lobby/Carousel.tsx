@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HIT_TARGET, SPACE, cardWidth, type CardSize } from "./design-tokens";
+import { useLocale } from "@/lib/use-locale";
 
 interface CarouselProps {
   title?: string;
@@ -26,6 +27,7 @@ interface CarouselProps {
 
 export function Carousel({ title, subtitle, icon, action, size = "medium", children }: CarouselProps) {
   const reduced = useReducedMotion();
+  const { t } = useLocale();
   const scroller = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -65,8 +67,8 @@ export function Carousel({ title, subtitle, icon, action, size = "medium", child
     <button
       onClick={() => page(dir)}
       disabled={disabled}
-      aria-label={dir === -1 ? "Scorri a sinistra" : "Scorri a destra"}
-      className="flex shrink-0 items-center justify-center rounded-full border border-white/10 text-white/70 transition-all hover:border-lime/40 hover:text-lime disabled:pointer-events-none disabled:opacity-25"
+      aria-label={dir === -1 ? t("common.previous") : t("common.next")}
+      className="carousel-arrow flex shrink-0 items-center justify-center rounded-full border border-white/10 text-white/70 transition-all hover:border-lime/40 hover:text-lime disabled:pointer-events-none disabled:opacity-25"
       style={{ width: HIT_TARGET, height: HIT_TARGET }}
     >
       {dir === -1 ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
@@ -76,7 +78,7 @@ export function Carousel({ title, subtitle, icon, action, size = "medium", child
   return (
     <section>
       {(title || action) && (
-        <header className="mb-4 flex items-center justify-between gap-3">
+        <header className="carousel-head mb-3 flex items-center justify-between gap-2 sm:mb-4 sm:gap-3">
           <div className="flex min-w-0 items-center gap-2">
             {icon}
             <div className="min-w-0">

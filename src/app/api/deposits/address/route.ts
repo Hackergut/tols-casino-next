@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireUser, Unauthorized } from "@/lib/auth";
 import { ok, err } from "@/lib/session";
 import { CHAINS, isValidChain } from "@/lib/chains";
+import { usdToCrypto } from "@/lib/payment/price-feed";
 import QRCode from "qrcode";
 
 // GET /api/deposits/address?chain=btc&amount=100
@@ -31,7 +32,29 @@ export async function GET(req: NextRequest) {
   }
 
   const meta = CHAINS[chain];
-  const uri = meta.uri(record.address, amount, record.memo || undefined);
+
+  // The player picks a USD amount, but a receive address only understands the
+  // chain's native unit. Without this, the QR and the "send exactly" copy
+  // both quoted the raw USD number as if it were the coin amount — a $50
+  // deposit read "send exactly 50 BTC" (fifty whole bitcoin). Convert first,
+  // and encode the CONVERTED amount in the QR so a scanning wallet prefills
+  // the right figure too.
+  let amountCrypto: number | undefined;
+  let priceUsd: number | null = null;
+  let priceStale = false;
+  if (amount !== undefined && Number.isFinite(amount) && amount > 0) {
+    const conv = await usdToCrypto(chain, amount);
+    if (conv) {
+      amountCrypto = conv.amount;
+      priceUsd = conv.price;
+    } else {
+      // No price available (feed down and no cache yet) — fail safe by not
+      // quoting an amount at all rather than quoting the wrong one.
+      priceStale = true;
+    }
+  }
+
+  const uri = meta.uri(record.address, amountCrypto, record.memo || undefined);
 
   // Generate a QR of the payment URI as a PNG data URL.
   const qr = await QRCode.toDataURL(uri, {
@@ -51,6 +74,10 @@ export async function GET(req: NextRequest) {
     minConfirmations: record.minConfirmations,
     uri,
     qr, // data:image/png;base64,...
+    amountUsd: amount ?? null,
+    amountCrypto: amountCrypto ?? null,
+    priceUsd,
+    priceUnavailable: priceStale,
     userRef: user.id.slice(0, 8), // shown to user so support can match a payment
   });
 }

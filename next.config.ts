@@ -15,6 +15,22 @@ import type { NextConfig } from "next";
 // against every other site intact.
 const TELEGRAM_FRAME_ANCESTORS = "'self' https://web.telegram.org https://*.telegram.org";
 
+// Governance Tower ↔ Casino: DUE PROGETTI VERCEL SEPARATI su sottodomini
+//   Casino = https://www.tols.fun  (questo repo)
+//   Governance = https://gov.tols.fun (altro repo, altro progetto Vercel)
+// Il ponte è service-to-service, non via admin panel. CSP/CORS devono permettere al sottodominio di chiamare il Casino.
+const TOWER_ORIGIN = (
+  process.env.GOVERNANCE_TOWER_URL ||
+  process.env.TOWER_URL ||
+  process.env.TOLS_BASE_URL ||
+  "https://gov.tols.fun"
+).replace(/\/api\/?$/, "");
+let TOWER_HOST: string | null = null;
+try { TOWER_HOST = new URL(TOWER_ORIGIN).origin; } catch { TOWER_HOST = null; }
+const BRIDGE_ANCESTORS = TOWER_HOST ? ` ${TOWER_HOST}` : "";
+const BRIDGE_CONNECT = TOWER_HOST ? ` ${TOWER_HOST}` : "";
+// Sottodomini .tols.fun: aggiungi wildcard per preview Vercel (*.vercel.app) se necessario
+
 const securityHeaders = [
   // NOTE: X-Frame-Options is deliberately omitted. It is all-or-nothing
   // (ALLOW-FROM is dead in modern browsers) so it cannot express "Telegram
@@ -39,8 +55,21 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.telegram.org",
-      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}`,
+      /*
+       * Each directive may appear ONCE. CSP resolves a repeated directive by
+       * keeping the FIRST and discarding the rest, so the duplicate
+       * `frame-src https:` and `connect-src 'self' https://api.telegram.org`
+       * that used to follow these lines were dead: the narrower earlier copies
+       * won. That silently re-broke the vendor-game iframes the wider
+       * `frame-src https:` was added to fix. Merged into one directive each.
+       */
+      `connect-src 'self' https://api.telegram.org${BRIDGE_CONNECT} https://*.vercel.app`,
+      // Telegram frames the Mini App; the Tower subdomain frames nothing but is
+      // allowed for the bridge. Everything else is refused.
+      `frame-ancestors ${TELEGRAM_FRAME_ANCESTORS}${BRIDGE_ANCESTORS}`,
+      // `https:` covers the EuroVirtuals aggregator, whose games each load from
+      // their own studio domain and cannot be enumerated ahead of time.
+      "frame-src https:",
       "base-uri 'self'",
       "form-action 'self'",
     ].join("; "),
@@ -56,8 +85,35 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: !process.env.VERCEL,
   },
   reactStrictMode: false,
+  // Arena/E2B proxies the local dev server through a generated subdomain.
+  // Production is unaffected; this only permits Next's development assets.
+  allowedDevOrigins: ["*.e2b.app"],
   turbopack: {},
   async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Bridge + Platform APIs must be callable cross-origin from the Tower sottodominio
+      {
+        source: "/api/bridge/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TOWER_HOST || "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS,HEAD" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization, X-Bridge-Signature, X-Webhook-Signature, X-Tower-Signature, X-Governance-Signature, X-Cron-Secret, X-Api-Key, X-App-Key" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+          { key: "Vary", value: "Origin" },
+        ],
+      },
+      {
+        source: "/api/platform/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: TOWER_HOST || "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS,HEAD" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+          { key: "Vary", value: "Origin" },
+        ],
+      },
+    ];
     return [{ source: "/:path*", headers: securityHeaders }];
   },
 };

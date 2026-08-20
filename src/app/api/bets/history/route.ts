@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
 
   const where: Record<string, unknown> = { userId: user.id, result: { not: "pending" } };
   if (game) where.gameId = game;
-  if (result === "win" || result === "lose") where.result = result;
+  if (result === "win" || result === "lose" || result === "push") where.result = result;
+  else where.result = { in: ["win", "lose", "push"] };
 
   const [bets, total] = await Promise.all([
     db.casinoBet.findMany({

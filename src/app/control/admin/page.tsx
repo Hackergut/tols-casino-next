@@ -169,6 +169,10 @@ const LiveMonitorPage = dynamic(
   () => import('@/components/admin/modules/ops/live-monitor-page').then((m) => ({ default: m.LiveMonitorPage })),
   { loading: () => <PageLoader /> },
 );
+const BridgePage = dynamic(
+  () => import('@/components/admin/modules/bridge-page').then((m) => ({ default: m.BridgePage })),
+  { loading: () => <PageLoader /> },
+);
 
 /* ------------------------------------------------------------------ */
 /*  Page Router                                                        */
@@ -251,6 +255,8 @@ function PageRouter() {
       return <RtpControlPage />;
     case 'live-monitor':
       return <LiveMonitorPage />;
+    case 'bridge':
+      return <BridgePage />;
     default:
       return <DashboardPage />;
   }

@@ -8,6 +8,7 @@ import React, {
   useMemo,
 } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
@@ -738,7 +739,7 @@ function MessageBubble({ message, isOwn, membersMap, onPin, onDelete }: MessageB
         >
           <div
             className="message-content"
-            dangerouslySetInnerHTML={{ __html: parsedContent }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(parsedContent) }}
           />
         </div>
 
