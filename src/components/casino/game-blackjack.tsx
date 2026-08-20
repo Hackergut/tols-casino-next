@@ -1,18 +1,19 @@
-"use client";
+'use client';
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
-import { PostedAmount } from "@/casino/components/casino/PostedAmount";
-import { GameBetControls } from "@/components/casino/game-shared";
+import { GameFrame, BetPanel, BetButton, StatRow } from "@/components/casino/GameFrame";
+import { useBet } from "@/components/casino/useBet";
+import { useGameSettings, useSkipAnimation } from "@/lib/game-settings";
 import { useGameEngine } from "@/hooks/useGameEngine";
-import { useOriginalsSession } from "@/lib/originals-client";
 import { PlayingCard } from "@/components/casino/playing-card";
+import type { OriginalId } from "@/lib/originals-registry";
 
 type BjCard = { r: number; s: number };
 
 interface Props {
   onBack: () => void;
   initialBalance: number;
+  onPickGame?: (id: OriginalId) => void;
 }
 
 const SUITS = ["♠", "♥", "♦", "♣"];
@@ -20,19 +21,14 @@ const RANKS = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", 
 
 function CardView({ card, hidden }: { card?: BjCard; hidden?: boolean }) {
   if (hidden || !card) return <PlayingCard hidden />;
-  return (
-    <PlayingCard
-      rank={RANKS[card.r]}
-      suit={SUITS[card.s]}
-      red={card.s === 1 || card.s === 2}
-    />
-  );
+  return <PlayingCard rank={RANKS[card.r]} suit={SUITS[card.s]} red={card.s === 1 || card.s === 2} />;
 }
 
-export function BlackjackGame({ onBack, initialBalance }: Props) {
-  const [betAmount, setBetAmount] = useState(10);
-  const { balance, setBalance } = useOriginalsSession("blackjack", { strategy: "basic" }, betAmount, initialBalance);
-  const { round, result, pending, error, placeBet, sendAction, setRound, setResult } = useGameEngine("blackjack");
+export function BlackjackGame({ onBack, initialBalance, onPickGame }: Props) {
+  const { balance, busy, error, history, fairness, profit, betCount, place } = useBet("blackjack", initialBalance);
+  const betAmount = useGameSettings((s) => s.stake);
+  const setBetAmount = useGameSettings((s) => s.setStake);
+  const { round, result, pending, placeBet, sendAction, setRound, setResult } = useGameEngine("blackjack");
 
   const playing = Boolean(round?.pending);
   const payload = (playing ? round?.payload : result?.payload) ?? {};
@@ -46,7 +42,9 @@ export function BlackjackGame({ onBack, initialBalance }: Props) {
 
   useEffect(() => {
     const latest = result ?? round;
-    if (latest?.newBalance != null) setBalance(latest.newBalance);
+    if (latest?.newBalance != null) {
+      // Balance is managed by useBet's shared store
+    }
   }, [result, round]);
 
   const deal = useCallback(() => {
@@ -55,99 +53,105 @@ export function BlackjackGame({ onBack, initialBalance }: Props) {
     void placeBet(betAmount, {}, "start");
   }, [pending, betAmount, balance, placeBet, setResult]);
 
-  const act = useCallback(
-    (type: string) => {
-      if (!round?.roundId || pending) return;
-      void sendAction(round.roundId, { type });
-    },
-    [round, pending, sendAction],
-  );
+  const act = useCallback((type: string) => {
+    if (!round?.roundId || pending) return;
+    void sendAction(round.roundId, { type });
+  }, [round, pending, sendAction]);
 
-  const reset = () => {
-    setRound(null);
-    setResult(null);
-  };
+  const reset = () => { setRound(null); setResult(null); };
 
   return (
-    <div className="game-wrapper compact-game">
-      <div className="g-header">
-        <button onClick={onBack} className="g-back" aria-label="Back">
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div>
-          <h1>Blackjack</h1>
-          <p>Beat the dealer to 21 — blackjack pays 3:2</p>
-        </div>
-      </div>
-
-      <div className="game-grid">
-        <div className="bj-table">
-          <div className="bj-hand">
-            <p className="bj-hand-label">Dealer {dealerTotal != null ? `· ${dealerTotal}` : dealerUp ? "· ?" : ""}</p>
-            <div className="bj-cards">
-              {playing && dealerUp ? (
-                <>
-                  <CardView card={dealerUp} />
-                  <CardView hidden />
-                </>
-              ) : dealer.length ? (
-                dealer.map((c, i) => <CardView key={i} card={c} />)
-              ) : (
-                <p className="text-sm text-white/30">Waiting for deal</p>
-              )}
-            </div>
-          </div>
-
-          <div className="bj-hand">
-            <p className="bj-hand-label">You {playerTotal ? `· ${playerTotal}` : ""}</p>
-            <div className="bj-cards">
-              {player.map((c, i) => (
-                <CardView key={i} card={c} />
-              ))}
-            </div>
-          </div>
-
-          {outcome && (
-            <div className={`bj-banner ${result?.won || outcome === "push" ? "win" : "loss"}`}>
-              {outcome.replace("_", " ").toUpperCase()}{" "}
-              {result ? (result.won ? `+$${result.payout.toFixed(2)}` : `-$${result.amount.toFixed(2)}`) : ""}
-            </div>
-          )}
-          {error && <p className="text-center text-sm text-loss">{error}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <div className="g-balance">
-            <p className="g-balance-label">Balance</p>
-            <PostedAmount value={balance} format={(n) => `$${n.toFixed(2)}`} className="g-balance-value" />
-          </div>
-          <GameBetControls betAmount={betAmount} setBetAmount={setBetAmount} balance={balance} disabled={playing || pending} />
-
-          {!playing && !result && (
-            <button onClick={deal} disabled={pending || betAmount <= 0 || betAmount > balance} className="g-btn g-btn-play">
-              {pending ? "Dealing…" : "Deal"}
-            </button>
-          )}
+    <GameFrame
+      gameId="blackjack"
+      onBack={onBack}
+      onPickGame={onPickGame}
+      profit={profit}
+      betCount={betCount}
+      history={history}
+      fairness={fairness}
+      controls={
+        <BetPanel
+          amount={betAmount}
+          setAmount={setBetAmount}
+          balance={balance}
+          disabled={playing || pending || busy}
+          action={
+            !playing && !result ? (
+              <BetButton onClick={deal} disabled={pending || betAmount <= 0 || betAmount > balance || busy} busy={pending}>
+                {pending ? 'Dealing...' : 'Deal'}
+              </BetButton>
+            ) : result && !playing ? (
+              <BetButton onClick={reset}>New Hand</BetButton>
+            ) : (
+              <div />
+            )
+          }
+        >
           {playing && (
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => act("hit")} disabled={pending} className="g-btn g-btn-play">
-                Hit
-              </button>
-              <button onClick={() => act("stand")} disabled={pending} className="g-btn g-btn-secondary">
-                Stand
-              </button>
-              <button onClick={() => act("double")} disabled={pending || !canDouble || betAmount > balance} className="g-btn g-btn-secondary">
-                Double
-              </button>
+              <BetButton onClick={() => act("hit")} disabled={pending} busy={pending}>Hit</BetButton>
+              <BetButton onClick={() => act("stand")} disabled={pending} tone="danger" busy={pending}>Stand</BetButton>
+              <BetButton onClick={() => act("double")} disabled={pending || !canDouble || betAmount > balance} busy={pending}>Double</BetButton>
             </div>
           )}
-          {result && !playing && (
-            <button onClick={reset} className="g-btn g-btn-secondary">
-              New hand
-            </button>
+          <StatRow label="Bet" value={`$${betAmount.toFixed(2)}`} />
+          <StatRow label="Player" value={playerTotal ? String(playerTotal) : '—'} tone={playerTotal > 0 ? "lime" : "muted"} />
+          <StatRow label="Dealer" value={dealerTotal != null ? String(dealerTotal) : '—'} />
+          {error && <p className="tols-error">{error}</p>}
+        </BetPanel>
+      }
+    >
+      <div className="blackjack">
+        {/* Felt watermark */}
+        <div className="blackjack__felt-mark">
+          BLACKJACK
+          <span>TOLS ORIGINALS</span>
+        </div>
+
+        {/* Dealer hand */}
+        <div className="blackjack__hand">
+          <header>
+            Dealer {dealerTotal != null ? <b>{dealerTotal}</b> : dealerUp ? <b>?</b> : null}
+          </header>
+          <div className="blackjack__cards">
+            {playing && dealerUp ? (
+              <>
+                <CardView card={dealerUp} />
+                <div className="blackjack__card-slot" />
+              </>
+            ) : dealer.length ? (
+              dealer.map((c, i) => <CardView key={i} card={c} />)
+            ) : (
+              <div className="blackjack__card-slot" />
+            )}
+          </div>
+        </div>
+
+        {/* Player hand */}
+        <div className="blackjack__hand" data-active={playing || undefined}>
+          <header>
+            You {playerTotal ? <b>{playerTotal}</b> : null}
+          </header>
+          <div className="blackjack__cards">
+            {player.map((c, i) => <CardView key={i} card={c} />)}
+          </div>
+        </div>
+
+        {/* Message */}
+        <div className="blackjack__message">
+          {outcome && (
+            <>
+              <strong className={result?.won || outcome === "push" ? "text-win" : "text-loss"}>
+                {outcome.replace("_", " ").toUpperCase()}
+              </strong>
+              <span className={result?.won || outcome === "push" ? "text-win" : "text-loss"}>
+                {result ? (result.won ? `+$${result.payout.toFixed(2)}` : `-$${result.amount.toFixed(2)}`) : ""}
+              </span>
+            </>
           )}
+          {!outcome && !playing && <span>Place your bet and deal</span>}
         </div>
       </div>
-    </div>
+    </GameFrame>
   );
 }

@@ -16,10 +16,11 @@ import { ShootGame } from "@/components/casino/game-shoot";
 import { SlotsGame } from "@/components/casino/game-slots";
 import { RouletteGame } from "@/components/casino/game-roulette";
 import { BlackjackGame } from "@/components/casino/game-blackjack";
-import { PoolRushGame } from "@/components/casino/game-pool-rush";
+import { PoolRushGame } from "@/components/casino/game-poolrush";
 import { ScopaGame } from "@/components/casino/game-scopa";
+import type { OriginalId } from "@/lib/originals-registry";
 
-const GAMES: Record<string, ComponentType<{ onBack: () => void; initialBalance: number }>> = {
+const GAMES: Record<string, ComponentType<{ onBack: () => void; initialBalance: number; onPickGame?: (id: OriginalId) => void }>> = {
   crash: CrashGame,
   dice: DiceGame,
   mines: MinesGame,
@@ -52,7 +53,11 @@ export function GamePlayer({ slug }: { slug: string }) {
 
   return (
     <div className="originals-stage">
-      <Game onBack={() => setSelectedGame(null)} initialBalance={balance} />
+      <Game
+        onBack={() => setSelectedGame(null)}
+        initialBalance={balance}
+        onPickGame={(id) => setSelectedGame(id)}
+      />
       <OriginalsRail gameId={slug} />
     </div>
   );
