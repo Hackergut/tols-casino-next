@@ -69,7 +69,7 @@ export function GamesGridSkeleton() {
   return (
     <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="skeleton-shimmer aspect-[3/4] rounded-2xl bg-surface" />
+        <div key={i} className="skeleton-shimmer aspect-[16/9] rounded-2xl bg-surface" />
       ))}
     </div>
   );
