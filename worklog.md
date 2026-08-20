@@ -2455,3 +2455,51 @@ without touching code or redeploying:
   Promo cards (10) + Game cards (13), live card preview, image URL field with
   datalist of existing artwork, enable toggle, Save / Reset-to-default,
   per-card override badge, refresh across the whole app after save.
+
+## Vercel deploy fix: strict typecheck breaks on telemetry route (2026-08-21)
+
+Deployments of PR #27 failed on Vercel (dpl_CUnc…, dpl_CB5A…). Root cause:
+`next.config.ts` sets `typescript.ignoreBuildErrors = !process.env.VERCEL`, so
+type errors pass locally but fail the production build. The sandbox also cannot
+reach `binaries.prisma.sh`, which hid the error entirely (the un-generated
+client types Prisma delegates as `any`).
+
+- Fix: `src/app/api/telemetry/route.ts` — `TelemetryEvent.props` is `Json?` in
+  Prisma, but the route built `Record<string, unknown>`. Row is now typed
+  `Prisma.TelemetryEventCreateManyInput` and props cast to
+  `Prisma.InputJsonValue` (sound: the payload comes from `req.json()`).
+- Verified by stashing the fix and rebuilding with `VERCEL=1` + the real
+  generated client: build fails with TS2322 without it, passes with it. To
+  generate the client offline:
+  `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_QUERY_ENGINE_BINARY=/bin/true PRISMA_QUERY_ENGINE_LIBRARY=/bin/true npx prisma generate`
+  (engine path env vars skip the binaries.prisma.sh download).
+
+## Hydration mismatch: locale-sensitive money formatting (2026-08-21)
+
+`HomeView`/`LobbyView`'s MegaJackpot amounts used `toLocaleString(undefined,…)`
+— the server renders with the host locale ("0.00") while the browser renders
+with the user's locale ("0,00" in Italian), so React flagged a hydration
+mismatch on the home page for every non-English user. Pinned `"en-US"` (the
+platform is USD-denominated, matching NotificationsBell/types.ts) in:
+HomeView MegaJackpot, HomeView WeeklyRace prizes, LobbyView MegaJackpot,
+ProfileSections Rewards jackpot.
+
+## Sidebar regression tests (jsdom harness, 2026-08-21)
+
+Browsers cannot run in this sandbox, so the menus were verified by mounting the
+real components in jsdom via esbuild bundles (`.zscripts/`, see README there):
+lobby sidebar 16/16 checks (hamburger open/close, scrim, 15 items navigate,
+auto-close on select) and admin sidebar (collapse ↔ expand, group toggles,
+store navigation, mobile hamburger). DevDeps added: `esbuild`, `jsdom`.
+
+## Arena preview: allow iframe embedding in dev (2026-08-21)
+
+The platform CSP `frame-ancestors` allowed only 'self', Telegram and the
+Governance Tower — correct for production, but it also blocked Arena/E2B's
+live preview, which embeds the dev server in an iframe: the server answered
+200 while the browser refused to render the frame. `DEV_FRAME_ANCESTORS` now
+appends `https:` (any secure embedder, since the parent origin of Arena's
+viewer iframe is not enumerable from inside the sandbox) plus the explicit
+Arena/E2B and localhost hosts, only when NODE_ENV=development (i.e.
+`next dev`); production keeps the strict Telegram/Tower-only list.
+Existing CSP tests still pass (tests/telegram.test.mjs).

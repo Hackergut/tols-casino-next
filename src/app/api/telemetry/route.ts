@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     : null;
 
   const rows = events
-    .map((raw) => {
+    .map((raw): Prisma.TelemetryEventCreateManyInput | null => {
       if (typeof raw !== "object" || raw === null) return null;
       const e = raw as { event?: unknown; props?: unknown };
       const name = typeof e.event === "string" ? e.event.trim().slice(0, 64) : "";
@@ -48,7 +49,9 @@ export async function POST(req: NextRequest) {
         event: name,
         userId,
         sessionId,
-        props: props ?? undefined,
+        // The body comes from `req.json()` (JSON.parse), so `props` can only
+        // contain JSON values at runtime; the cast just tells Prisma that.
+        props: props as Prisma.InputJsonValue | undefined,
         url: typeof (raw as { url?: unknown }).url === "string" ? ((raw as { url: string }).url.slice(0, 512) || null) : null,
       };
     })
