@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest) {
     float: fairFloat(s, c, n, Number(cursor ?? 0)),
   };
 
-  // Full-game replay for Scopa Siciliana: recompute the deck, the entire
+  // Full-game replay for Sicilian Scopa: recompute the deck, the entire
   // automatic round and the final score from the revealed seed, so a player
   // can confirm the outcome of a past bet without trusting stored payloads.
   if (game === "scopa") {
@@ -74,10 +74,10 @@ export async function PUT(req: NextRequest) {
       totalPoints: r.totalPoints,
       playerScopa: r.playerScopa,
       bankScopa: r.bankScopa,
-      playerSettebello: r.playerSettebello,
-      bankSettebello: r.bankSettebello,
-      playerDenari: r.playerDenari,
-      bankDenari: r.bankDenari,
+      playerSevenOfCoins: r.playerSevenOfCoins,
+      bankSevenOfCoins: r.bankSevenOfCoins,
+      playerCoins: r.playerCoins,
+      bankCoins: r.bankCoins,
       playerPrimiera: r.playerPrimiera,
       bankPrimiera: r.bankPrimiera,
     };

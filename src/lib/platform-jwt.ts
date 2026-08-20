@@ -3,29 +3,29 @@ import { createVerify, createPublicKey } from "node:crypto";
 /**
  * Platform JWT — RS256 only (Governance Tower → Casino)
  *
- * Tower firma con PRIVATE KEY, Casino verifica con PUBLIC KEY.
- * Questo elimina i mockup: la governance mostra dati reali solo se il JWT è valido.
+ * The Tower signs with the PRIVATE KEY, the Casino verifies with the PUBLIC KEY.
+ * This removes the mocks: governance shows real data only when the JWT is valid.
  *
- * Env su Casino (Vercel tols-casino-next):
- *   PLATFORM_JWT_PUBLIC_KEY  — PEM pubblico (-----BEGIN PUBLIC KEY-----...) oppure base64 del PEM
+ * Env on Casino (Vercel tols-casino-next):
+ *   PLATFORM_JWT_PUBLIC_KEY  — public PEM (-----BEGIN PUBLIC KEY-----...) or base64 of the PEM
  *   PLATFORM_JWT_ISSUER      — default "tols-governance"
  *   PLATFORM_JWT_AUDIENCE    — default "tols-casino"
  *
- * Env su Tower (Vercel governance-tower):
- *   PLATFORM_JWT_PRIVATE_KEY — PEM privato (-----BEGIN PRIVATE KEY-----...) oppure base64 del PEM
+ * Env on Tower (Vercel governance-tower):
+ *   PLATFORM_JWT_PRIVATE_KEY — private PEM (-----BEGIN PRIVATE KEY-----...) or base64 of the PEM
  */
 
 function normalizePem(raw: string | undefined, kind: "public" | "private"): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  // Se è base64 di un PEM (Vercel env spesso senza newline), decodifica
+  // If it is the base64 of a PEM (Vercel env vars are often newline-less), decode it.
   if (!trimmed.includes("-----BEGIN")) {
     try {
       const decoded = Buffer.from(trimmed, "base64").toString("utf8");
       if (decoded.includes("-----BEGIN")) return decoded;
     } catch {}
-    // prova anche senza base64 ma con \n escaped
+    // Otherwise try it without base64 but with escaped \n.
     return trimmed.replace(/\\n/g, "\n");
   }
   return trimmed.replace(/\\n/g, "\n");
@@ -65,9 +65,9 @@ export interface VerifyResult {
 }
 
 /**
- * Verifica RS256 JWT. Ritorna claims se valido, altrimenti error.
- * - Controlla firma RS256 con PUBLIC KEY
- * - Controlla exp (non scaduto), iss, aud
+ * Verify an RS256 JWT. Returns the claims if valid, otherwise an error.
+ * - Checks the RS256 signature with the PUBLIC KEY
+ * - Checks exp (not expired), iss, aud
  */
 export function verifyPlatformJwt(token: string | null | undefined): VerifyResult {
   if (!token) return { valid: false, error: "Missing Authorization Bearer token" };
@@ -92,10 +92,10 @@ export function verifyPlatformJwt(token: string | null | undefined): VerifyResul
 
   if (header.alg !== "RS256") return { valid: false, error: `Invalid alg ${String(header.alg)} — expected RS256` };
   if (header.typ && String(header.typ).toUpperCase() !== "JWT") {
-    // tollerante
+    // tolerant
   }
 
-  // Verifica firma
+  // Verify signature
   try {
     const data = `${hB64}.${pB64}`;
     const sig = base64urlDecode(sigB64);
@@ -109,7 +109,7 @@ export function verifyPlatformJwt(token: string | null | undefined): VerifyResul
     return { valid: false, error: `Signature verify failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 
-  // Controlla exp / nbf / iss / aud
+  // Check exp / nbf / iss / aud
   const nowSec = Math.floor(Date.now() / 1000);
   if (typeof payload.exp !== "number" || payload.exp < nowSec) {
     return { valid: false, error: "Token expired", rawHeader: header };
@@ -126,7 +126,7 @@ export function verifyPlatformJwt(token: string | null | undefined): VerifyResul
 }
 
 /**
- * Helper per estrarre Bearer token da Request
+ * Helper to extract the Bearer token from a Request.
  */
 export function getBearerToken(req: Request): string | null {
   const h = req.headers.get("authorization") || req.headers.get("Authorization");
@@ -136,8 +136,8 @@ export function getBearerToken(req: Request): string | null {
 }
 
 /**
- * Crea un JWT RS256 (solo per test in Casino, produzione firma sulla Tower)
- * Richiede PLATFORM_JWT_PRIVATE_KEY env.
+ * Create an RS256 JWT (test-only on Casino; production signs on the Tower).
+ * Requires the PLATFORM_JWT_PRIVATE_KEY env var.
  */
 export function signPlatformJwtForTest(claims: Partial<PlatformJwtClaims> & { sub?: string }, expiresInSec = 600): string {
   const { createSign, createPrivateKey } = require("node:crypto") as typeof import("node:crypto");

@@ -89,15 +89,24 @@ test("parseConsent: necessary is always true even if the cookie says otherwise",
 /* ── VPN / geo ── */
 
 test("assessVpn: restricted jurisdiction blocks on IP alone", () => {
-  const r = assessVpn({ country: "US", ip: "1.2.3.4", edgeProxyFlag: false });
+  const r = assessVpn({ country: "FR", ip: "1.2.3.4", edgeProxyFlag: false });
   assert.equal(r.verdict, "blocked");
 });
 
 test("assessVpn: blocking ignores a spoofable client timezone", () => {
-  // A US IP claiming a Dubai clock must still be blocked — the licensing fact
-  // is the IP, and the timezone is attacker-controlled.
-  const r = assessVpn({ country: "US", ip: "1.2.3.4", edgeProxyFlag: false, clientTimezone: "Asia/Dubai" });
+  // A blocked-jurisdiction IP claiming a Dubai clock must still be blocked —
+  // the licensing fact is the IP, and the timezone is attacker-controlled.
+  const r = assessVpn({ country: "FR", ip: "1.2.3.4", edgeProxyFlag: false, clientTimezone: "Asia/Dubai" });
   assert.equal(r.verdict, "blocked");
+});
+
+test("assessVpn: US players are accepted by default, never flagged", () => {
+  // The United States is deliberately absent from the default blocklist.
+  // US visitors must resolve to "clear" (never "blocked") so they are not
+  // gated by the geo assessment; state-level restrictions are the player's own
+  // responsibility, exactly as the Terms of Service state.
+  const r = assessVpn({ country: "US", ip: "1.2.3.4", edgeProxyFlag: false });
+  assert.equal(r.verdict, "clear");
 });
 
 test("assessVpn: consistent country and timezone is clear", () => {

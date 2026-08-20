@@ -78,7 +78,7 @@ export function VirtualGamesView({
         <div className="flex items-center gap-2">
           <Gamepad2 className="h-4 w-4 text-lime" />
           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/40">
-            EuroVirtuals · Caricamento…
+            EuroVirtuals · Loading…
           </h3>
         </div>
         <GamesGridSkeleton />
@@ -119,7 +119,7 @@ export function VirtualGamesView({
       <div className="flex items-center gap-2">
         <Gamepad2 className="h-4 w-4 text-lime" />
         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/40">
-          EuroVirtuals · {games.length} giochi
+          EuroVirtuals · {games.length} games
         </h3>
       </div>
       <div className="casino-game-grid grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5">

@@ -1,6 +1,6 @@
 "use client";
 
-// Mobile bottom navigation — Shuffle-style, TOLS-themed.
+// Mobile bottom navigation.
 // Home · Casino · Rewards · Chat · Menu. "Home" returns to the lobby landing
 // (there was no way back to it from the thumb bar before); Search lives in the
 // always-visible top bar so it isn't duplicated here. Shown below lg.

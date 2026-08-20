@@ -117,8 +117,8 @@ function applyPlay(
 function tally(captured: ScopaCard[], scope: number) {
   return {
     cards: captured.length,
-    denari: captured.filter((c) => c.s === 0).length,
-    settebello: captured.some((c) => c.r === 7 && c.s === 0),
+    coins: captured.filter((c) => c.s === 0).length,
+    sevenOfCoins: captured.some((c) => c.r === 7 && c.s === 0),
     scope,
   };
 }
@@ -129,12 +129,12 @@ function comparePoints(
 ): { playerPts: number; dealerPts: number } {
   let playerPts = player.scope;
   let dealerPts = dealer.scope;
-  if (player.settebello) playerPts += 1;
-  if (dealer.settebello) dealerPts += 1;
+  if (player.sevenOfCoins) playerPts += 1;
+  if (dealer.sevenOfCoins) dealerPts += 1;
   if (player.cards > dealer.cards) playerPts += 1;
   else if (dealer.cards > player.cards) dealerPts += 1;
-  if (player.denari > dealer.denari) playerPts += 1;
-  else if (dealer.denari > player.denari) dealerPts += 1;
+  if (player.coins > dealer.coins) playerPts += 1;
+  else if (dealer.coins > player.coins) dealerPts += 1;
   return { playerPts, dealerPts };
 }
 
@@ -171,7 +171,7 @@ function settleFromPiles(
       dealerScope,
       playerCaptured,
       dealerCaptured,
-      settebello: pt.settebello,
+      sevenOfCoins: pt.sevenOfCoins,
     },
   };
 }
@@ -224,7 +224,7 @@ function finishIfDone(piles: Piles, amount: number, extra: Record<string, unknow
       playerPts: settled.payload.playerPts,
       dealerPts: settled.payload.dealerPts,
       result: settled.payload.result,
-      settebello: settled.payload.settebello,
+      sevenOfCoins: settled.payload.sevenOfCoins,
       ...extra,
     },
   };

@@ -19,8 +19,8 @@ import { useGameSettings } from "@/lib/game-settings";
 import { setSoundEnabled } from "@/lib/game-audio";
 
 const PROFILE_SECTIONS = new Set([
-  "wallet", "vip", "cassaforte", "token", "affiliate", "notifications",
-  "transactions", "riscatta-codice", "settings", "play-responsibly", "live-support",
+  "wallet", "vip", "vault", "token", "affiliate", "notifications",
+  "transactions", "redeem", "settings", "play-responsibly", "live-support",
   "rewards",
 ]);
 export function isProfileSection(id: string): boolean {
@@ -56,7 +56,7 @@ function Shell({ title, subtitle, icon: Icon, onBack, children }: {
   onBack: () => void; children: React.ReactNode;
 }) {
   const { t } = useLocale();
-  const titleKeys: Record<string, string> = { Wallet: "nav.wallet", Cassaforte: "profile.vault", Token: "profile.token", "Affiliate Program": "profile.affiliate", Notifications: "header.notifications", Transactions: "profile.transactions", "Riscatta Codice": "profile.redeem", Settings: "nav.settings", "Play Responsibly": "profile.responsible", "Live Support": "profile.support", Rewards: "nav.rewards" };
+  const titleKeys: Record<string, string> = { Wallet: "nav.wallet", Vault: "profile.vault", Token: "profile.token", "Affiliate Program": "profile.affiliate", Notifications: "header.notifications", Transactions: "profile.transactions", "Redeem Code": "profile.redeem", Settings: "nav.settings", "Play Responsibly": "profile.responsible", "Live Support": "profile.support", Rewards: "nav.rewards" };
   const localizedTitle = titleKeys[title] ? t(titleKeys[title]) : title;
   return (
     <div className="space-y-6">
@@ -146,7 +146,7 @@ function WalletSection({ onBack }: { onBack: () => void }) {
 }
 
 /* ── VIP ── */
-const fmtPts = (n: number) => Math.floor(n).toLocaleString("it-IT");
+const fmtPts = (n: number) => Math.floor(n).toLocaleString("en-US");
 
 function VipSection({ onBack }: { onBack: () => void }) {
   const wallet = useJson<{ vipLevel: number; xp: number; totalWagered: number }>("/api/wallet");
@@ -160,12 +160,12 @@ function VipSection({ onBack }: { onBack: () => void }) {
   const pct = vipProgress(wagered);
 
   return (
-    <Shell title="Livello VIP" subtitle="Il tuo livello, i progressi e i vantaggi" icon={Crown} onBack={onBack}>
+    <Shell title="VIP Level" subtitle="Your level, progress and benefits" icon={Crown} onBack={onBack}>
       {/* Current tier + progress */}
       <div className={CARD} style={CARD_STYLE}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Livello attuale</p>
+            <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Current level</p>
             <p className="mt-1 text-3xl font-black" style={{ color: current.color }}>
               {current.level} · {current.name}
             </p>
@@ -174,8 +174,8 @@ function VipSection({ onBack }: { onBack: () => void }) {
         </div>
         <div className="mt-4">
           <div className="mb-1 flex justify-between text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            <span>{fmtPts(points)} punti</span>
-            <span>{next ? `Prossimo: ${next.name} · ${fmtPts(next.points)} pt` : "Livello massimo"}</span>
+            <span>{fmtPts(points)} points</span>
+            <span>{next ? `Next: ${next.name} · ${fmtPts(next.points)} pt` : "Max level"}</span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${current.color}, ${next?.color ?? "var(--color-lime)"})` }} />
@@ -186,7 +186,7 @@ function VipSection({ onBack }: { onBack: () => void }) {
       {/* Tier ladder with per-level benefits */}
       <div className={CARD} style={CARD_STYLE}>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Livelli e vantaggi
+          Tiers and benefits
         </p>
         <div className="flex flex-col gap-2">
           {VIP_TIERS.map((t) => {
@@ -207,11 +207,11 @@ function VipSection({ onBack }: { onBack: () => void }) {
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ background: t.color, color: "#0f1015" }}>{t.level}</span>
                     <div className="min-w-0">
                       <p className="font-bold" style={{ color: t.color }}>{t.name}</p>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{fmtPts(t.points)} punti richiesti</p>
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{fmtPts(t.points)} points required</p>
                     </div>
                   </div>
                   {isCurrent
-                    ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: t.color, color: "#0f1015" }}>ATTUALE</span>
+                    ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: t.color, color: "#0f1015" }}>CURRENT</span>
                     : unlocked ? <Check className="h-4 w-4 shrink-0" style={{ color: t.color }} /> : null}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -224,7 +224,7 @@ function VipSection({ onBack }: { onBack: () => void }) {
           })}
         </div>
         <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-          I punti si guadagnano puntando (1 punto per ogni $1 giocato). Il livello si aggiorna automaticamente.
+          Points are earned by wagering (1 point per $1 wagered). Your level updates automatically.
         </p>
       </div>
     </Shell>
@@ -341,8 +341,8 @@ function PlayResponsiblySection({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* ── Riscatta Codice (redeem code) ── */
-function RiscattaCodiceSection({ onBack }: { onBack: () => void }) {
+/* ── Redeem Code ── */
+function RedeemCodeSection({ onBack }: { onBack: () => void }) {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -360,7 +360,7 @@ function RiscattaCodiceSection({ onBack }: { onBack: () => void }) {
     setBusy(false);
   }, [code]);
   return (
-    <Shell title="Riscatta Codice" subtitle="Redeem a bonus or promo code" icon={Ticket} onBack={onBack}>
+    <Shell title="Redeem Code" subtitle="Redeem a bonus or promo code" icon={Ticket} onBack={onBack}>
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Enter Code</p>
         <div className="flex items-center gap-2">
@@ -567,9 +567,9 @@ function TokenSection({ onBack }: { onBack: () => void }) {
     </Shell>
   );
 }
-function CassaforteSection({ onBack }: { onBack: () => void }) {
+function VaultSection({ onBack }: { onBack: () => void }) {
   return (
-    <Shell title="Cassaforte" subtitle="Vault — keep funds safe from play" icon={Vault} onBack={onBack}>
+    <Shell title="Vault" subtitle="Vault — keep funds safe from play" icon={Vault} onBack={onBack}>
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>Move funds into your vault to keep them out of gameplay. Vaulted funds don't appear in your play balance.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -613,12 +613,12 @@ export function ProfileSectionView({ section, onBack }: { section: string; onBac
   switch (section) {
     case "wallet": return <WalletSection onBack={onBack} />;
     case "vip": return <VipSection onBack={onBack} />;
-    case "cassaforte": return <CassaforteSection onBack={onBack} />;
+    case "vault": return <VaultSection onBack={onBack} />;
     case "token": return <TokenSection onBack={onBack} />;
     case "affiliate": return <AffiliateSection onBack={onBack} />;
     case "notifications": return <NotificationsSection onBack={onBack} />;
     case "transactions": return <TransactionsSection onBack={onBack} />;
-    case "riscatta-codice": return <RiscattaCodiceSection onBack={onBack} />;
+    case "redeem": return <RedeemCodeSection onBack={onBack} />;
     case "settings": return <SettingsSection onBack={onBack} />;
     case "play-responsibly": return <PlayResponsiblySection onBack={onBack} />;
     case "live-support": return <LiveSupportSection onBack={onBack} />;

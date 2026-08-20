@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp, Gamepad2, Zap, CircleDot, Sparkles, RotateCcw, Crown, Crosshair,
   HomeIcon, Flame, Radio, LayoutGrid, Clock, Trophy, Swords,
+  Wallet, Settings, Receipt, Headphones, Share2,
 } from "lucide-react";
 
 export interface LobbyGame {
@@ -71,7 +72,7 @@ export const ORIGINAL_GAMES: OriginalGameDef[] = [
   { id: "blackjack", name: "Blackjack 1V1", icon: Crown, color: "#ccff00", desc: "Classic six-deck blackjack — beat the dealer to 21." },
   { id: "slots", name: "Slots", icon: Sparkles, color: "#ccff00", desc: "Spin the reels — match symbols on the payline!" },
   { id: "roulette", name: "Roulette", icon: CircleDot, color: "#e0322f", desc: "European single-zero — bet numbers, colours, and more!" },
-  { id: "scopa", name: "Scopa Siciliana", icon: Swords, color: "#eab308", desc: "Bet on an automatic Sicilian Scopa round — provably fair." },
+  { id: "scopa", name: "Sicilian Scopa", icon: Swords, color: "#eab308", desc: "Bet on an automatic Sicilian Scopa round — provably fair." },
 ];
 
 export const ORIGINAL_IDS = new Set(ORIGINAL_GAMES.map((g) => g.id));
@@ -124,6 +125,55 @@ export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "live", label: "Live Casino", icon: Radio },
   { id: "table", label: "Table Games", icon: LayoutGrid },
   { id: "recent", label: "Recent", icon: Clock },
+];
+
+// Grouped sidebar navigation (blueprint §4 "sidebar organizzata"). Each item's
+// `id` is a real route/section handled by the lobby shell, and `labelKey` is an
+// i18n key resolved at render time so labels follow the active locale.
+export interface SidebarItemDef {
+  id: string;
+  labelKey: string;
+  icon: LucideIcon;
+}
+
+export interface SidebarSectionDef {
+  id: string;
+  titleKey: string;
+  items: SidebarItemDef[];
+}
+
+export const SIDEBAR_SECTIONS: SidebarSectionDef[] = [
+  {
+    id: "personal",
+    titleKey: "sidebar.personal",
+    items: [
+      { id: "lobby", labelKey: "nav.home", icon: HomeIcon },
+      { id: "recent", labelKey: "nav.recent", icon: Clock },
+      { id: "wallet", labelKey: "nav.wallet", icon: Wallet },
+      { id: "vip", labelKey: "profile.vip", icon: Crown },
+    ],
+  },
+  {
+    id: "games",
+    titleKey: "sidebar.games",
+    items: [
+      { id: "originals", labelKey: "nav.originals", icon: Flame },
+      { id: "slots", labelKey: "nav.slots", icon: Gamepad2 },
+      { id: "live", labelKey: "nav.liveCasino", icon: Radio },
+      { id: "table", labelKey: "nav.table", icon: LayoutGrid },
+    ],
+  },
+  {
+    id: "discover",
+    titleKey: "sidebar.discover",
+    items: [
+      { id: "rewards", labelKey: "nav.leaderboards", icon: Trophy },
+      { id: "affiliate", labelKey: "profile.affiliate", icon: Share2 },
+      { id: "transactions", labelKey: "profile.transactions", icon: Receipt },
+      { id: "live-support", labelKey: "profile.support", icon: Headphones },
+      { id: "settings", labelKey: "nav.settings", icon: Settings },
+    ],
+  },
 ];
 
 export const CATEGORY_TABS = ["All", "Popular", "New", "Slots", "Originals", "Live"];

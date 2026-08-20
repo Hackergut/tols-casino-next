@@ -1,5 +1,5 @@
 // scripts/seed-scopa.mjs
-// Idempotently registers "Scopa Siciliana Fast Bet" in the casino game catalog
+// Idempotently registers "Sicilian Scopa Fast Bet" in the casino game catalog
 // so it appears in the Originals rows and launches the ScopaGame player.
 //
 // The game engine itself lives in src/lib/scopa.ts and the bet server in
@@ -25,7 +25,7 @@ const db = new PrismaClient();
 
 const SCOPAS = {
   externalId: "tols-scopa-siciliana",
-  name: "Scopa Siciliana",
+  name: "Sicilian Scopa",
   alias: "scopa", // must match the GamePlayer switch + page.tsx case
   provider: "TOLS Originals",
   category: "originals",
@@ -44,7 +44,7 @@ const SCOPAS = {
   priority: 0,
   tags: JSON.stringify(["original", "cards", "scopa", "fast-bet"]),
   description:
-    "Fast Bet sulla Scopa Siciliana: due mani virtuali giocano una partita automatica con strategia fissa e pubblica. Scommetti su 1/X/2, Over/Under 4.5, Settebello o Scope. Provably fair con seed commit-reveal.",
+    "Fast Bet on Sicilian Scopa: two virtual hands play an automatic round under a fixed, published strategy. Bet on 1/X/2, Over/Under 4.5, the Seven of Coins or Sweeps. Provably fair with a commit-reveal seed.",
 };
 
 async function main() {
@@ -54,7 +54,7 @@ async function main() {
     create: { ...SCOPAS },
   });
 
-  console.log("Scopa Siciliana Fast Bet registered:");
+  console.log("Sicilian Scopa Fast Bet registered:");
   console.log("  id:         " + game.id);
   console.log("  externalId: " + game.externalId);
   console.log("  alias:      " + game.alias);

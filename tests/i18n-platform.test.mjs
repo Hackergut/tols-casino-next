@@ -9,14 +9,11 @@ const mod = { exports: {} };
 new Function("module", "exports", js)(mod, mod.exports);
 const i18n = mod.exports;
 
-test("explicit language wins over geo and browser detection", () => {
-  assert.equal(i18n.resolveLocale({ cookie: "de", country: "IT", acceptLanguage: "fr" }), "de");
-});
-
-test("geo selects the platform language before Accept-Language", () => {
-  assert.equal(i18n.resolveLocale({ country: "IT", acceptLanguage: "en" }), "it");
-  assert.equal(i18n.resolveLocale({ country: "ES", acceptLanguage: "en" }), "es");
-  assert.equal(i18n.resolveLocale({ country: "BR", acceptLanguage: "en" }), "pt");
+test("the platform is English-only, regardless of geo or browser detection", () => {
+  assert.equal(i18n.resolveLocale({ cookie: "de", country: "IT", acceptLanguage: "fr" }), "en");
+  assert.equal(i18n.resolveLocale({ country: "IT", acceptLanguage: "en" }), "en");
+  assert.equal(i18n.resolveLocale({ country: "ES", acceptLanguage: "en" }), "en");
+  assert.equal(i18n.resolveLocale({ country: "BR", acceptLanguage: "en" }), "en");
   assert.equal(i18n.resolveLocale({ country: "AE", acceptLanguage: "en-AE" }), "en");
 });
 

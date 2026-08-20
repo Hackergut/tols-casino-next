@@ -46,7 +46,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* GoldenX casino tokens ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see DESIGN.md */
+  /* TOLS casino tokens — see DESIGN.md */
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
@@ -71,13 +71,13 @@
 :root {
   --radius: 0.5rem;
 
-  /* Elevation ramp ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â taken from the TOLS UI mockup, not approximated. */
+  /* Elevation ramp — taken from the TOLS UI mockup, not approximated. */
   --bg: #0f1015;
   --surface: #171921;
   --surface-raised: #1c1e28;
   --overlay: #23252e;
 
-  /* Brand lime ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â #cdf32b is the mockup's accent, used 55 times across it. */
+  /* Brand lime — #cdf32b is the mockup's accent, used 55 times across it. */
   --lime-50: #f4fdd4;
   --lime-100: #ecfbb0;
   --lime-200: #e3fb86;
@@ -960,7 +960,7 @@ a,
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-/* Shuffle.com Design Clone - TOLS Original Games */
+/* TOLS Original Games */
 :root {
   --g-bg: #0a0a0b;
   --g-panel: #141416;
@@ -991,7 +991,7 @@ a,
 .game-wrapper { display: flex; flex-direction: column; gap: 0.5rem; }
 .game-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
 @media (min-width:1024px){ .game-grid { grid-template-columns: 1.5fr 1fr; gap: 0.5rem; } }
-/* Mobile: game area first, controls below (like Shuffle) */
+/* Mobile: game area first, controls below */
 .g-header { display:flex; align-items:center; gap:0.5rem; padding:0.25rem 0; }
 .g-header h1 { font-size:1.125rem; font-weight:700; color:var(--g-text); }
 .g-header p { font-size:0.6875rem; color:var(--g-text-3); }

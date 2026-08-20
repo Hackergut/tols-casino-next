@@ -5,7 +5,7 @@ import { requirePlatformAuth, hasScope } from "@/lib/platform-auth";
 /**
  * POST /api/platform/withdrawals/:id/approve — JWT RS256, scope withdrawals:write
  * Body: { txHash?: string }
- * Approva un prelievo pending (stessa logica di /api/ops/withdrawals ma per Governance)
+ * Approves a pending withdrawal (same logic as /api/ops/withdrawals but for Governance).
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const auth = requirePlatformAuth(req);

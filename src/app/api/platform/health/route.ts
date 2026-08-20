@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/platform/health — pubblico, no JWT
- * Usato dalla Governance Tower per verificare che il Casino sia up + DB ok.
- * Questo è il primo check che elimina i mockup: se torna 200, la Tower sa che può chiamare /deposits ecc.
+ * GET /api/platform/health — public, no JWT.
+ * Used by the Governance Tower to verify the Casino is up and the DB is OK.
+ * This is the first check that removes the mocks: on a 200 the Tower knows it can call /deposits etc.
  */
 export async function GET() {
   const started = Date.now();

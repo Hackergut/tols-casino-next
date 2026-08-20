@@ -10,9 +10,11 @@ import {
   ShieldCheck, LifeBuoy, LogOut, type LucideIcon,
 } from "lucide-react";
 import { PostedAmount } from "@/casino/components/casino/PostedAmount";
+import { SearchBar } from "./SearchBar";
+import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
 
-export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false }: {
+export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false, games = [], onGameClick }: {
   balance: number;
   inGame?: boolean;
   onMenuToggle: () => void;
@@ -22,6 +24,8 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
   onNotifToggle: () => void;
   onWalletClick: () => void;
   authed: boolean;
+  games?: LobbyGame[];
+  onGameClick?: (game: LobbyGame) => void;
 }) {
   const router = useRouter();
   const { t } = useLocale();
@@ -47,12 +51,12 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
   const menuItems: { id: string; label: string; icon: LucideIcon }[] = [
     { id: "wallet", label: t("nav.wallet"), icon: Wallet },
     { id: "vip", label: "VIP", icon: Crown },
-    { id: "cassaforte", label: t("profile.vault"), icon: Vault },
+    { id: "vault", label: t("profile.vault"), icon: Vault },
     { id: "token", label: t("profile.token"), icon: Coins },
     { id: "affiliate", label: t("profile.affiliate"), icon: Share2 },
     { id: "notifications", label: t("header.notifications"), icon: Bell },
     { id: "transactions", label: t("profile.transactions"), icon: Receipt },
-    { id: "riscatta-codice", label: t("profile.redeem"), icon: Ticket },
+    { id: "redeem", label: t("profile.redeem"), icon: Ticket },
     { id: "settings", label: t("nav.settings"), icon: Settings },
   ];
   const supportItems: { id: string; label: string; icon: LucideIcon }[] = [
@@ -75,7 +79,12 @@ export function CasinoHeader({ balance, onMenuToggle, menuOpen, onProfileNavigat
           </h1>
         </div>
 
-        <div className="flex-1" />
+        {/* Center: global search (desktop) */}
+        <div className="hidden min-w-0 flex-1 justify-center px-4 lg:flex">
+          {!inGame && onGameClick && (
+            <SearchBar games={games} onGameClick={onGameClick} className="w-full max-w-sm" />
+          )}
+        </div>
 
         {/* Right */}
         <div className="flex items-center gap-2 sm:gap-3">

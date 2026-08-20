@@ -6,10 +6,10 @@
  * Drawn as pure SVG so both casino surfaces (public + admin) render the exact
  * same artwork, readable at every size. The deck follows the traditional
  * Sicilian suits and their classic colours:
- *   Denari (gold rosette coins), Coppe (tall red chalices),
- *   Spade (curved blue scimitars), Bastoni (green knotty batons).
- * Number cards (Asso..7) show the pips in a standard playing-card layout with
- * corner indices; court cards (Donna=8, Cavallo=9, Re=10) show full standing
+ *   Coins (gold rosette coins), Cups (tall red chalices),
+ *   Swords (curved blue scimitars), Clubs (green knotty batons).
+ * Number cards (Ace..7) show the pips in a standard playing-card layout with
+ * corner indices; court cards (Queen=8, Knight=9, King=10) show full standing
  * figures in a framed panel, as in the real Sicilian deck.
  */
 
@@ -18,7 +18,7 @@ import type { CSSProperties } from 'react';
 import type { Card } from '@/lib/scopa';
 import { SCOPA_SUIT_COLOR } from '@/lib/scopa-playback';
 
-/* Corner index: Asso, 2..7, Donna, Cavallo, Re. */
+/* Corner index: Ace, 2..7, Queen, Knight, King. */
 const CORNER_LABEL: Record<number, string> = {
   1: 'A',
   2: '2',
@@ -37,7 +37,7 @@ const CORNER_LABEL: Record<number, string> = {
 function SuitGlyph({ suit, x, y, s }: { suit: number; x: number; y: number; s: number }) {
   const c = SCOPA_SUIT_COLOR[suit];
   if (suit === 0) {
-    // Denari — a coin with a radial rosette (the classic Sicilian "moneta").
+    // Coins — a coin with a radial rosette (the classic Sicilian "moneta").
     const petals = [0, 60, 120, 180, 240, 300].map((a) => {
       const rad = (a * Math.PI) / 180;
       return { cx: 4.4 * Math.cos(rad), cy: 4.4 * Math.sin(rad) };
@@ -54,7 +54,7 @@ function SuitGlyph({ suit, x, y, s }: { suit: number; x: number; y: number; s: n
     );
   }
   if (suit === 1) {
-    // Coppe — a tall, narrow chalice: deep bowl, thin stem, wide foot.
+    // Cups — a tall, narrow chalice: deep bowl, thin stem, wide foot.
     return (
       <g transform={`translate(${x} ${y}) scale(${s / 10})`}>
         <path d="M -4.6 -8.4 Q 0 -10.6 4.6 -8.4 L 4.1 -1.6 Q 0 3.4 -4.1 -1.6 Z" fill={c} />
@@ -64,7 +64,7 @@ function SuitGlyph({ suit, x, y, s }: { suit: number; x: number; y: number; s: n
     );
   }
   if (suit === 2) {
-    // Spade — a curved scimitar: crescent blade, crossguard, grip, pommel.
+    // Swords — a curved scimitar: crescent blade, crossguard, grip, pommel.
     return (
       <g transform={`translate(${x} ${y}) scale(${s / 10})`}>
         <path d="M -3.2 6.2 C -6.4 1.2 -4.4 -5 0 -8.2 C 2.4 -5.2 2.2 -2 1.2 1 Z" fill={c} />
@@ -74,7 +74,7 @@ function SuitGlyph({ suit, x, y, s }: { suit: number; x: number; y: number; s: n
       </g>
     );
   }
-  // Bastoni — a knotty baton: rounded head, shaft, and a couple of knots.
+  // Clubs — a knotty baton: rounded head, shaft, and a couple of knots.
   return (
     <g transform={`translate(${x} ${y}) scale(${s / 10})`}>
       <path d="M -1.25 -8.4 h 2.5 v 14.4 a 1.25 1.25 0 0 1 -2.5 0 Z" fill={c} />
@@ -111,11 +111,11 @@ function NumberFace({ suit, value }: { suit: number; value: number }) {
   );
 }
 
-/* ── Court figures: Donna, Cavallo, Re (full standing) ─────────────────── */
+/* ── Court figures: Queen, Knight, King (full standing) ────────────────── */
 
 const GOLD = '#d7a10f';
 
-function ReFigure({ color }: { color: string }) {
+function KingFigure({ color }: { color: string }) {
   return (
     <g>
       {/* crown with central jewel */}
@@ -145,7 +145,7 @@ function ReFigure({ color }: { color: string }) {
   );
 }
 
-function DonnaFigure({ color }: { color: string }) {
+function QueenFigure({ color }: { color: string }) {
   return (
     <g>
       {/* hair */}
@@ -172,7 +172,7 @@ function DonnaFigure({ color }: { color: string }) {
   );
 }
 
-function CavalloFigure({ color }: { color: string }) {
+function KnightFigure({ color }: { color: string }) {
   return (
     <g fill={color}>
       {/* horse legs */}
@@ -212,11 +212,11 @@ function FaceCard({ suit, value }: { suit: number; value: number }) {
       <rect x="17" y="32" width="66" height="80" rx="4" fill={c} fillOpacity="0.05" />
       <g transform="translate(50 74)">
         {value === 10 ? (
-          <ReFigure color={c} />
+          <KingFigure color={c} />
         ) : value === 9 ? (
-          <CavalloFigure color={c} />
+          <KnightFigure color={c} />
         ) : (
-          <DonnaFigure color={c} />
+          <QueenFigure color={c} />
         )}
       </g>
       <SuitGlyph suit={suit} x={50} y={110} s={6} />
@@ -256,7 +256,7 @@ export function SicilianCard({ card, style }: { card: Card; style?: CSSPropertie
       height="100%"
       preserveAspectRatio="xMidYMid meet"
       style={style}
-      aria-label={`${CORNER_LABEL[card.value]} di ${['Denari', 'Coppe', 'Spade', 'Bastoni'][card.suit]}`}
+      aria-label={`${CORNER_LABEL[card.value]} of ${['Coins', 'Cups', 'Swords', 'Clubs'][card.suit]}`}
       role="img"
     >
       <defs>

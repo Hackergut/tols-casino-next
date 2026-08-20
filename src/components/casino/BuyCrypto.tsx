@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useState } from "react";
 import { getBuyConfig, buildBuyUrl } from "@/lib/buy";
 import { CreditCard, ExternalLink } from "lucide-react";
 
 /*
- * Buy crypto tab — Shuffle-style fiat on-ramp.
+ * Buy crypto tab — fiat on-ramp.
  *
  * The player picks a fiat amount + currency, we open the configured provider
  * (MoonPay/Transak) pre-filled to buy USDT and deliver it to the platform's

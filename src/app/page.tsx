@@ -309,11 +309,11 @@ function CasinoPage() {
     navigate(section);
   }, [navigate]);
 
-  // Profile menu routing — Cassaforte and Notifications open overlays
-  // (Shuffle-style), everything else navigates to its section page.
+  // Profile menu routing — Vault and Notifications open overlays
+  // everything else navigates to its section page.
   const handleProfileNavigate = useCallback((section: string) => {
     if (section === "wallet") { if (authed === true) setDepositOpen(true); else { setGateMode("register"); setGateDismissed(false); } return; }
-    if (section === "cassaforte") { setVaultOpen(true); return; }
+    if (section === "vault") { setVaultOpen(true); return; }
     if (section === "notifications") { setNotifOpen(true); return; }
     handleSectionChange(section);
   }, [handleSectionChange]);
@@ -426,6 +426,8 @@ function CasinoPage() {
         onWalletClick={() => (authed === true ? setDepositOpen(true) : (setGateMode("register"), setGateDismissed(false)))}
         authed={authed === true}
         inGame={Boolean(activeGame)}
+        games={games}
+        onGameClick={handleGameClick}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <CasinoSidebar active={activeSection} onSelect={handleSectionChange} open={menuOpen} searchQuery={searchQuery} onSearchChange={setSearchQuery} />

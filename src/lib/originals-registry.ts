@@ -200,10 +200,10 @@ export const ORIGINALS: OriginalMeta[] = [
   },
   {
     id: "scopa",
-    name: "Scopa Siciliana",
-    tagline: "Fast bet sulla partita automatica",
+    name: "Sicilian Scopa",
+    tagline: "Fast bet on an automatic round",
     description:
-      "Due mani virtuali (Giocatore e Banco) giocano una partita automatica di Scopa Siciliana con strategia fissa e pubblica. Scommetti su 1/X/2, Over/Under 4.5, Settebello o Scope: il mazzo è mescolato dal seed committato e l'intero round è riproducibile e verificabile.",
+      "Two virtual hands (Player and Bank) play an automatic round of Sicilian Scopa under a fixed, published strategy. Bet on 1/X/2, Over/Under 4.5, the Seven of Coins or Sweeps: the deck is shuffled from the committed seed and the entire round is reproducible and verifiable.",
     rtp: SCOPA_RTP,
     image: "/games/originals/scopa.jpg",
     volatility: "medium",

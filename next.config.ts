@@ -15,10 +15,10 @@ import type { NextConfig } from "next";
 // against every other site intact.
 const TELEGRAM_FRAME_ANCESTORS = "'self' https://web.telegram.org https://*.telegram.org";
 
-// Governance Tower ↔ Casino: DUE PROGETTI VERCEL SEPARATI su sottodomini
-//   Casino = https://www.tols.fun  (questo repo)
-//   Governance = https://gov.tols.fun (altro repo, altro progetto Vercel)
-// Il ponte è service-to-service, non via admin panel. CSP/CORS devono permettere al sottodominio di chiamare il Casino.
+// Governance Tower ↔ Casino: TWO SEPARATE VERCEL PROJECTS on subdomains
+//   Casino = https://www.tols.fun  (this repo)
+//   Governance = https://gov.tols.fun (another repo, another Vercel project)
+// The bridge is service-to-service, not via the admin panel. CSP/CORS must allow the subdomain to call the Casino.
 const TOWER_ORIGIN = (
   process.env.GOVERNANCE_TOWER_URL ||
   process.env.TOWER_URL ||
@@ -29,7 +29,7 @@ let TOWER_HOST: string | null = null;
 try { TOWER_HOST = new URL(TOWER_ORIGIN).origin; } catch { TOWER_HOST = null; }
 const BRIDGE_ANCESTORS = TOWER_HOST ? ` ${TOWER_HOST}` : "";
 const BRIDGE_CONNECT = TOWER_HOST ? ` ${TOWER_HOST}` : "";
-// Sottodomini .tols.fun: aggiungi wildcard per preview Vercel (*.vercel.app) se necessario
+// .tols.fun subdomains: add a wildcard for Vercel previews (*.vercel.app) if needed
 
 const securityHeaders = [
   // NOTE: X-Frame-Options is deliberately omitted. It is all-or-nothing
@@ -92,7 +92,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      // Bridge + Platform APIs must be callable cross-origin from the Tower sottodominio
+      // Bridge + Platform APIs must be callable cross-origin from the Tower subdomain
       {
         source: "/api/bridge/:path*",
         headers: [

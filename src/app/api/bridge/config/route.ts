@@ -43,7 +43,7 @@ export async function GET() {
       dns: {
         casino: cfg.casinoOrigin,
         tower: cfg.towerOrigin,
-        note: "Entrambi i domini devono avere CORS e CSP consentiti per il ponte.",
+        note: "Both domains must have CORS and CSP allowed for the bridge.",
       },
     },
   });

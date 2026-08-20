@@ -26,7 +26,7 @@ export function CasinoFooter({ onNavigate }: { onNavigate?: (section: string) =>
             <div className="flex flex-col gap-1.5">
               <a href="/provably-fair" className={link}>{t("footer.fair")}</a>
               <button onClick={() => onNavigate?.("affiliate")} className={link + " text-left"}>{t("profile.affiliate")}</button>
-              <button onClick={() => onNavigate?.("riscatta-codice")} className={link + " text-left"}>{t("profile.redeem")}</button>
+              <button onClick={() => onNavigate?.("redeem")} className={link + " text-left"}>{t("profile.redeem")}</button>
               <button onClick={() => onNavigate?.("vip")} className={link + " text-left"}>VIP Program</button>
             </div>
           </div>

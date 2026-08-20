@@ -4,7 +4,7 @@ import { requirePlatformAuth, hasScope } from "@/lib/platform-auth";
 
 /**
  * GET /api/platform/payments — JWT RS256
- * Ritorna aggregati pagamenti per la governance (depositi + withdrawals) + verifica tx se ?txHash=
+ * Returns payment aggregates for governance (deposits + withdrawals) and verifies a tx if ?txHash=
  * Query: ?chain=solana&limit=50&txHash=0x...
  */
 export async function GET(req: NextRequest) {
