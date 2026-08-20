@@ -19,6 +19,8 @@ import {
   POOL_RUSH_MIN_BET,
   POOL_RUSH_RTP,
 } from "@/lib/pool-rush";
+import { POOL_RUSH_RTP } from "@/lib/pool-rush";
+import { SCOPA_RTP } from "@/lib/scopa";
 
 export type OriginalId =
   | "dice"
@@ -33,7 +35,8 @@ export type OriginalId =
   | "poolrush"
   | "blackjack"
   | "slots"
-  | "roulette";
+  | "roulette"
+  | "scopa";
 
 export interface OriginalMeta {
   id: OriginalId;
@@ -194,6 +197,16 @@ export const ORIGINALS: OriginalMeta[] = [
       "A real single-zero wheel: 37 pockets, straight-up pays 35 to 1. The maths is the genuine casino game rather than a scaled imitation, which makes it the best return on the site.",
     rtp: ROULETTE_RTP,
     image: "/games/originals/roulette.jpg",
+    volatility: "medium",
+  },
+  {
+    id: "scopa",
+    name: "Scopa Siciliana",
+    tagline: "Fast bet sulla partita automatica",
+    description:
+      "Due mani virtuali (Giocatore e Banco) giocano una partita automatica di Scopa Siciliana con strategia fissa e pubblica. Scommetti su 1/X/2, Over/Under 4.5, Settebello o Scope: il mazzo è mescolato dal seed committato e l'intero round è riproducibile e verificabile.",
+    rtp: SCOPA_RTP,
+    image: "/games/originals/scopa.jpg",
     volatility: "medium",
   },
 ];

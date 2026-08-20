@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
@@ -12,12 +12,32 @@ import { useSound as useSoundHook } from "@/hooks/use-sound";
 import { formatCurrency } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
+  SCOPA_MARKETS,
+  SCOPA_ODDS,
+  cardLabel,
+  type ScopaMarket,
+  type ScopaEvent,
+  type Card as ScopaCard,
+} from "@/lib/scopa";
+import {
+  applyEventTo,
+  emptyBoard,
+  finalBoard,
+  scopaCardKey,
+  type ScopaBoard,
+} from "@/lib/scopa-playback";
+import { SicilianCard, SicilianCardBack } from "@/components/casino/scopa-card";
+import {
   Loader2,
   ChevronUp,
   ChevronDown,
   RotateCcw,
   HandCoins,
   Bomb,
+  Trophy,
+  Swords,
+  Layers,
+  FastForward,
 } from "lucide-react";
 
 // ============== Theme ==============
@@ -1835,6 +1855,470 @@ function WheelGame() {
   );
 }
 
+// ============== SCOPA SICILIANA ==============
+interface ScopaPayload {
+  market: ScopaMarket;
+  odds: number;
+  outcome: "player" | "bank" | "draw";
+  timeline: ScopaEvent[];
+  playerCardsCount: number;
+  bankCardsCount: number;
+  playerPoints: number;
+  bankPoints: number;
+  totalPoints: number;
+  playerScopa: number;
+  bankScopa: number;
+  playerSettebello: boolean;
+  bankSettebello: boolean;
+  playerDenari: number;
+  bankDenari: number;
+  playerPrimiera: number;
+  bankPrimiera: number;
+}
+
+type ScopaPhase = "idle" | "dealing" | "playing" | "scoring" | "done";
+
+function ScopaCardChip({
+  card,
+  size,
+  layoutId,
+  style,
+}: {
+  card: ScopaCard;
+  size: "sm" | "md" | "lg";
+  layoutId: string;
+  style?: React.CSSProperties;
+}) {
+  const w = size === "sm" ? "w-8 h-11" : size === "md" ? "w-10 h-14" : "w-12 h-16";
+  return (
+    <motion.div
+      layoutId={layoutId}
+      initial={{ opacity: 0, scale: 0.5, y: -14 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{
+        layout: { type: "spring", stiffness: 480, damping: 40, mass: 0.75 },
+        opacity: { duration: 0.16 },
+        scale: { duration: 0.16 },
+        y: { duration: 0.16 },
+      }}
+      className={cn("rounded-md shadow-lg flex-shrink-0 overflow-hidden", w)}
+      style={style}
+      title={cardLabel(card)}
+    >
+      <SicilianCard card={card} />
+    </motion.div>
+  );
+}
+
+function ScopaGame() {
+  const [amount, setAmount] = useState(1);
+  const [clientSeed, setClientSeed] = useState("");
+  const [market, setMarket] = useState<ScopaMarket>("player");
+  const [round, setRound] = useState<ScopaPayload | null>(null);
+  const [lastWon, setLastWon] = useState<boolean | null>(null);
+  const [board, setBoard] = useState<ScopaBoard>(emptyBoard());
+  const [phase, setPhase] = useState<ScopaPhase>("idle");
+  const [revealed, setRevealed] = useState(0);
+  const [flash, setFlash] = useState<{ id: number; kind: "scopa" | "sweep" } | null>(null);
+  const [lastActor, setLastActor] = useState<0 | 1 | null>(null);
+
+  const reduced = useReducedMotion();
+  const cancelRef = useRef<{ done: boolean }>({ done: false });
+  const timersRef = useRef<number[]>([]);
+
+  const mutation = useBet();
+
+  const odds = SCOPA_ODDS[market] ?? 2;
+  const selectedLabel = SCOPA_MARKETS.find((m) => m.id === market)?.label ?? market;
+
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+
+  // Scheduling only — state resets happen in `onBet`, steps fire from timers.
+  useEffect(() => {
+    if (!round || reduced) return;
+    const timeline = round.timeline;
+    const cancel = { done: false };
+    cancelRef.current = cancel;
+    clearTimers();
+    const at = (ms: number, fn: () => void) => {
+      timersRef.current.push(window.setTimeout(() => { if (!cancel.done) fn(); }, ms));
+    };
+    let i = 0;
+    const run = () => {
+      if (cancel.done) return;
+      if (i >= timeline.length) {
+        setPhase("scoring");
+        for (let s = 1; s <= 5; s++) at(s * 130, () => setRevealed(s));
+        at(5 * 130 + 160, () => setPhase("done"));
+        return;
+      }
+      const ev = timeline[i++];
+      setBoard((b) => applyEventTo(ev, b));
+      if (ev.kind === "move") {
+        setLastActor(ev.player);
+        if (ev.scopa) setFlash({ id: Date.now() + i, kind: "scopa" });
+        else if (ev.sweep) setFlash({ id: Date.now() + i, kind: "sweep" });
+      }
+      at(ev.kind === "deal" ? 70 : 175, run);
+    };
+    at(180, run);
+    return () => {
+      cancel.done = true;
+      clearTimers();
+    };
+  }, [round, reduced, clearTimers]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 800);
+    return () => clearTimeout(t);
+  }, [flash]);
+
+  const skip = useCallback(() => {
+    if (!round) return;
+    cancelRef.current.done = true;
+    clearTimers();
+    setBoard(finalBoard(round.timeline));
+    setRevealed(5);
+    setFlash(null);
+    setPhase("done");
+  }, [round, clearTimers]);
+
+  const onBet = () => {
+    setRound(null);
+    setLastWon(null);
+    setFlash(null);
+    setLastActor(null);
+    mutation.mutate(
+      {
+        game: "scopa",
+        amount,
+        clientSeed: clientSeed || undefined,
+        payload: { market },
+      },
+      {
+        onSuccess: (data) => {
+          const payload = data.payload as unknown as ScopaPayload;
+          if (reduced) {
+            setBoard(finalBoard(payload.timeline));
+            setRevealed(5);
+            setPhase("done");
+          } else {
+            setBoard(emptyBoard());
+            setRevealed(0);
+            setPhase("dealing");
+          }
+          setRound(payload);
+          setLastWon(data.won);
+          if (data.won)
+            toast.success(`${selectedLabel} — Won ${formatCurrency(data.payout)}!`);
+          else toast.error(`${selectedLabel} — Lost.`);
+        },
+      }
+    );
+  };
+
+  const busy = mutation.isPending || (phase !== "idle" && phase !== "done");
+  const remaining = round
+    ? 40 - (board.hands[0].length + board.hands[1].length + board.table.length + board.piles[0].length + board.piles[1].length)
+    : 40;
+  const done = phase === "done";
+
+  const cells = round
+    ? [
+        { label: "Carte", g: round.playerCardsCount, b: round.bankCardsCount, text: (v: number) => String(v) },
+        { label: "Denari", g: round.playerDenari, b: round.bankDenari, text: (v: number) => String(v) },
+        { label: "Settebello", g: round.playerSettebello ? 1 : 0, b: round.bankSettebello ? 1 : 0, text: (v: number) => (v ? "✓" : "—") },
+        { label: "Primiera", g: round.playerPrimiera, b: round.bankPrimiera, text: (v: number) => String(v) },
+        { label: "Scope", g: round.playerScopa, b: round.bankScopa, text: (v: number) => String(v) },
+      ]
+    : [];
+
+  const scoreSide = (side: 0 | 1) =>
+    round
+      ? {
+          name: side === 0 ? "Giocatore" : "Banco",
+          points: side === 0 ? round.playerPoints : round.bankPoints,
+          winner: side === 0 ? round.outcome === "player" : round.outcome === "bank",
+          cells: cells.map((c) => ({
+            label: c.label,
+            value: c.text(side === 0 ? c.g : c.b),
+            win: side === 0 ? c.g > c.b : c.b > c.g,
+          })),
+        }
+      : null;
+
+  return (
+    <GameShell>
+      <BetPanel
+        amount={amount}
+        setAmount={setAmount}
+        clientSeed={clientSeed}
+        setClientSeed={setClientSeed}
+        onBet={onBet}
+        isPending={mutation.isPending}
+        betLabel={`Bet ${selectedLabel} @ ${odds.toFixed(2)}×`}
+      >
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Market · Esito 1X2
+          </Label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(["player", "bank", "draw"] as ScopaMarket[]).map((m) => (
+              <Button
+                key={m}
+                variant={market === m ? "default" : "outline"}
+                onClick={() => setMarket(m)}
+                disabled={busy}
+                className="h-8 uppercase text-[10px] px-1"
+                style={market === m ? { background: LIME, color: INK } : {}}
+              >
+                {SCOPA_MARKETS.find((x) => x.id === m)?.label}
+              </Button>
+            ))}
+          </div>
+
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Totale punti
+          </Label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(["over", "under"] as ScopaMarket[]).map((m) => (
+              <Button
+                key={m}
+                variant={market === m ? "default" : "outline"}
+                onClick={() => setMarket(m)}
+                disabled={busy}
+                className="h-8 uppercase text-[10px] px-1"
+                style={market === m ? { background: LIME, color: INK } : {}}
+              >
+                {SCOPA_MARKETS.find((x) => x.id === m)?.label}
+              </Button>
+            ))}
+          </div>
+
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Settebello · Scopa
+          </Label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(["settebello_player", "settebello_bank", "scopa_over"] as ScopaMarket[]).map((m) => (
+              <Button
+                key={m}
+                variant={market === m ? "default" : "outline"}
+                onClick={() => setMarket(m)}
+                disabled={busy}
+                className="h-8 uppercase text-[9px] leading-tight px-1"
+                style={market === m ? { background: LIME, color: INK } : {}}
+              >
+                {SCOPA_MARKETS.find((x) => x.id === m)?.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </BetPanel>
+
+      <GameArea>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Scopa Siciliana · Fast Bet
+          </span>
+          {round && (
+            <motion.span
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="font-mono font-bold"
+              style={{ color: lastWon ? LIME : RED }}
+            >
+              {round.outcome === "draw" ? "X" : round.outcome === "player" ? "1 · Giocatore" : "2 · Banco"} ·{" "}
+              {lastWon ? `${round.odds.toFixed(2)}×` : "perso"}
+            </motion.span>
+          )}
+        </div>
+
+        {!round ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center">
+            <Swords className="h-10 w-10 text-muted-foreground" />
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Due mani virtuali (Giocatore e Banco) giocano una partita automatica di Scopa
+              Siciliana con strategia fissa e pubblica. Scegli un mercato e piazza la scommessa:
+              l'esito è provably fair e verificabile con i seed.
+            </p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              <Stat label="Carte" value="40 siciliane" />
+              <Stat label="RTP" value="96% target" />
+              <Stat label="Odds" value={`${odds.toFixed(2)}×`} />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Felt table */}
+            <div
+              className="relative flex-1 flex flex-col gap-2 rounded-lg border overflow-hidden p-2.5 min-h-[300px]"
+              style={{
+                background: "radial-gradient(140% 120% at 50% -10%, #14351f 0%, #0c2416 55%, #07160d 100%)",
+                borderColor: done ? (lastWon ? "color-mix(in oklab, var(--color-lime) 40%, transparent)" : "rgba(255,59,59,0.3)") : "var(--color-border)",
+              }}
+            >
+              <div className="absolute top-1.5 right-1.5 z-[6] flex items-center gap-1.5 rounded border border-border/30 bg-black/40 pl-0.5 pr-2 py-0.5 font-mono text-[10px] text-white/60">
+                <span className="relative h-6 w-[1.05rem]">
+                  <SicilianCardBack />
+                </span>
+                <span className="font-bold">× {remaining}</span>
+              </div>
+              {busy && !reduced && (
+                <button
+                  onClick={skip}
+                  className="absolute top-1.5 left-1.5 z-[6] flex items-center gap-1 rounded border border-border/30 bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold text-white/70 hover:bg-black/60 hover:text-white"
+                >
+                  <FastForward className="h-3 w-3" /> Salta
+                </button>
+              )}
+
+              {/* hands + table + piles */}
+              {([0, 1] as const).map((side) => (
+                <div key={`hand-${side}`} className={cn("relative flex items-center justify-center gap-1.5 min-h-[52px]", lastActor === side && busy && "opacity-100")}>
+                  <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                    {side === 0 ? "Giocatore" : "Banco"}
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    {board.hands[side].map((c) => (
+                      <ScopaCardChip key={scopaCardKey(c)} card={c} size="sm" layoutId={`admin-scopa-${scopaCardKey(c)}`} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div className="relative flex-1 flex items-center justify-center gap-6 min-h-[120px]">
+                {([0, 1] as const).map((side) => (
+                  <div key={`pile-${side}`} className="relative w-8 h-11 flex items-end justify-center">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/35 whitespace-nowrap">
+                      {side === 0 ? "G" : "B"}
+                    </span>
+                    <div className="relative w-8 h-11">
+                      {board.piles[side].map((c, i) => (
+                        <ScopaCardChip
+                          key={scopaCardKey(c)}
+                          card={c}
+                          size="sm"
+                          layoutId={`admin-scopa-${scopaCardKey(c)}`}
+                          style={{ position: "absolute", top: `${Math.min(i, 14) * 0.1}rem`, left: 0, zIndex: i }}
+                        />
+                      ))}
+                    </div>
+                    <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 font-mono text-[9px] text-white/50">
+                      {board.piles[side].length}
+                    </span>
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-center gap-1.5 flex-wrap max-w-[60%]">
+                  {board.table.map((c) => (
+                    <ScopaCardChip key={scopaCardKey(c)} card={c} size="md" layoutId={`admin-scopa-${scopaCardKey(c)}`} />
+                  ))}
+                </div>
+              </div>
+
+              {/* flash */}
+              <AnimatePresence>
+                {flash && !done && (
+                  <motion.div
+                    key={flash.id}
+                    className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div
+                      className="rounded-lg px-4 py-1.5 font-mono text-2xl font-bold uppercase text-[#141414]"
+                      style={{
+                        background: flash.kind === "scopa" ? "#fbbf24" : LIME,
+                        boxShadow: flash.kind === "scopa" ? "0 0 24px rgba(251,191,36,0.5)" : "0 0 24px rgba(204,255,0,0.4)",
+                        animation: "scopa-flash 0.8s ease forwards",
+                      }}
+                    >
+                      {flash.kind === "scopa" ? "SCOPA!" : "RACCOLTA"}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* outcome */}
+              <AnimatePresence>
+                {done && (
+                  <motion.div
+                    className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-1 bg-black/70 backdrop-blur-[2px]"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div
+                      className="font-mono text-3xl font-bold uppercase"
+                      style={{
+                        color: lastWon ? LIME : round.outcome === "draw" ? "#fbbf24" : RED,
+                        textShadow: lastWon ? "0 0 18px rgba(204,255,0,0.4)" : undefined,
+                        animation: "scopa-outcome-pop 0.5s cubic-bezier(0.16,1,0.3,1)",
+                      }}
+                    >
+                      {lastWon ? "Vittoria" : round.outcome === "draw" ? "Pareggio" : "Sconfitta"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Giocatore {round.playerPoints} · Banco {round.bankPoints} · {selectedLabel}
+                    </div>
+                    {lastWon && <div className="font-mono font-bold" style={{ color: LIME }}>+{formatCurrency(mutation.data?.payout ?? 0)}</div>}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Scoreboard */}
+            <div className="grid grid-cols-2 gap-2">
+              {([0, 1] as const).map((side) => {
+                const s = scoreSide(side);
+                if (!s) return null;
+                return (
+                  <div
+                    key={side}
+                    className="rounded-md border p-2.5"
+                    style={{
+                      borderColor: s.winner && done ? "color-mix(in oklab, var(--color-lime) 45%, transparent)" : "var(--color-border)",
+                      background: s.winner && done ? "color-mix(in oklab, var(--color-lime) 5%, transparent)" : "rgba(255,255,255,0.02)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{s.name}</span>
+                      {s.winner && done && <Trophy className="h-3.5 w-3.5" style={{ color: LIME }} />}
+                    </div>
+                    <div className="font-mono text-2xl font-bold" style={{ color: s.winner && done ? LIME : "white" }}>
+                      {done ? s.points : "•"}
+                    </div>
+                    <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                      {s.cells.map((c, j) => (
+                        <div key={j} className="flex items-center justify-between">
+                          <span>{c.label}</span>
+                          {revealed > j ? <b className="font-mono" style={{ color: c.win && done ? LIME : "var(--color-foreground)" }}>{c.value}</b> : <b className="opacity-30">•</b>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-auto grid grid-cols-3 gap-2">
+              <Stat label="Esito" value={round.outcome === "draw" ? "Pareggio" : round.outcome === "player" ? "Giocatore" : "Banco"} />
+              <Stat label="Totale punti" value={String(round.totalPoints)} />
+              <Stat label={lastWon ? "Vincita" : "Esito"} value={lastWon ? formatCurrency(mutation.data?.payout ?? 0) : "Persa"} accent={!!lastWon} />
+            </div>
+          </>
+        )}
+      </GameArea>
+    </GameShell>
+  );
+}
+
+// ============== MAIN SWITCH ==============
 // ============== MAIN SWITCH ==============
 export function GamePlayer({ slug }: { slug: string }) {
   switch (slug) {
@@ -1852,6 +2336,8 @@ export function GamePlayer({ slug }: { slug: string }) {
       return <CoinflipGame />;
     case "wheel":
       return <WheelGame />;
+    case "scopa":
+      return <ScopaGame />;
     default:
       return (
         <div className="p-8 text-center text-muted-foreground rounded-lg bg-card/40 border border-border/50">

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getSession, ok, err } from "@/lib/session";
 import { getActiveSeed, rotateSeed, setClientSeed, hashServerSeed, fairFloat } from "@/lib/provably-fair";
+import { playScopaRound, resolveScopaMarket, SCOPA_ODDS, type ScopaMarket } from "@/lib/scopa";
 import { db } from "@/lib/db";
 
 // GET /api/fair — the player's current commitment. The server seed itself is
@@ -44,12 +45,54 @@ export async function POST(req: NextRequest) {
 // confirm a past bet without trusting this server's arithmetic.
 export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  const { serverSeed, clientSeed, nonce, cursor } = body ?? {};
+  const { serverSeed, clientSeed, nonce, cursor, game, market } = body ?? {};
   if (!serverSeed || !clientSeed || nonce === undefined) {
     return err("serverSeed, clientSeed and nonce are required", 400);
   }
-  return ok({
-    serverSeedHash: hashServerSeed(String(serverSeed)),
-    float: fairFloat(String(serverSeed), String(clientSeed), Number(nonce), Number(cursor ?? 0)),
-  });
+  const s = String(serverSeed);
+  const c = String(clientSeed);
+  const n = Number(nonce);
+
+  const out: Record<string, unknown> = {
+    serverSeedHash: hashServerSeed(s),
+    float: fairFloat(s, c, n, Number(cursor ?? 0)),
+  };
+
+  // Full-game replay for Scopa Siciliana: recompute the deck, the entire
+  // automatic round and the final score from the revealed seed, so a player
+  // can confirm the outcome of a past bet without trusting stored payloads.
+  if (game === "scopa") {
+    const r = playScopaRound((cur) => fairFloat(s, c, n, cur));
+    out.scopa = {
+      outcome: r.outcome,
+      deck: r.deck,
+      timeline: r.timeline,
+      playerCardsCount: r.playerCards.length,
+      bankCardsCount: r.bankCards.length,
+      playerPoints: r.playerPoints,
+      bankPoints: r.bankPoints,
+      totalPoints: r.totalPoints,
+      playerScopa: r.playerScopa,
+      bankScopa: r.bankScopa,
+      playerSettebello: r.playerSettebello,
+      bankSettebello: r.bankSettebello,
+      playerDenari: r.playerDenari,
+      bankDenari: r.bankDenari,
+      playerPrimiera: r.playerPrimiera,
+      bankPrimiera: r.bankPrimiera,
+    };
+    if (market) {
+      const m = String(market);
+      if (m in SCOPA_ODDS) {
+        const marketId = m as ScopaMarket;
+        out.market = {
+          id: marketId,
+          won: resolveScopaMarket(marketId, r),
+          odds: SCOPA_ODDS[marketId],
+        };
+      }
+    }
+  }
+
+  return ok(out);
 }
