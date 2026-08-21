@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { vipLevelForWager } from "@/lib/vip";
+import { vipLevelForXp } from "@/lib/vip";
+import { grantReload } from "@/lib/vip-service";
 
 /*
  * Player profile reconciliation.
@@ -92,12 +93,13 @@ export async function syncPlayerProfile(userId: string): Promise<void> {
     create: { externalId: userId, registeredAt: user.createdAt, ...data },
   });
 
-  // Keep the wallet's VIP level in lockstep with total wagered — the single
-  // wager ladder drives it, so the VIP page, header and admin all agree.
-  const totalWagered = user.wallet?.totalWagered ?? wagered;
-  const earned = vipLevelForWager(totalWagered);
+  // Keep the wallet's VIP level in lockstep with XP (1 XP per $1 casino wager).
+  const xp = user.wallet?.xp ?? Math.floor(user.wallet?.totalWagered ?? wagered);
+  const earned = vipLevelForXp(xp);
   if (user.wallet && user.wallet.vipLevel !== earned) {
+    const previous = user.wallet.vipLevel;
     await db.casinoWallet.update({ where: { userId }, data: { vipLevel: earned } });
+    if (earned > previous) await grantReload(userId, earned).catch(() => {});
   }
 }
 

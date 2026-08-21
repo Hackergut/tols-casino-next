@@ -485,6 +485,21 @@ model CasinoWithdrawal {
 // been wagered. Wagering progress is aggregated on CasinoWallet.wageringRemaining;
 // when it reaches zero, every active credit releases into `balance`.
 
+model VipReward {
+  id        String    @id @default(cuid())
+  userId    String
+  kind      String    // daily | weekly | monthly | rakeback | reload
+  periodKey String
+  amount    Float
+  status    String    @default("pending") // pending | claimed
+  meta      String    @default("{}")
+  createdAt DateTime  @default(now())
+  claimedAt DateTime?
+
+  @@unique([userId, kind, periodKey])
+  @@index([userId, status])
+}
+
 model BonusCredit {
   id         String    @id @default(cuid())
   userId     String

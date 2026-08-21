@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       dateOfBirth: dob,
       kycStatus: "unverified",
       emailVerifyToken: verifyToken,
-      wallet: { create: { balance: WEB_WELCOME_BONUS, currency: "USDT", vipLevel: 1, totalWagered: 0, totalWon: 0 } },
+      wallet: { create: { balance: WEB_WELCOME_BONUS, currency: "USDT", vipLevel: 0, totalWagered: 0, totalWon: 0 } },
     },
     include: { wallet: true },
   });

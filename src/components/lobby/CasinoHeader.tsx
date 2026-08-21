@@ -13,6 +13,7 @@ import { SearchBar } from "./SearchBar";
 import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
 import { useSessionStore } from "@/lib/store";
+import { vipTier } from "@/lib/vip";
 
 export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false, games = [], onGameClick }: {
   balance: number;
@@ -156,7 +157,7 @@ export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0,
                 >
                   <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
                   {sessionUser?.email && <p className="truncate text-xs text-muted-foreground">{sessionUser.email}</p>}
-                  <p className="mt-0.5 text-xs text-vip">VIP Level {vipLevel}</p>
+                  <p className="mt-0.5 text-xs text-vip">{vipTier(vipLevel).name}</p>
                 </button>
 
                 <div className="p-2">

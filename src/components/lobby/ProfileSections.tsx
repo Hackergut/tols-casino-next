@@ -12,12 +12,12 @@ import {
   ArrowLeft, Wallet, Crown, Vault, Coins, Share2, Bell, Receipt, Ticket,
   Settings, ShieldCheck, LifeBuoy, Copy, Check, RefreshCw, Gift, Flame, Trophy,
 } from "lucide-react";
-import { VIP_TIERS, vipLevelForWager, vipProgress } from "@/lib/vip";
 import { useLocale } from "@/lib/use-locale";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n";
 import { useGameSettings } from "@/lib/game-settings";
 import { setSoundEnabled } from "@/lib/game-audio";
 import { SupportChat } from "./SupportChat";
+import { VipClub } from "./VipClub";
 import { PromotionsInfoSection, ChallengesInfoSection } from "./DiscoverInfo";
 
 const PROFILE_SECTIONS = new Set([
@@ -169,90 +169,8 @@ function WalletSection({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* ── VIP ── */
-const fmtPts = (n: number) => Math.floor(n).toLocaleString("en-US");
-
 function VipSection({ onBack }: { onBack: () => void }) {
-  const wallet = useJson<{ vipLevel: number; xp: number; totalWagered: number }>("/api/wallet");
-  const w = wallet.data;
-  const wagered = w?.totalWagered ?? 0;
-  const points = Math.floor(wagered);
-  // Level derives from wager (source of truth), matching server auto-promotion.
-  const level = vipLevelForWager(wagered);
-  const current = VIP_TIERS[level - 1];
-  const next = VIP_TIERS[level] ?? null;
-  const pct = vipProgress(wagered);
-
-  return (
-    <Shell title="VIP Level" subtitle="Your level, progress and benefits" icon={Crown} onBack={onBack}>
-      {/* Current tier + progress */}
-      <div className={CARD} style={CARD_STYLE}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>Current level</p>
-            <p className="mt-1 text-3xl font-black" style={{ color: current.color }}>
-              {current.level} · {current.name}
-            </p>
-          </div>
-          <Crown className="h-10 w-10" style={{ color: current.color }} />
-        </div>
-        <div className="mt-4">
-          <div className="mb-1 flex justify-between text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-            <span>{fmtPts(points)} points</span>
-            <span>{next ? `Next: ${next.name} · ${fmtPts(next.points)} pt` : "Max level"}</span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${current.color}, ${next?.color ?? "var(--color-lime)"})` }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Tier ladder with per-level benefits */}
-      <div className={CARD} style={CARD_STYLE}>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Tiers and benefits
-        </p>
-        <div className="flex flex-col gap-2">
-          {VIP_TIERS.map((t) => {
-            const isCurrent = t.level === level;
-            const unlocked = t.level <= level;
-            return (
-              <div
-                key={t.name}
-                className="rounded-xl p-3"
-                style={{
-                  background: isCurrent ? `color-mix(in oklab, ${t.color} 12%, transparent)` : "rgba(255,255,255,0.03)",
-                  border: isCurrent ? `1px solid ${t.color}` : "1px solid rgba(255,255,255,0.06)",
-                  opacity: unlocked ? 1 : 0.55,
-                }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ background: t.color, color: "#0f1015" }}>{t.level}</span>
-                    <div className="min-w-0">
-                      <p className="font-bold" style={{ color: t.color }}>{t.name}</p>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>{fmtPts(t.points)} points required</p>
-                    </div>
-                  </div>
-                  {isCurrent
-                    ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ background: t.color, color: "#0f1015" }}>CURRENT</span>
-                    : unlocked ? <Check className="h-4 w-4 shrink-0" style={{ color: t.color }} /> : null}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {t.benefits.map((b) => (
-                    <span key={b} className="rounded-md px-2 py-0.5 text-[11px]" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.72)" }}>{b}</span>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-          Points are earned by wagering (1 point per $1 wagered). Your level updates automatically.
-        </p>
-      </div>
-    </Shell>
-  );
+  return <VipClub onBack={onBack} />;
 }
 
 /* ── Notifications ── */
