@@ -28,7 +28,16 @@ export async function GET(req: NextRequest) {
   }
 
   const rules = await db.gameControl.findMany({ where: { mode: "rtp", enabled: true }, orderBy: { priority: "desc" } });
-  const games = [];
+  const games: Array<{
+    gameId: string;
+    gameName: string;
+    baseRtp: number;
+    rtpTarget: number;
+    enabled: boolean;
+    ruleId: string | null;
+    recentBets: number;
+    actualRtp: number | null;
+  }> = [];
   for (const g of ORIGINAL_GAMES) {
     const bets = await db.casinoBet.findMany({
       where: { gameId: g.id },
