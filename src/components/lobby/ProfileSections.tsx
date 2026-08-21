@@ -428,7 +428,8 @@ function PreferenceToggle({ label, description, active, onToggle }: {
 }
 
 function SettingsSection({ onBack }: { onBack: () => void }) {
-  const me = useJson<{ balance: number; currency: string }>("/api/wallet");
+  const me = useJson<{ username?: string; email?: string; currency?: string }>("/api/auth/me");
+  const wallet = useJson<{ currency: string }>("/api/wallet");
   const [toggles, setToggles] = useState({ emailPromos: true, hideBalance: false });
   const soundEnabled = useGameSettings((s) => s.soundEnabled);
   const toggleSound = useGameSettings((s) => s.toggleSound);
@@ -463,8 +464,9 @@ function SettingsSection({ onBack }: { onBack: () => void }) {
       <div className={CARD} style={CARD_STYLE}>
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>{t("profile.account")}</p>
         <div className="space-y-2 text-sm">
-          <Row left="Username" mid="" right="TOLSPlayer" />
-          <Row left="Display currency" mid="" right={me.data?.currency ?? "USDT"} />
+          <Row left="Username" mid="" right={me.data?.username || "—"} />
+          <Row left="Email" mid="" right={me.data?.email || "—"} />
+          <Row left="Display currency" mid="" right={wallet.data?.currency ?? me.data?.currency ?? "USDT"} />
         </div>
       </div>
       <div className={CARD} style={CARD_STYLE}>

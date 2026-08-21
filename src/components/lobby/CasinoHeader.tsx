@@ -3,7 +3,6 @@
 // Lobby shell header — extracted from page.tsx (Phase 2). Balance uses the
 // PostedAmount signature (digit roll + posted tick on change).
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Wallet, Menu, X, ChevronDown, MessageCircle,
   Crown, Vault, Coins, Share2, Bell, Receipt, Ticket, Settings,
@@ -13,6 +12,7 @@ import { PostedAmount } from "@/casino/components/casino/PostedAmount";
 import { SearchBar } from "./SearchBar";
 import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
+import { useSessionStore } from "@/lib/store";
 
 export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0, onMenuToggle, menuOpen, onProfileNavigate, onChatToggle, onNotifToggle, onWalletClick, authed, inGame = false, games = [], onGameClick }: {
   balance: number;
@@ -29,10 +29,15 @@ export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0,
   games?: LobbyGame[];
   onGameClick?: (game: LobbyGame) => void;
 }) {
-  const router = useRouter();
   const { t } = useLocale();
+  const sessionUser = useSessionStore((s) => s.user);
+  const vipLevel = useSessionStore((s) => s.vipLevel);
+  const sessionLogout = useSessionStore((s) => s.logout);
   const [userOpen, setUserOpen] = useState(false);
   const userRef = useRef<HTMLDivElement>(null);
+  const displayName = sessionUser?.username || t("header.player");
+  const avatarColor = sessionUser?.avatarColor || "var(--color-lime)";
+  const initials = displayName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 2).toUpperCase() || "T";
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -45,8 +50,8 @@ export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0,
   const handleLogout = async () => {
     setUserOpen(false);
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* ignore */ }
-    router.push("/");
-    router.refresh();
+    sessionLogout();
+    window.location.assign("/");
   };
 
   // Profile menu entries. `id` is a stable slug ready to route/wire to a view.
@@ -133,16 +138,26 @@ export function CasinoHeader({ balance, bonusBalance = 0, wageringRemaining = 0,
               onClick={() => setUserOpen(!userOpen)}
               className="btn-press flex items-center gap-2 rounded-lg bg-secondary/50 px-2 py-1.5 text-foreground/70 transition-colors hover:bg-secondary sm:px-3"
             >
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-lime text-[10px] font-bold text-bg">T</div>
-              <span className="hidden text-sm font-medium sm:inline">{t("header.player")}</span>
+              <div
+                className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-bg"
+                style={{ background: avatarColor }}
+              >
+                {initials}
+              </div>
+              <span className="hidden max-w-[9rem] truncate text-sm font-medium sm:inline">{displayName}</span>
               <ChevronDown className="h-3 w-3" />
             </button>
             {userOpen && (
               <div className="absolute right-0 top-full z-50 mt-2 max-h-[80vh] w-56 overflow-y-auto rounded-xl border border-border/60 bg-surface shadow-xl">
-                <div className="border-b border-border/40 p-3">
-                  <p className="text-sm font-medium text-foreground">TOLSPlayer</p>
-                  <p className="text-xs text-vip">VIP Level 3</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => { setUserOpen(false); onProfileNavigate("settings"); }}
+                  className="block w-full border-b border-border/40 p-3 text-left transition-colors hover:bg-secondary/40"
+                >
+                  <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                  {sessionUser?.email && <p className="truncate text-xs text-muted-foreground">{sessionUser.email}</p>}
+                  <p className="mt-0.5 text-xs text-vip">VIP Level {vipLevel}</p>
+                </button>
 
                 <div className="p-2">
                   {menuItems.map(({ id, label, icon: Icon }) => (

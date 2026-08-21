@@ -7,6 +7,7 @@ import { useBalanceStore } from "@/lib/balance-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -151,6 +152,17 @@ function CasinoPage() {
     if (!state?.tols) window.history.replaceState({ ...(state || {}), tols: true, index: 0 }, "", window.location.href);
     queueMicrotask(applyLocation);
     window.addEventListener("popstate", applyLocation);
+
+    const sp = new URLSearchParams(window.location.search);
+    const google = sp.get("google");
+    if (google === "error") toast.error("Google sign-in failed", { description: "Try again, or use email." });
+    else if (google === "not_configured") toast.error("Google sign-in isn't available yet", { description: "Please use email instead." });
+    if (google) {
+      sp.delete("google");
+      const next = window.location.pathname + (sp.toString() ? `?${sp}` : "") + window.location.hash;
+      window.history.replaceState(window.history.state, "", next);
+    }
+
     return () => window.removeEventListener("popstate", applyLocation);
   }, []);
 

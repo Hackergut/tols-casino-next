@@ -49,7 +49,7 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [googleAvailable, setGoogleAvailable] = useState(true);
+
 
   const submit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,24 +83,12 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
     setBusy(false);
   }, [mode, identifier, username, email, password, referralCode, dobDay, dobMonth, dobYear, busy, onAuthenticated]);
 
-  // Google button used to be a plain <a href="/api/auth/google">, which — when
-  // Google isn't configured — navigated the whole page to a raw 503 JSON error
-  // instead of staying on the form. Check first; only navigate if it will work.
-  const handleGoogle = useCallback(async () => {
-    try {
-      const r = await fetch("/api/auth/google", { redirect: "manual" });
-      // A same-origin redirect (opaqueredirect) means Google is configured and
-      // ready; anything else (503 JSON) means it isn't.
-      if (r.type === "opaqueredirect" || r.status === 302 || r.status === 200) {
-        window.location.href = "/api/auth/google";
-      } else {
-        setGoogleAvailable(false);
-        setError("Google sign-in isn't available yet — please use email instead.");
-      }
-    } catch {
-      setGoogleAvailable(false);
-      setError("Google sign-in isn't available yet — please use email instead.");
-    }
+  // Navigate for real. A fetch({ redirect: "manual" }) probe used to hide this
+  // button on any network blip or opaque 302, so the Google callback looked
+  // like it had "disappeared". The start route itself redirects home with
+  // ?google=not_configured when OAuth isn't set up.
+  const handleGoogle = useCallback(() => {
+    window.location.assign("/api/auth/google");
   }, []);
 
   const field = "w-full rounded-xl border border-white/10 bg-white/[0.03] py-3 pl-10 pr-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-lime/40";
@@ -256,16 +244,14 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
 
         {/* Google sign-in + forgot password */}
         <div className="mt-3 space-y-2">
-          {googleAvailable && (
-            <button
-              type="button"
-              onClick={handleGoogle}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-3 text-sm font-bold text-white/80 transition-colors hover:bg-white/[0.06]"
-            >
-              <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.6 5.1C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.3 5.3C41.4 36 44 30.5 44 24c0-1.2-.1-2.3-.4-3.5z"/></svg>
-              Continue with Google
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleGoogle}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-3 text-sm font-bold text-white/80 transition-colors hover:bg-white/[0.06]"
+          >
+            <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.6 5.1C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.3 5.3C41.4 36 44 30.5 44 24c0-1.2-.1-2.3-.4-3.5z"/></svg>
+            Continue with Google
+          </button>
           {mode === "login" && (
             <a href="/forgot-password" className="block text-center text-xs text-white/40 transition-colors hover:text-white/60">Forgot password?</a>
           )}
