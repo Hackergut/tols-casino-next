@@ -46,5 +46,45 @@ test("admin bridge page creates and tests a backend connection through APIs", ()
   assert.match(page, /fetch\('\/api\/bridge\/connection'/);
   assert.match(page, /fetch\('\/api\/bridge\/connection\/test'/);
   assert.match(page, /Create connection/);
+  assert.match(page, /GovernanceLiveLink/);
   assert.doesNotMatch(page, /addPlatformConnection/);
+});
+
+test("GOVERNANCE_TOWER_URL wins over the legacy TOLS_BASE_URL for the live Tower", () => {
+  const source = read("src/lib/governance-bridge.ts");
+  assert.match(source, /GOVERNANCE_TOWER_URL/);
+  assert.match(source, /must NEVER hijack/);
+  assert.match(source, /explicitApiBase \|\| `\$\{towerOrigin\}\/api`/);
+  assert.match(source, /probeGovernanceHealth/);
+  assert.match(source, /\/api\/platform\/health/);
+  assert.match(source, /pushSettledBet/);
+});
+
+test("health probes the Governance origin, not an empty Base44 API path", () => {
+  const health = read("src/app/api/bridge/health/route.ts");
+  assert.match(health, /probeGovernanceHealth/);
+  assert.match(health, /heartbeat/);
+  assert.match(health, /casino\.health/);
+  assert.match(health, /link:/);
+  assert.doesNotMatch(health, /path: stored\?\.healthPath \|\| ""/);
+});
+
+test("settled bets are pushed to Governance", () => {
+  const settle = read("src/lib/settle-bet.ts");
+  const rounds = read("src/lib/game-rounds.ts");
+  assert.match(settle, /pushSettledBet/);
+  assert.match(rounds, /pushSettledBet/);
+});
+
+test("admin dashboard connectivity uses the Governance bridge, not Base44", () => {
+  const dash = read("src/components/admin/modules/dashboard-page.tsx");
+  assert.match(dash, /\/api\/bridge\/health\?probe=true/);
+  assert.doesNotMatch(dash, /\/api\/tols\?path=\//);
+});
+
+test("live Governance link animates packets between Casino and Tower", () => {
+  const live = read("src/components/admin/modules/governance-live-link.tsx");
+  assert.match(live, /heartbeat=1/);
+  assert.match(live, /animateMotion/);
+  assert.match(live, /Casino ↔ Governance/);
 });

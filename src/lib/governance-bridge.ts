@@ -45,24 +45,36 @@ function pickEnv(...keys: string[]): string | undefined {
 }
 
 export function getBridgeConfig(): BridgeConfig {
-  // Tower origin: prefer GOVERNANCE_TOWER_URL / TOWER_URL, fall back to the origin of TOLS_BASE_URL
+  // GOVERNANCE_TOWER_URL is the source of truth for the live Tower.
+  // TOLS_BASE_URL is a legacy Base44 staging URL and must NEVER hijack the
+  // Governance origin when the real tower URL is set — that split-brain is
+  // what made health look "reachable" against the wrong backend.
   const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
-  const rawApiBase = pickEnv("TOLS_BASE_URL", "TOWER_API_BASE");
-  const towerApiBase = stripTrailingSlash(rawApiBase || "https://gov.tols.fun/api");
-  const towerOrigin = rawTowerOrigin
-    ? stripTrailingSlash(rawTowerOrigin)
-    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://gov.tols.fun"; } })();
+  const explicitApiBase = pickEnv("TOWER_API_BASE");
+  const legacyTolsBase = pickEnv("TOLS_BASE_URL");
 
-  // Casino origin: prefer APP_URL, fallback CASINO_URL / NEXT_PUBLIC_APP_URL
+  let towerOrigin: string;
+  let towerApiBase: string;
+  if (rawTowerOrigin) {
+    towerOrigin = stripTrailingSlash(rawTowerOrigin);
+    towerApiBase = stripTrailingSlash(explicitApiBase || `${towerOrigin}/api`);
+  } else if (legacyTolsBase) {
+    towerApiBase = stripTrailingSlash(legacyTolsBase);
+    try { towerOrigin = new URL(towerApiBase).origin; } catch { towerOrigin = "https://gov.tols.fun"; }
+  } else {
+    towerOrigin = "https://gov.tols.fun";
+    towerApiBase = "https://gov.tols.fun/api";
+  }
+
   const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://www.tols.fun");
-  const bridgeSecret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
+  const secret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
   const hasTowerKeys = Boolean(process.env.TOLS_API_KEY && process.env.TOLS_APP_KEY);
 
   return {
     towerOrigin,
     towerApiBase,
     casinoOrigin,
-    hasBridgeSecret: bridgeSecret.length >= 16,
+    hasBridgeSecret: secret.length >= 16,
     hasTowerKeys,
     hasDb: Boolean(process.env.DATABASE_URL),
   };
@@ -171,6 +183,47 @@ export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response>
   }
 }
 
+export interface GovernanceProbe {
+  reachable: boolean;
+  status?: number;
+  latencyMs: number;
+  error?: string;
+  url?: string;
+}
+
+/**
+ * Hit the real Governance health endpoints on the Tower origin.
+ * HTTP 401/403 still counts as reachable — the host answered.
+ */
+export async function probeGovernanceHealth(timeoutMs = 4000): Promise<GovernanceProbe> {
+  let storedHealth: string | null = null;
+  try {
+    const { getGovernanceConnection } = await import("@/lib/governance-connection");
+    const stored = await getGovernanceConnection();
+    if (stored?.enabled && stored.healthPath) storedHealth = stored.healthPath;
+  } catch { /* environment fallback */ }
+
+  const paths = storedHealth
+    ? [storedHealth]
+    : ["/api/platform/health", "/api/health", "/health"];
+
+  let last: GovernanceProbe = { reachable: false, latencyMs: 0, error: "no probe" };
+  for (const path of paths) {
+    const t0 = Date.now();
+    try {
+      const res = await bridgeFetch({ path, useOrigin: true, method: "GET", timeoutMs });
+      const latencyMs = Date.now() - t0;
+      last = { reachable: true, status: res.status, latencyMs, url: path };
+      if (res.status !== 404) return last;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const isTimeout = msg.includes("aborted") || msg.includes("AbortError");
+      last = { reachable: false, latencyMs: Date.now() - t0, error: isTimeout ? "timeout" : msg.slice(0, 300), url: path };
+    }
+  }
+  return last;
+}
+
 // ── Event push (Casino → Tower) ─────────────────────────────────────────
 
 export type BridgeEventType =
@@ -188,40 +241,61 @@ export type BridgeEventType =
   | "casino.bonus_released"
   | "bridge.sync_request";
 
+type WebhookCandidate = { path: string; useOrigin?: boolean };
+
+const g = globalThis as unknown as { __tolsBridgeWebhook?: WebhookCandidate | null };
+
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
   const body = { type, payload, ts: new Date().toISOString(), source: "casino" };
-  // Governance (gov.tols.fun) exposes, per its UI: /api/platform/webhooks (events:write).
-  // We keep a fallback to /bridge/events for backward compatibility.
   let configuredWebhook: string | null = null;
   try {
     const { getGovernanceConnection } = await import("@/lib/governance-connection");
     configuredWebhook = (await getGovernanceConnection())?.webhookPath || null;
   } catch { /* environment fallback */ }
-  const candidates: Array<{ path: string; useOrigin?: boolean }> = [
+  const defaults: WebhookCandidate[] = [
     ...(configuredWebhook ? [{ path: configuredWebhook, useOrigin: true }] : []),
     { path: "/api/platform/webhooks", useOrigin: true },
     { path: "/api/platform/webhook", useOrigin: true },
     { path: "/bridge/events" },
     { path: "/api/bridge/events", useOrigin: true },
   ];
+  const cached = g.__tolsBridgeWebhook;
+  const candidates = cached
+    ? [cached, ...defaults.filter((c) => c.path !== cached.path)]
+    : defaults;
   for (const c of candidates) {
     try {
       const res = await bridgeFetch({ path: c.path, method: "POST", body, useOrigin: c.useOrigin });
-      if (res.status === 404) continue; // try the next one
+      if (res.status === 404) {
+        if (g.__tolsBridgeWebhook?.path === c.path) g.__tolsBridgeWebhook = null;
+        continue;
+      }
       const text = await res.text();
       let b: unknown = text; try { b = JSON.parse(text); } catch {}
-      // On 401/403 for scope, report immediately (do not try the others).
+      if (res.ok) g.__tolsBridgeWebhook = c;
       if (res.status === 401 || res.status === 403) return { ok: res.ok, status: res.status, body: b };
       if (res.ok) return { ok: true, status: res.status, body: b };
-      // Any other error except 404: return it anyway for debugging.
       return { ok: res.ok, status: res.status, body: b };
     } catch (e) {
-      // Network error: try the next candidate if there is one.
       if (c !== candidates[candidates.length - 1]) continue;
       return { ok: false, status: 0, body: { error: e instanceof Error ? e.message : String(e) } };
     }
   }
   return { ok: false, status: 404, body: { error: "All webhook candidates returned 404" } };
+}
+
+/** Push a settled wager at Governance. Return the promise so `after()` can wait. */
+export function pushSettledBet(opts: {
+  userId: string;
+  game: string;
+  amount: number;
+  payout: number;
+  multiplier: number;
+  won: boolean;
+  betId: string;
+}): Promise<{ ok: boolean; status: number; body?: unknown }> {
+  const type: BridgeEventType = opts.won ? "casino.win" : "casino.bet";
+  return pushBridgeEvent(type, { ...opts }).catch(() => ({ ok: false, status: 0 }));
 }
 
 // ── Inbound event handling (Tower → Casino) ──────────────────────────────

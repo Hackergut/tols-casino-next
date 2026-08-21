@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAdmin, auditLog } from "@/lib/admin-auth";
+import { getBridgeConfig } from "@/lib/governance-bridge";
 import {
   deleteGovernanceConnection, getGovernanceConnection, publicGovernanceConnection,
   saveGovernanceConnection, type GovernanceConnectionInput,
@@ -9,7 +10,21 @@ export async function GET() {
   const guard = await requireAdmin();
   if ("response" in guard) return guard.response;
   const connection = await getGovernanceConnection().catch(() => null);
-  return Response.json({ success: true, data: { connection: publicGovernanceConnection(connection), encryptionConfigured: Boolean(process.env.CONNECTION_ENCRYPTION_KEY || process.env.ADMIN_SESSION_SECRET) } });
+  const cfg = getBridgeConfig();
+  return Response.json({
+    success: true,
+    data: {
+      connection: publicGovernanceConnection(connection),
+      environment: {
+        live: cfg.hasBridgeSecret,
+        towerOrigin: cfg.towerOrigin,
+        towerApiBase: cfg.towerApiBase,
+        casinoOrigin: cfg.casinoOrigin,
+        hasBridgeSecret: cfg.hasBridgeSecret,
+      },
+      encryptionConfigured: Boolean(process.env.CONNECTION_ENCRYPTION_KEY || process.env.ADMIN_SESSION_SECRET),
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {
