@@ -122,6 +122,6 @@ export async function POST(req: NextRequest) {
   try { return await registerPost(req); }
   catch (e) {
     console.error("[auth/register] failed:", e);
-    return err("Registration failed. Check server logs.", 500);
+    return err(e instanceof Error ? e.message : "Registration failed", 500);
   }
 }
