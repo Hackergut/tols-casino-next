@@ -30,6 +30,15 @@ test("home hierarchy is hero then category tabs then Originals", () => {
   assert.doesNotMatch(render, /<PromoStrip/);
 });
 
+test("Recent does not treat aborted history reads as lost bets", () => {
+  const page = read("src/app/page.tsx");
+  const feedback = read("src/components/casino/GameFeedback.tsx");
+  assert.match(page, /\/api\/bets\/history\?limit=20/);
+  assert.match(page, /\[activeSection, routeReady\]/);
+  assert.doesNotMatch(page, /cmsOverrides\]\)/);
+  assert.match(feedback, /installBetFetchGuard/);
+});
+
 test("mobile has one chat icon and guests are routed to registration", () => {
   const header = read("src/components/lobby/CasinoHeader.tsx");
   const page = read("src/app/page.tsx");

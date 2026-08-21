@@ -18,6 +18,8 @@ import { subscribe, type RealtimeEvent } from "@/lib/realtime";
  */
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function GET() {
   let user;
@@ -61,7 +63,7 @@ export async function GET() {
         }
       }, 15000);
 
-      controller.enqueue(encoder.encode(`event: hello\ndata: ${JSON.stringify({ ok: true })}\n\n`));
+      controller.enqueue(encoder.encode(`retry: 3000\nevent: hello\ndata: ${JSON.stringify({ ok: true })}\n\n`));
       cleanup = close;
     },
     cancel() {
