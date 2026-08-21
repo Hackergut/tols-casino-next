@@ -19,8 +19,10 @@ import { createHmac, timingSafeEqual } from "crypto";
  *   GOVERNANCE_TOWER_URL  — Governance origin, e.g. https://gov.tols.fun (alias: TOWER_URL) — copy from Vercel → tolsgovernz → Domains
  *   APP_URL               — Casino origin, e.g. https://www.tols.fun (alias: CASINO_URL) — copy from Vercel → tols-casino-next → Domains
  *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — shared HMAC (openssl rand -hex 32)
- *   TOLS_BASE_URL         — legacy Governance API base (e.g. https://gov.tols.fun/api)
  *   PLATFORM_JWT_*        — JWT RS256: PRIVATE on tolsgovernz, PUBLIC on tols-casino-next (see .env.bridge-keys)
+ *
+ * Governance is ALWAYS the Vercel project `hackguts-projects/tolsgovernz`
+ * at https://gov.tols.fun. It was never Base44.
  */
 
 // ── Config ───────────────────────────────────────────────────────────────
@@ -44,27 +46,30 @@ function pickEnv(...keys: string[]): string | undefined {
   return undefined;
 }
 
+/** Governance is gov.tols.fun (Vercel project tolsgovernz). Never Base44. */
+export function isGovernanceTowerHost(value: string): boolean {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    if (host.endsWith("base44.app")) return false;
+    return host === "gov.tols.fun" || host.includes("tolsgovernz");
+  } catch {
+    return false;
+  }
+}
+
 export function getBridgeConfig(): BridgeConfig {
-  // GOVERNANCE_TOWER_URL is the source of truth for the live Tower.
-  // TOLS_BASE_URL is a legacy Base44 staging URL and must NEVER hijack the
-  // Governance origin when the real tower URL is set — that split-brain is
-  // what made health look "reachable" against the wrong backend.
   const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
   const explicitApiBase = pickEnv("TOWER_API_BASE");
-  const legacyTolsBase = pickEnv("TOLS_BASE_URL");
 
-  let towerOrigin: string;
-  let towerApiBase: string;
-  if (rawTowerOrigin) {
+  let towerOrigin = "https://gov.tols.fun";
+  if (rawTowerOrigin && isGovernanceTowerHost(rawTowerOrigin)) {
     towerOrigin = stripTrailingSlash(rawTowerOrigin);
-    towerApiBase = stripTrailingSlash(explicitApiBase || `${towerOrigin}/api`);
-  } else if (legacyTolsBase) {
-    towerApiBase = stripTrailingSlash(legacyTolsBase);
-    try { towerOrigin = new URL(towerApiBase).origin; } catch { towerOrigin = "https://gov.tols.fun"; }
-  } else {
-    towerOrigin = "https://gov.tols.fun";
-    towerApiBase = "https://gov.tols.fun/api";
   }
+  const towerApiBase = stripTrailingSlash(
+    explicitApiBase && isGovernanceTowerHost(explicitApiBase)
+      ? explicitApiBase
+      : `${towerOrigin}/api`,
+  );
 
   const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://www.tols.fun");
   const secret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
@@ -133,14 +138,21 @@ export interface BridgeFetchOpts {
  * Call the Governance Tower (the other Vercel project on a subdomain).
  * Uses TOLS_API_KEY / TOLS_APP_KEY if the Tower requires them.
  */
-export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
-  const envConfig = getBridgeConfig();
-  let stored: import("@/lib/governance-connection").GovernanceConnection | null = null;
+export async function loadActiveGovernanceConnection() {
   try {
     const { getGovernanceConnection } = await import("@/lib/governance-connection");
-    stored = await getGovernanceConnection();
-    if (stored && !stored.enabled) stored = null;
-  } catch { /* use environment configuration */ }
+    const stored = await getGovernanceConnection();
+    if (!stored?.enabled) return null;
+    if (!isGovernanceTowerHost(stored.towerOrigin)) return null;
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
+export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
+  const envConfig = getBridgeConfig();
+  const stored = await loadActiveGovernanceConnection();
   const towerApiBase = stored?.towerApiBase || envConfig.towerApiBase;
   const towerOrigin = stored?.towerOrigin || envConfig.towerOrigin;
   const casinoOrigin = stored?.casinoOrigin || envConfig.casinoOrigin;
@@ -196,12 +208,8 @@ export interface GovernanceProbe {
  * HTTP 401/403 still counts as reachable — the host answered.
  */
 export async function probeGovernanceHealth(timeoutMs = 4000): Promise<GovernanceProbe> {
-  let storedHealth: string | null = null;
-  try {
-    const { getGovernanceConnection } = await import("@/lib/governance-connection");
-    const stored = await getGovernanceConnection();
-    if (stored?.enabled && stored.healthPath) storedHealth = stored.healthPath;
-  } catch { /* environment fallback */ }
+  const stored = await loadActiveGovernanceConnection();
+  const storedHealth = stored?.healthPath || null;
 
   const paths = storedHealth
     ? [storedHealth]
@@ -247,11 +255,7 @@ const g = globalThis as unknown as { __tolsBridgeWebhook?: WebhookCandidate | nu
 
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
   const body = { type, payload, ts: new Date().toISOString(), source: "casino" };
-  let configuredWebhook: string | null = null;
-  try {
-    const { getGovernanceConnection } = await import("@/lib/governance-connection");
-    configuredWebhook = (await getGovernanceConnection())?.webhookPath || null;
-  } catch { /* environment fallback */ }
+  const configuredWebhook = (await loadActiveGovernanceConnection())?.webhookPath || null;
   const defaults: WebhookCandidate[] = [
     ...(configuredWebhook ? [{ path: configuredWebhook, useOrigin: true }] : []),
     { path: "/api/platform/webhooks", useOrigin: true },

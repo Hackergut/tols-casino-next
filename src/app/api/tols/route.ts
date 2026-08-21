@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from "@/lib/admin-auth";
 
-// TOLS Staging API Configuration
-const TOLS_BASE_URL = (process.env.TOLS_BASE_URL || 'https://tolscrypto.base44.app/api').replace(/\/$/, '');
+// Admin proxy to Governance (Vercel project tolsgovernz → https://gov.tols.fun).
+const TOLS_BASE_URL = (process.env.GOVERNANCE_TOWER_URL
+  ? `${process.env.GOVERNANCE_TOWER_URL.replace(/\/$/, '')}/api`
+  : process.env.TOLS_BASE_URL || 'https://gov.tols.fun/api').replace(/\/$/, '');
 const TOLS_API_KEY = process.env.TOLS_API_KEY || '';
 const TOLS_APP_KEY = process.env.TOLS_APP_KEY || '';
 

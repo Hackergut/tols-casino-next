@@ -107,7 +107,7 @@ export interface SlotAggregatorConfig {
 }
 
 const DEFAULT_AGGREGATOR_CONFIG: SlotAggregatorConfig = {
-  apiBaseUrl: 'https://tolscrypto.base44.app/api',
+  apiBaseUrl: 'https://gov.tols.fun/api',
   apiKey: '',
   operatorMerchantId: '',
   apiSecret: '',

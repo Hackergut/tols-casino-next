@@ -1,18 +1,17 @@
 import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getBridgeConfig, probeGovernanceHealth, pushBridgeEvent } from "@/lib/governance-bridge";
-import { getGovernanceConnection } from "@/lib/governance-connection";
+import { getBridgeConfig, loadActiveGovernanceConnection, probeGovernanceHealth, pushBridgeEvent } from "@/lib/governance-bridge";
 
 // GET /api/bridge/health — public bridge + system health for Vercel/monitoring
 // Checks: db, bridge env, tower reachability (best-effort, never 5xx on tower down)
 export async function GET(req: NextRequest) {
   const started = Date.now();
   const cfg = getBridgeConfig();
-  const stored = await getGovernanceConnection().catch(() => null);
-  const towerOrigin = stored?.enabled ? stored.towerOrigin : cfg.towerOrigin;
-  const towerApiBase = stored?.enabled ? stored.towerApiBase : cfg.towerApiBase;
-  const casinoOrigin = stored?.enabled ? stored.casinoOrigin : cfg.casinoOrigin;
+  const stored = await loadActiveGovernanceConnection();
+  const towerOrigin = stored?.towerOrigin || cfg.towerOrigin;
+  const towerApiBase = stored?.towerApiBase || cfg.towerApiBase;
+  const casinoOrigin = stored?.casinoOrigin || cfg.casinoOrigin;
   const searchParams = new URL(req.url).searchParams;
   const probeTower = searchParams.get("probe") !== "false";
   const heartbeat = searchParams.get("heartbeat") === "1";
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest) {
     tower = await probeGovernanceHealth(4000);
   }
 
-  const secretReady = Boolean(stored?.enabled && stored.bridgeSecret) || cfg.hasBridgeSecret;
+  const secretReady = Boolean(stored?.bridgeSecret) || cfg.hasBridgeSecret;
   const jwtReady = Boolean(process.env.PLATFORM_JWT_PUBLIC_KEY);
   const live = Boolean(dbState.ok && tower.reachable && secretReady);
   const degraded = !dbState.ok;
@@ -63,18 +62,18 @@ export async function GET(req: NextRequest) {
     link: {
       live,
       status: live ? "live" : tower.reachable ? "degraded" : "offline",
-      source: stored?.enabled ? "database" : "environment",
+      source: stored ? "database" : "environment",
       secretReady,
       jwtReady,
     },
     bridge: {
       configured: secretReady,
-      source: stored?.enabled ? "database" : "environment",
-      connectionId: stored?.enabled ? stored.id : null,
+      source: stored ? "database" : "environment",
+      connectionId: stored ? stored.id : null,
       hasTowerKeys: Boolean(stored?.apiKey && stored?.appKey) || cfg.hasTowerKeys,
       hasDb: cfg.hasDb,
       envPresent: {
-        DATABASE_CONNECTION: Boolean(stored?.enabled),
+        DATABASE_CONNECTION: Boolean(stored),
         GOVERNANCE_TOWER_URL: Boolean(process.env.GOVERNANCE_TOWER_URL),
         TOLS_BASE_URL: Boolean(process.env.TOLS_BASE_URL),
         APP_URL: Boolean(process.env.APP_URL),

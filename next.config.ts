@@ -22,7 +22,6 @@ const TELEGRAM_FRAME_ANCESTORS = "'self' https://web.telegram.org https://*.tele
 const TOWER_ORIGIN = (
   process.env.GOVERNANCE_TOWER_URL ||
   process.env.TOWER_URL ||
-  process.env.TOLS_BASE_URL ||
   "https://gov.tols.fun"
 ).replace(/\/api\/?$/, "");
 let TOWER_HOST: string | null = null;

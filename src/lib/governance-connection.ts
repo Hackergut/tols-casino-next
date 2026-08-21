@@ -50,6 +50,9 @@ function origin(value: string, field: string): string {
   let parsed: URL;
   try { parsed = new URL(value); } catch { throw new Error(`${field} must be a valid URL`); }
   if (parsed.protocol !== "https:" && process.env.NODE_ENV === "production") throw new Error(`${field} must use HTTPS`);
+  if (parsed.hostname.toLowerCase().endsWith("base44.app")) {
+    throw new Error(`${field} must be TOLS Governance (https://gov.tols.fun / Vercel project tolsgovernz), not Base44`);
+  }
   return parsed.origin;
 }
 function normalize(input: GovernanceConnectionInput, existing?: GovernanceConnection): GovernanceConnection {

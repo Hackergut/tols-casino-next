@@ -50,17 +50,26 @@ test("admin bridge page creates and tests a backend connection through APIs", ()
   assert.doesNotMatch(page, /addPlatformConnection/);
 });
 
-test("GOVERNANCE_TOWER_URL wins over the legacy TOLS_BASE_URL for the live Tower", () => {
+test("Governance is always gov.tols.fun / tolsgovernz, never Base44", () => {
   const source = read("src/lib/governance-bridge.ts");
-  assert.match(source, /GOVERNANCE_TOWER_URL/);
-  assert.match(source, /must NEVER hijack/);
-  assert.match(source, /explicitApiBase \|\| `\$\{towerOrigin\}\/api`/);
+  assert.match(source, /gov\.tols\.fun/);
+  assert.match(source, /tolsgovernz/);
+  assert.match(source, /isGovernanceTowerHost/);
+  assert.match(source, /base44\.app/);
   assert.match(source, /probeGovernanceHealth/);
   assert.match(source, /\/api\/platform\/health/);
   assert.match(source, /pushSettledBet/);
+  assert.doesNotMatch(source, /tolscrypto\.base44\.app/);
+  const page = read("src/components/admin/modules/bridge-page.tsx");
+  assert.doesNotMatch(page, /base44/);
+  const tols = read("src/app/api/tols/route.ts");
+  assert.doesNotMatch(tols, /base44/);
+  const store = read("src/stores/admin.ts");
+  assert.doesNotMatch(store, /base44/);
+  assert.match(store, /gov\.tols\.fun\/api/);
 });
 
-test("health probes the Governance origin, not an empty Base44 API path", () => {
+test("health probes the Governance origin on gov.tols.fun", () => {
   const health = read("src/app/api/bridge/health/route.ts");
   assert.match(health, /probeGovernanceHealth/);
   assert.match(health, /heartbeat/);
@@ -76,7 +85,7 @@ test("settled bets are pushed to Governance", () => {
   assert.match(rounds, /pushSettledBet/);
 });
 
-test("admin dashboard connectivity uses the Governance bridge, not Base44", () => {
+test("admin dashboard connectivity uses the Governance bridge", () => {
   const dash = read("src/components/admin/modules/dashboard-page.tsx");
   assert.match(dash, /\/api\/bridge\/health\?probe=true/);
   assert.doesNotMatch(dash, /\/api\/tols\?path=\//);

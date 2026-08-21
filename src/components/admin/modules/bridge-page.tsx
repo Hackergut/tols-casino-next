@@ -285,12 +285,10 @@ export function BridgePage() {
             <pre className="text-[11px] bg-muted rounded p-2 mt-2 overflow-auto">{`DATABASE_URL=postgresql://...pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 DIRECT_URL=postgresql://...pooler.supabase.com:5432/postgres
 ADMIN_SESSION_SECRET=$(openssl rand -hex 32)
-APP_URL=https://tols.fun
-GOVERNANCE_TOWER_URL=https://tolscrypto.base44.app
-GOVERNANCE_BRIDGE_SECRET=$(openssl rand -hex 32)   # same value on Governance
-TOLS_BASE_URL=https://tolscrypto.base44.app/api
-TOLS_API_KEY=...
-TOLS_APP_KEY=...
+APP_URL=https://www.tols.fun
+GOVERNANCE_TOWER_URL=https://gov.tols.fun
+GOVERNANCE_BRIDGE_SECRET=$(openssl rand -hex 32)   # same value on Governance (tolsgovernz)
+PLATFORM_JWT_PUBLIC_KEY=...   # Casino only
 CRON_SECRET=$(openssl rand -hex 16)
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
