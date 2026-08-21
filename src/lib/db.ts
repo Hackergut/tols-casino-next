@@ -10,4 +10,8 @@ export const db =
     log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['query'],
   })
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// Reuse one Prisma client per warm serverless instance. Creating a new client
+// for every production invocation exhausts Supabase's session pool quickly.
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL) {
+  globalForPrisma.prisma = db
+}
