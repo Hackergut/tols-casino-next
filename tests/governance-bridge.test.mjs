@@ -90,6 +90,16 @@ test("admin dashboard connectivity uses the Governance bridge", () => {
   assert.doesNotMatch(dash, /\/api\/tols\?path=\//);
 });
 
+test("Casino /control/admin redirects operators to Governance", () => {
+  const config = read("next.config.ts");
+  assert.match(config, /source: "\/control"/);
+  assert.match(config, /\/control\/:path\*/);
+  assert.match(config, /gov\.tols\.fun/);
+  const page = read("src/app/control/admin/page.tsx");
+  assert.match(page, /redirect/);
+  assert.match(page, /gov\.tols\.fun/);
+});
+
 test("live Governance link animates packets between Casino and Tower", () => {
   const live = read("src/components/admin/modules/governance-live-link.tsx");
   assert.match(live, /heartbeat=1/);
