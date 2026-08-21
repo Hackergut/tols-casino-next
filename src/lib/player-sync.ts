@@ -99,7 +99,11 @@ export async function syncPlayerProfile(userId: string): Promise<void> {
   if (user.wallet && user.wallet.vipLevel !== earned) {
     const previous = user.wallet.vipLevel;
     await db.casinoWallet.update({ where: { userId }, data: { vipLevel: earned } });
-    if (earned > previous) await grantReload(userId, earned).catch(() => {});
+    if (earned > previous) {
+      for (let lv = previous + 1; lv <= earned; lv++) {
+        await grantReload(userId, lv).catch(() => {});
+      }
+    }
   }
 }
 

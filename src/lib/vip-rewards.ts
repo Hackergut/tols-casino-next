@@ -126,10 +126,10 @@ export function describeOffer(kind: VipRewardKind, tier: VipTier): { label: stri
       };
     case "reload":
       return {
-        label: "Reload",
-        detail: "Unlocked when you rank up, based on recent betting activity.",
-        rate: VIP_RELOAD_RATE * 100,
-        eligible: tier.level >= 1,
+        label: "Rank-up bonus",
+        detail: "Fixed TOLS panel bonus paid when you reach this rank.",
+        rate: 0,
+        eligible: tier.rankUpBonus > 0,
       };
   }
 }

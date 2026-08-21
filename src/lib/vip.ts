@@ -38,6 +38,8 @@ export interface VipTier {
   weeklyRate: number;
   monthlyRate: number;
   host: boolean;
+  /** Fixed panel bonus paid on the VIP page when this rank is reached. */
+  rankUpBonus: number;
   benefits: string[];
 }
 
@@ -68,62 +70,62 @@ const FAMILY: Record<Exclude<VipFamily, "player">, FamilySpec> = {
   eternal:   { color: "#cdf32b", rakeback: 20,   dailyRate: 6.0, weeklyRate: 10.0, monthlyRate: 15.0, host: true,  benefits: ["Dedicated VIP Host", "Personalised bonuses", "Highest rakeback"] },
 };
 
-/** Compact rank table: [name, family, xp]. Sub-ranks nudge rates +0.05% each. */
-const RANK_ROWS: Array<[string, Exclude<VipFamily, "player">, number]> = [
-  ["Seed", "seed", 500],
-  ["Copper 1", "copper", 1_000],
-  ["Copper 2", "copper", 2_000],
-  ["Copper 3", "copper", 3_000],
-  ["Copper 4", "copper", 4_000],
-  ["Copper 5", "copper", 5_000],
-  ["Iron", "iron", 10_000],
-  ["Iron 2", "iron", 20_000],
-  ["Iron 3", "iron", 30_000],
-  ["Iron 4", "iron", 40_000],
-  ["Iron 5", "iron", 50_000],
-  ["Amber", "amber", 100_000],
-  ["Amber 2", "amber", 150_000],
-  ["Amber 3", "amber", 200_000],
-  ["Amber 4", "amber", 250_000],
-  ["Amber 5", "amber", 300_000],
-  ["Titanium", "titanium", 450_000],
-  ["Titanium 2", "titanium", 600_000],
-  ["Titanium 3", "titanium", 750_000],
-  ["Titanium 4", "titanium", 900_000],
-  ["Titanium 5", "titanium", 1_050_000],
-  ["Emerald", "emerald", 1_200_000],
-  ["Emerald 2", "emerald", 1_350_000],
-  ["Emerald 3", "emerald", 1_500_000],
-  ["Emerald 4", "emerald", 1_650_000],
-  ["Emerald 5", "emerald", 1_800_000],
-  ["Cobalt", "cobalt", 2_300_000],
-  ["Cobalt 2", "cobalt", 2_800_000],
-  ["Cobalt 3", "cobalt", 3_300_000],
-  ["Cobalt 4", "cobalt", 3_800_000],
-  ["Cobalt 5", "cobalt", 4_300_000],
-  ["Garnet", "garnet", 5_800_000],
-  ["Garnet 2", "garnet", 7_300_000],
-  ["Garnet 3", "garnet", 8_800_000],
-  ["Garnet 4", "garnet", 10_300_000],
-  ["Garnet 5", "garnet", 11_800_000],
-  ["Onyx", "onyx", 17_000_000],
-  ["Onyx 2", "onyx", 22_000_000],
-  ["Onyx 3", "onyx", 27_000_000],
-  ["Onyx 4", "onyx", 32_000_000],
-  ["Onyx 5", "onyx", 37_000_000],
-  ["Pearl", "pearl", 90_000_000],
-  ["Pearl 2", "pearl", 140_000_000],
-  ["Pearl 3", "pearl", 190_000_000],
-  ["Pearl 4", "pearl", 240_000_000],
-  ["Pearl 5", "pearl", 290_000_000],
-  ["Serpent", "serpent", 340_000_000],
-  ["Serpent 2", "serpent", 440_000_000],
-  ["Serpent 3", "serpent", 540_000_000],
-  ["Serpent 4", "serpent", 640_000_000],
-  ["Serpent 5", "serpent", 740_000_000],
-  ["Celestial", "celestial", 1_000_000_000],
-  ["Void", "void", 5_000_000_000],
-  ["Eternal", "eternal", 10_000_000_000],
+/** Compact rank table: [name, family, xp, panelBonus]. */
+const RANK_ROWS: Array<[string, Exclude<VipFamily, "player">, number, number]> = [
+  ["Seed", "seed", 500, 0.9],
+  ["Copper 1", "copper", 1_000, 0.9],
+  ["Copper 2", "copper", 2_000, 0.9],
+  ["Copper 3", "copper", 3_000, 0.9],
+  ["Copper 4", "copper", 4_000, 0.9],
+  ["Copper 5", "copper", 5_000, 0.9],
+  ["Iron 1", "iron", 10_000, 9],
+  ["Iron 2", "iron", 20_000, 9],
+  ["Iron 3", "iron", 30_000, 9],
+  ["Iron 4", "iron", 40_000, 9],
+  ["Iron 5", "iron", 50_000, 9],
+  ["Amber 1", "amber", 100_000, 80],
+  ["Amber 2", "amber", 150_000, 45],
+  ["Amber 3", "amber", 200_000, 45],
+  ["Amber 4", "amber", 250_000, 45],
+  ["Amber 5", "amber", 300_000, 45],
+  ["Titanium 1", "titanium", 450_000, 260],
+  ["Titanium 2", "titanium", 600_000, 135],
+  ["Titanium 3", "titanium", 750_000, 135],
+  ["Titanium 4", "titanium", 900_000, 135],
+  ["Titanium 5", "titanium", 1_050_000, 135],
+  ["Emerald 1", "emerald", 1_200_000, 260],
+  ["Emerald 2", "emerald", 1_350_000, 135],
+  ["Emerald 3", "emerald", 1_500_000, 135],
+  ["Emerald 4", "emerald", 1_650_000, 135],
+  ["Emerald 5", "emerald", 1_800_000, 135],
+  ["Cobalt 1", "cobalt", 2_300_000, 900],
+  ["Cobalt 2", "cobalt", 2_800_000, 450],
+  ["Cobalt 3", "cobalt", 3_300_000, 450],
+  ["Cobalt 4", "cobalt", 3_800_000, 450],
+  ["Cobalt 5", "cobalt", 4_300_000, 450],
+  ["Garnet 1", "garnet", 5_800_000, 2_700],
+  ["Garnet 2", "garnet", 7_300_000, 1_350],
+  ["Garnet 3", "garnet", 8_800_000, 1_350],
+  ["Garnet 4", "garnet", 10_300_000, 1_350],
+  ["Garnet 5", "garnet", 11_800_000, 1_350],
+  ["Onyx 1", "onyx", 17_000_000, 9_360],
+  ["Onyx 2", "onyx", 22_000_000, 4_500],
+  ["Onyx 3", "onyx", 27_000_000, 4_500],
+  ["Onyx 4", "onyx", 32_000_000, 4_500],
+  ["Onyx 5", "onyx", 37_000_000, 4_500],
+  ["Pearl 1", "pearl", 90_000_000, 0],
+  ["Pearl 2", "pearl", 140_000_000, 0],
+  ["Pearl 3", "pearl", 190_000_000, 0],
+  ["Pearl 4", "pearl", 240_000_000, 0],
+  ["Pearl 5", "pearl", 290_000_000, 0],
+  ["Serpent 1", "serpent", 340_000_000, 0],
+  ["Serpent 2", "serpent", 440_000_000, 0],
+  ["Serpent 3", "serpent", 540_000_000, 0],
+  ["Serpent 4", "serpent", 640_000_000, 0],
+  ["Serpent 5", "serpent", 740_000_000, 0],
+  ["Celestial", "celestial", 1_000_000_000, 0],
+  ["Void", "void", 5_000_000_000, 0],
+  ["Eternal", "eternal", 10_000_000_000, 0],
 ];
 
 function bump(base: number, indexInFamily: number): number {
@@ -132,7 +134,7 @@ function bump(base: number, indexInFamily: number): number {
 
 function buildTiers(): VipTier[] {
   const seen: Partial<Record<VipFamily, number>> = {};
-  return RANK_ROWS.map(([name, family, xp], i) => {
+  return RANK_ROWS.map(([name, family, xp, rankUpBonus], i) => {
     const spec = FAMILY[family];
     const idx = seen[family] ?? 0;
     seen[family] = idx + 1;
@@ -148,6 +150,7 @@ function buildTiers(): VipTier[] {
       weeklyRate: spec.weeklyRate > 0 ? bump(spec.weeklyRate, idx) : 0,
       monthlyRate: spec.monthlyRate > 0 ? bump(spec.monthlyRate, idx) : 0,
       host: spec.host,
+      rankUpBonus,
       benefits: spec.benefits,
     };
   });
@@ -167,7 +170,8 @@ export const PLAYER_RANK: VipTier = {
   weeklyRate: 0,
   monthlyRate: 0,
   host: false,
-  benefits: ["Play Originals to earn XP", "1 XP per $1 casino wager", "Unlock Seed at 500 XP"],
+  rankUpBonus: 0,
+  benefits: ["Play Originals to earn XP", "1 XP per $1 casino wager", "Unlock Seed at $500 wagered"],
 };
 
 /** Casino bets: 1 XP per $1 USD wagered. */

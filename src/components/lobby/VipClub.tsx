@@ -14,6 +14,7 @@ interface Rank {
   weeklyRate: number;
   monthlyRate: number;
   host: boolean;
+  rankUpBonus: number;
   benefits: string[];
 }
 
@@ -168,14 +169,14 @@ export function VipClub({ onBack }: { onBack: () => void }) {
               <li><strong className="text-white">Daily bonus</strong> — Copper and above. Paid every day at 00:00 UTC from the last 24 hours of bets.</li>
               <li><strong className="text-white">Weekly bonus</strong> — Iron and above. Paid every Thursday at 11:00 UTC onto this page.</li>
               <li><strong className="text-white">Rakeback</strong> — every VIP member. A percentage of your casino wagers, claimable any time.</li>
-              <li><strong className="text-white">Reload</strong> — as you climb ranks. A fixed bonus based on recent betting activity, claimed here.</li>
+              <li><strong className="text-white">Rank-up / panel bonus</strong> — a fixed amount credited to this page when you reach the rank (Seed $0.90, Copper $0.90, Iron $9, …).</li>
               <li><strong className="text-white">Monthly bonus</strong> — from your recent wagers, added to this page each month.</li>
               <li><strong className="text-white">VIP Host</strong> — unlocked at Pearl and above.</li>
             </ul>
           </article>
 
           <div className="rounded-2xl p-5" style={CARD}>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Ranks and XP</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Rank · wager required · panel bonus</p>
             <div className="space-y-2">
               {(data?.families ?? []).map((fam) => {
                 const open = openFamily === fam.id;
@@ -203,7 +204,10 @@ export function VipClub({ onBack }: { onBack: () => void }) {
                                 <span className="text-sm font-semibold" style={{ color: unlocked ? r.color : "rgba(255,255,255,0.45)" }}>{r.name}</span>
                                 {r.host && <Headphones className="h-3 w-3 text-white/40" />}
                               </div>
-                              <span className="shrink-0 font-mono text-[11px] text-white/40">{fmtXp(r.xp)} XP · {r.rakeback}% RB</span>
+                              <span className="shrink-0 text-right font-mono text-[11px] text-white/40">
+                                ${fmtXp(r.xp)} wagered
+                                {r.rankUpBonus > 0 ? ` · Panel $${r.rankUpBonus % 1 === 0 ? fmtXp(r.rankUpBonus) : r.rankUpBonus.toFixed(1)}` : ""}
+                              </span>
                             </div>
                           );
                         })}

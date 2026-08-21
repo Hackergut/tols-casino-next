@@ -68,6 +68,7 @@ function publicTier(t: (typeof VIP_TIERS)[number]) {
     weeklyRate: t.weeklyRate,
     monthlyRate: t.monthlyRate,
     host: t.host,
+    rankUpBonus: t.rankUpBonus,
     benefits: t.benefits,
   };
 }

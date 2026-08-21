@@ -8,7 +8,6 @@ import {
   weeklyPeriod,
   monthlyPeriod,
   rewardAmount,
-  reloadAmount,
   describeOffer,
   type RewardOffer,
   type VipRewardKind,
@@ -200,13 +199,10 @@ export async function claimVipReward(userId: string, kind: VipRewardKind, period
   return { amount: offer.amount, as: "bonus" };
 }
 
-/** Called after a rank-up. Creates a pending reload based on the last 7 days of wagers. */
+/** Called after a rank-up. Credits the published panel bonus for that rank. */
 export async function grantReload(userId: string, newLevel: number): Promise<void> {
-  const now = new Date();
-  const from = new Date(now.getTime() - 7 * 86_400_000);
-  const wagered = await wageredBetween(userId, from, now);
-  const amount = Math.round(reloadAmount(wagered) * 100) / 100;
-  if (amount < VIP_MIN_CLAIM) return;
+  const amount = vipTier(newLevel).rankUpBonus;
+  if (!(amount >= VIP_MIN_CLAIM)) return;
   try {
     await db.vipReward.create({
       data: {
@@ -215,7 +211,7 @@ export async function grantReload(userId: string, newLevel: number): Promise<voi
         periodKey: `reload:${newLevel}`,
         amount,
         status: "pending",
-        meta: JSON.stringify({ level: newLevel, wagered7d: wagered }),
+        meta: JSON.stringify({ level: newLevel, rank: vipTier(newLevel).name }),
       },
     });
   } catch {
