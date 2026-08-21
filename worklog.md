@@ -2552,3 +2552,21 @@ Unfilled corporate placeholders ([Operator Legal Name], [Registered Address],
 [Licensing Authority], [License Number], [Registration Number], [Date]) render
 as highlighted <mark> chips via a Ph component so they cannot slip into
 production unnoticed. Cross-links to /aml and /responsible-gaming verified 200.
+
+## Google OAuth callback: "browser downloads a file named callback" (2026-08-21)
+
+Diagnosis: the callback route itself was already correct (App Router,
+src/app/api/auth/google/callback/route.ts — manual OAuth, no Supabase Auth;
+every branch redirects). The download comes from the ENVIRONMENT: .env.example
+declared APP_URL twice and dotenv keeps the last value, so a copied .env sent
+Google's redirect_uri (built as APP_URL + /api/auth/google/callback) to the
+placeholder domain — a parked host serves the unknown path as octet-stream and
+the browser saves it as a file named "callback". Fixed the duplicate (single
+APP_URL with a comment explaining the failure mode).
+
+Hardening on the route while there: redirects are now built on appUrl()
+instead of req.url (behind a proxy req.url reflects the Host the server saw —
+observed Location: http://0.0.0.0:3000/ in dev), and the DB/user-upsert block
+is wrapped in try/catch so an unreachable database degrades to /?google=error
+instead of a 500 page sitting on the callback URL. Verified live: all branches
+307 + absolute Location, no Content-Disposition anywhere.
