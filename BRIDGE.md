@@ -92,9 +92,15 @@ If real data comes back, the mockups are gone.
 
 ## Casino endpoints (this repo)
 
-**JWT RS256 (`Authorization: Bearer <jwt>`) — real data:**
+**JWT RS256 (`Authorization: Bearer <jwt>`) — real data (Governance controls the Casino):**
+- `GET /api/platform` — catalog
 - `GET /api/platform/health` (public)
-- `GET /api/platform/whoami`, `/deposits`, `/withdrawals`, `/payments`, `/stats`
+- `GET /api/platform/whoami`, `/overview`, `/users`, `/wallets`, `/cashflow`, `/bets`, `/rtp`, `/promotions`
+- `PATCH /api/platform/users/:id` — block / unblock
+- `POST /api/platform/wallets/adjust` — credit / debit
+- `PUT /api/platform/rtp` — house-edge bias
+- `PUT /api/platform/promotions` — CMS cards
+- `GET /api/platform/deposits`, `/withdrawals`, `/payments`, `/stats`
 - `POST /api/platform/withdrawals/:id/approve`, `.../reject`
 
 **HMAC (`X-Bridge-Signature`) — subdomain bridge:**
