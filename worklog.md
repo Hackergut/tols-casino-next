@@ -2540,3 +2540,15 @@ viewer's own bets. Implemented the push path end to end:
   exercised (channel isolation, unsubscribe, fault isolation, hot-reload
   survival) plus source-reading assertions on the wiring. Full suite: no
   regressions (pre-existing failures unchanged). DepAdded: `ioredis`.
+
+## Terms of Service v1.0 — full legal text (2026-08-21)
+
+Replaced the placeholder 12-clause summary at /terms with the operator's full
+19-clause Terms of Service (Curaçao B.V., revised draft): no sports betting
+section (casino only) and the United States deliberately NOT listed in the
+Prohibited Jurisdictions (clause 7.3) — a version note at the foot of the page
+records that US users remain responsible for local/state/federal compliance.
+Unfilled corporate placeholders ([Operator Legal Name], [Registered Address],
+[Licensing Authority], [License Number], [Registration Number], [Date]) render
+as highlighted <mark> chips via a Ph component so they cannot slip into
+production unnoticed. Cross-links to /aml and /responsible-gaming verified 200.
