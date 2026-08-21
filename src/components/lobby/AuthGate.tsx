@@ -71,12 +71,16 @@ export function AuthGate({ initialMode = "login", onAuthenticated, onDismiss }: 
             : { username, email, password, referralCode, dateOfBirth },
         ),
       });
-      const json = await res.json();
+      const raw = await res.text();
+      let json: { success?: boolean; error?: string } = {};
+      try { json = JSON.parse(raw); } catch {
+        console.error("[auth] non-JSON response", res.status, raw.slice(0, 300));
+      }
       if (res.ok && json.success) {
         onAuthenticated();
         return;
       }
-      setError(res.status === 429 ? "Too many attempts — wait a minute." : (json.error ?? "Something went wrong."));
+      setError(res.status === 429 ? "Too many attempts — wait a minute." : (json.error ?? `Server error (${res.status})`));
     } catch {
       setError("Could not reach the server.");
     }
