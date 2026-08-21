@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { OriginalMeta, OriginalId } from "@/lib/originals-registry";
 import { otherOriginals } from "@/lib/originals-registry";
+import { usePublicEvent } from "@/hooks/use-realtime";
 
 /* ─────────────────────────── Info block ─────────────────────────── */
 
@@ -145,6 +146,19 @@ export function BetFeed({ gameId, refreshKey }: { gameId?: string; refreshKey?: 
 
     return () => ac.abort();
   }, [tab, rows, gameId, refreshKey]);
+
+  // Live rows: every settled bet on the platform arrives over the public SSE
+  // stream. Only "Latest Bets" prepends live — "High Rollers" is an ordering
+  // the server owns, and "My Bets" is already refreshed by refreshKey the
+  // moment the player's own bet settles.
+  usePublicEvent<FeedBet & { gameId?: string }>(
+    "feed:bet",
+    (b) => {
+      if (!b?.id) return;
+      setBets((prev) => (prev.some((x) => x.id === b.id) ? prev : [b, ...prev].slice(0, rows)));
+    },
+    tab === "latest",
+  );
 
   return (
     <section className="tols-feed">

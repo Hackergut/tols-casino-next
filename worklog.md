@@ -2503,3 +2503,70 @@ viewer iframe is not enumerable from inside the sandbox) plus the explicit
 Arena/E2B and localhost hosts, only when NODE_ENV=development (i.e.
 `next dev`); production keeps the strict Telegram/Tower-only list.
 Existing CSP tests still pass (tests/telegram.test.mjs).
+
+## Realtime upgrade: public SSE stream + push-first client (2026-08-21)
+
+The realtime layer only covered private, per-user events (/api/events), so
+every public surface polled: community chat every 5s, winners every 15s, the
+jackpot fetched once and then frozen, and the bet feed only refreshed on the
+viewer's own bets. Implemented the push path end to end:
+
+- `src/lib/realtime.ts` — the bus now has a PUBLIC channel
+  (`publishPublic`/`subscribePublic`: feed:bet, chat:message, jackpot:update,
+  winner:new) next to the user channel, keeps listeners on `globalThis` so
+  hot reload doesn't orphan open streams, and transparently upgrades to
+  Redis pub/sub when `REDIS_URL` is set (ioredis, lazy import, degrades back
+  to in-process on failure) so multi-instance deployments fan out correctly.
+- `/api/events/public` — anonymous SSE gateway (the storefront is the feed;
+  no login wall). Both gateways now handle disconnects idempotently and set
+  `X-Accel-Buffering: no`.
+- `src/lib/public-feed.ts` — the ONE place a settled bet becomes a public
+  payload (username + avatarColor only; thresholds decide when a win is also
+  a `winner:new`). Wired via `after()` from settle-bet.ts and
+  game-rounds.ts' finalizeHouse (settle, player-action and expiry paths all
+  converge there). Jackpot broadcasts read the post-increment value.
+- `src/hooks/use-realtime.ts` — ONE shared EventSource per stream
+  (browser caps 6 sockets/origin; SupportChat used to own a private one),
+  handlers in refs, exponential-backoff reopen after terminal EventSource
+  failures, idle close when the last subscriber leaves.
+- Consumers: chat panel push (5s poll removed), BetFeed "Latest" prepends
+  live rows, WinnersMarquee unshifts live wins (poll relaxed to 60s repair),
+  MegaJackpot ticks with every bet, page.tsx applies `balance:update`/
+  `bonus:update` through applyServer (authoritative, beats in-flight polls;
+  poll relaxed 15s → 60s repair-only).
+- `/api/winners` now serves real settled wins (same thresholds as the live
+  broadcast) instead of hardcoded demo players.
+- Tests: `tests/realtime.test.mjs` (15) — the real bus transpiled and
+  exercised (channel isolation, unsubscribe, fault isolation, hot-reload
+  survival) plus source-reading assertions on the wiring. Full suite: no
+  regressions (pre-existing failures unchanged). DepAdded: `ioredis`.
+
+## Terms of Service v1.0 — full legal text (2026-08-21)
+
+Replaced the placeholder 12-clause summary at /terms with the operator's full
+19-clause Terms of Service (Curaçao B.V., revised draft): no sports betting
+section (casino only) and the United States deliberately NOT listed in the
+Prohibited Jurisdictions (clause 7.3) — a version note at the foot of the page
+records that US users remain responsible for local/state/federal compliance.
+Unfilled corporate placeholders ([Operator Legal Name], [Registered Address],
+[Licensing Authority], [License Number], [Registration Number], [Date]) render
+as highlighted <mark> chips via a Ph component so they cannot slip into
+production unnoticed. Cross-links to /aml and /responsible-gaming verified 200.
+
+## Google OAuth callback: "browser downloads a file named callback" (2026-08-21)
+
+Diagnosis: the callback route itself was already correct (App Router,
+src/app/api/auth/google/callback/route.ts — manual OAuth, no Supabase Auth;
+every branch redirects). The download comes from the ENVIRONMENT: .env.example
+declared APP_URL twice and dotenv keeps the last value, so a copied .env sent
+Google's redirect_uri (built as APP_URL + /api/auth/google/callback) to the
+placeholder domain — a parked host serves the unknown path as octet-stream and
+the browser saves it as a file named "callback". Fixed the duplicate (single
+APP_URL with a comment explaining the failure mode).
+
+Hardening on the route while there: redirects are now built on appUrl()
+instead of req.url (behind a proxy req.url reflects the Host the server saw —
+observed Location: http://0.0.0.0:3000/ in dev), and the DB/user-upsert block
+is wrapped in try/catch so an unreachable database degrades to /?google=error
+instead of a 500 page sitting on the callback URL. Verified live: all branches
+307 + absolute Location, no Content-Disposition anywhere.

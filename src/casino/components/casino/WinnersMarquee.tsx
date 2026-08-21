@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Sparkles } from "lucide-react";
 import { formatCurrency } from "@/lib/types";
+import { usePublicEvent } from "@/hooks/use-realtime";
 
 interface Winner {
   id: string;
@@ -16,6 +18,10 @@ interface Winner {
 }
 
 export function WinnersMarquee() {
+  // Live big wins pushed over the public SSE stream take the front of the
+  // marquee; the fetched list seeds it. The poll drops to 60s because it only
+  // needs to repair the list after a missed stretch (tab asleep, reconnect).
+  const [live, setLive] = useState<Winner[]>([]);
   const { data: winners } = useQuery<Winner[]>({
     queryKey: ["winners"],
     queryFn: async () => {
@@ -23,10 +29,15 @@ export function WinnersMarquee() {
       const j = await r.json();
       return j.data;
     },
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
-  const items = winners || [];
+  usePublicEvent<Winner>("winner:new", (w) => {
+    if (!w?.id) return;
+    setLive((prev) => (prev.some((x) => x.id === w.id) ? prev : [w, ...prev].slice(0, 10)));
+  });
+
+  const items = [...live, ...(winners || []).filter((w) => !live.some((l) => l.id === w.id))];
 
   if (items.length === 0) return null;
 

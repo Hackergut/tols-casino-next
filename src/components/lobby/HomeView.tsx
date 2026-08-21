@@ -25,6 +25,7 @@ import { EurovirtualsRow } from "./EurovirtualsRow";
 import { PromotionCards } from "./PromotionCards";
 import type { LobbyGame } from "./lobby-types";
 import { useLocale } from "@/lib/use-locale";
+import { usePublicEvent } from "@/hooks/use-realtime";
 
 interface Props {
   games: LobbyGame[];
@@ -223,6 +224,11 @@ function MegaJackpot() {
     fetch("/api/jackpot").then((r) => r.json())
       .then((j) => { if (j.success) setAmt(j.data?.amount ?? 0); }).catch(() => {});
   }, []);
+  // Ticks live with every bet on the platform — the number visibly moving is
+  // the entire point of a progressive jackpot on the home page.
+  usePublicEvent<{ amount?: number }>("jackpot:update", (d) => {
+    if (typeof d?.amount === "number" && Number.isFinite(d.amount)) setAmt(d.amount);
+  });
   return (
     <div className="flex items-center gap-4 px-1">
       <div className="flex items-center gap-2">

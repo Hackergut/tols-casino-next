@@ -4,6 +4,7 @@ import { getEngine } from "@/lib/game-engines";
 import { BetError } from "@/lib/settle-bet";
 import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
+import { broadcastSettledBet, broadcastJackpot } from "@/lib/public-feed";
 import { debitBet } from "@/lib/bonus";
 import { pushBridgeEvent } from "@/lib/governance-bridge";
 import { after } from "next/server";
@@ -57,7 +58,7 @@ async function creditPayout(userId: string, payout: number, won: boolean): Promi
   return w?.balance ?? 0;
 }
 
-async function finalizeHouse(opts: { game: string; betId: string; amount: number; payout: number; userId: string }) {
+async function finalizeHouse(opts: { game: string; betId: string; amount: number; payout: number; userId: string; result?: string; multiplier?: number }) {
   await db.houseEarning.create({
     data: {
       gameId: opts.game,
@@ -74,9 +75,25 @@ async function finalizeHouse(opts: { game: string; betId: string; amount: number
       where: { id: "global" },
       update: { amount: { increment: opts.amount * 0.005 }, contributionsCount: { increment: 1 } },
       create: { id: "global", amount: 50000 + opts.amount * 0.005, contributionsCount: 1 },
+      select: { amount: true, contributionsCount: true },
     })
+    .then((jp) => broadcastJackpot(jp.amount, jp.contributionsCount))
     .catch(() => {});
   after(() => syncPlayerProfile(opts.userId).catch(() => {}));
+  // Every closed round reaches the public feed from here — the settle,
+  // player-action and expiry paths all converge on finalizeHouse.
+  after(() =>
+    broadcastSettledBet({
+      betId: opts.betId,
+      userId: opts.userId,
+      gameId: opts.game,
+      gameName: opts.game.charAt(0).toUpperCase() + opts.game.slice(1),
+      amount: opts.amount,
+      multiplier: opts.multiplier ?? (opts.amount > 0 ? opts.payout / opts.amount : 0),
+      payout: opts.payout,
+      result: opts.result ?? (opts.payout > opts.amount ? "win" : opts.payout === opts.amount && opts.payout > 0 ? "push" : "lose"),
+    }),
+  );
 }
 
 export async function expireStaleRounds(userId: string, gameId?: string): Promise<void> {
@@ -99,7 +116,7 @@ export async function expireStaleRounds(userId: string, gameId?: string): Promis
         payload: JSON.stringify({ expired: true, ...asPayload(r.payload).publicState }),
       },
     });
-    await finalizeHouse({ game: r.gameId, betId: r.id, amount: r.amount, payout: 0, userId });
+    await finalizeHouse({ game: r.gameId, betId: r.id, amount: r.amount, payout: 0, userId, result: "lose", multiplier: 0 });
   }
 }
 
@@ -179,7 +196,7 @@ export async function startRound(opts: {
         payload: JSON.stringify(state.publicState),
       },
     });
-    await finalizeHouse({ game: opts.game, betId: row.id, amount: opts.amount, payout: state.payout, userId: opts.userId });
+    await finalizeHouse({ game: opts.game, betId: row.id, amount: opts.amount, payout: state.payout, userId: opts.userId, result: betResultTag(state), multiplier: state.multiplier });
   }
 
   publish({ event: "round:started", userId: opts.userId, data: { gameId: opts.game, roundId: row.id } });
@@ -262,6 +279,8 @@ export async function applyAction(opts: {
       amount: state.amount,
       payout: state.payout,
       userId: opts.userId,
+      result: betResultTag(state),
+      multiplier: state.multiplier,
     });
     publish({
       event: "round:result",

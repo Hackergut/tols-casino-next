@@ -6,6 +6,7 @@ import { syncPlayerProfile } from "@/lib/player-sync";
 import { getEngine } from "@/lib/game-engines";
 import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
+import { broadcastSettledBet, broadcastJackpot } from "@/lib/public-feed";
 import { applyBetDebit } from "@/lib/bonus";
 import { pushBridgeEvent } from "@/lib/governance-bridge";
 import type { BetResponse, SettledOutcome } from "@/shared/types";
@@ -135,7 +136,9 @@ async function persistSettled(opts: {
       where: { id: "global" },
       update: { amount: { increment: amount * 0.005 }, contributionsCount: { increment: 1 } },
       create: { id: "global", amount: 50000 + amount * 0.005, contributionsCount: 1 },
+      select: { amount: true, contributionsCount: true },
     })
+    .then((jp) => broadcastJackpot(jp.amount, jp.contributionsCount))
     .catch(() => {});
 
   await db.houseEarning.create({
@@ -163,6 +166,21 @@ async function persistSettled(opts: {
     userId,
     data: { gameId: game, result: result.payload, profit: result.profit, multiplier: result.multiplier, won: result.won },
   });
+
+  // Public bet feed + big-win announcements. Outside the money path (`after`)
+  // so a slow broadcast can never delay a settled bet's response.
+  after(() =>
+    broadcastSettledBet({
+      betId: final.betId,
+      userId,
+      gameId: game,
+      gameName: game.charAt(0).toUpperCase() + game.slice(1),
+      amount,
+      multiplier: result.multiplier,
+      payout: result.payout,
+      result: betResultTag(result),
+    }),
+  );
 
   return { betId: final.betId, balance: final.balance, bonusBalance: final.bonusBalance, wageringRemaining: final.wageringRemaining };
 }

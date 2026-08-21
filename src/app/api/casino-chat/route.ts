@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, ok, err } from "@/lib/session";
+import { publishPublic } from "@/lib/realtime";
 
 // GET /api/chat?channel=general
 export async function GET(req: NextRequest) {
@@ -63,12 +64,16 @@ export async function POST(req: NextRequest) {
       channel,
     },
   });
-  return ok({
+  const wire = {
     id: msg.id,
     username: msg.username,
     avatarColor: msg.avatarColor,
     message: msg.message,
     channel: msg.channel,
     createdAt: msg.createdAt.toISOString(),
-  });
+  };
+  // Push to every open chat panel over the public SSE stream. The sender's
+  // own panel also receives it, which is the delivery confirmation.
+  publishPublic({ event: "chat:message", data: wire });
+  return ok(wire);
 }
