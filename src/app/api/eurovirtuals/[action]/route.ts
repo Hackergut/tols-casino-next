@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { evConfigured, verifyEvSignature, evUserFromToken, evDate } from "@/lib/eurovirtuals";
+import { evConfigured, verifyEvCallback, evUserFromToken, evDate } from "@/lib/eurovirtuals";
 import { getBalance, applyBet, applyWin, rollback, WalletError } from "@/lib/vendor-wallet";
 import { randomUUID } from "crypto";
 
@@ -27,14 +27,14 @@ function okData(balance: number, currency: string) {
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v)) || 0;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ action: string }> }) {
-  if (!evConfigured()) return body(500, "EuroVirtuals not configured");
+  if (!(await evConfigured())) return body(500, "EuroVirtuals not configured");
   const endpoint = (await ctx.params).action;
 
   const raw = await req.text();
   let p: Record<string, unknown>;
   try { p = JSON.parse(raw); } catch { return body(400, "Bad Request"); }
 
-  if (!verifyEvSignature(p, req.headers.get("x-signature-key"), req.headers.get("x-timestamp"))) {
+  if (!(await verifyEvCallback(p, req.headers.get("x-signature-key"), req.headers.get("x-timestamp")))) {
     return body(401, "Unauthorised access");
   }
 

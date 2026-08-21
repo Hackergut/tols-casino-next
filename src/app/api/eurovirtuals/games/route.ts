@@ -12,7 +12,7 @@ let cache: { at: number; games: Awaited<ReturnType<typeof evGames>> } | null = n
 const TTL_MS = 5 * 60 * 1000;
 
 export async function GET() {
-  if (!evConfigured()) {
+  if (!(await evConfigured())) {
     return NextResponse.json({ success: false, error: "EuroVirtuals not configured" }, { status: 503 });
   }
   if (!cache || Date.now() - cache.at > TTL_MS) {

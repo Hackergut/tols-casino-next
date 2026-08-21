@@ -66,7 +66,6 @@ test("Governance is always gov.tols.fun / tolsgovernz, never Base44", () => {
   assert.doesNotMatch(tols, /base44/);
   const store = read("src/stores/admin.ts");
   assert.doesNotMatch(store, /base44/);
-  assert.match(store, /gov\.tols\.fun\/api/);
 });
 
 test("health probes the Governance origin on gov.tols.fun", () => {

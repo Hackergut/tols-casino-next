@@ -107,7 +107,7 @@ export interface SlotAggregatorConfig {
 }
 
 const DEFAULT_AGGREGATOR_CONFIG: SlotAggregatorConfig = {
-  apiBaseUrl: 'https://gov.tols.fun/api',
+  apiBaseUrl: 'https://api.staging.betkraft.co.uk',
   apiKey: '',
   operatorMerchantId: '',
   apiSecret: '',

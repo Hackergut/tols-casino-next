@@ -134,10 +134,7 @@ export interface BridgeFetchOpts {
   useOrigin?: boolean;
 }
 
-/**
- * Call the Governance Tower (the other Vercel project on a subdomain).
- * Uses TOLS_API_KEY / TOLS_APP_KEY if the Tower requires them.
- */
+/** DB-saved connection, only if it points at real Governance (gov.tols.fun / tolsgovernz). */
 export async function loadActiveGovernanceConnection() {
   try {
     const { getGovernanceConnection } = await import("@/lib/governance-connection");
