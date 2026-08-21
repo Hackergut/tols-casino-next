@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LifeBuoy, Send, Plus, ChevronLeft, CircleDot, Lock } from "lucide-react";
 import type { SupportMessageWire, SupportTicketWire } from "@/lib/support";
+import { useUserEvent } from "@/hooks/use-realtime";
 
 export function SupportChat() {
   const [tickets, setTickets] = useState<SupportTicketWire[]>([]);
@@ -64,30 +65,25 @@ export function SupportChat() {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages]);
 
-  // Real-time: agent replies and ticket lifecycle updates arrive over SSE.
-  useEffect(() => {
-    const es = new EventSource("/api/events");
-    const onMessage = (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data) as { ticketId?: string; message?: SupportMessageWire };
-        if (!d.ticketId) return;
-        if (d.message && d.ticketId === activeId) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === d.message!.id)) return prev;
-            return [...prev, d.message!];
-          });
-        }
-        void loadTickets();
-      } catch { /* ignore */ }
-    };
-    const onTicket = () => { void loadTickets(); };
-
-    es.addEventListener("support:message", onMessage);
-    es.addEventListener("support:ticket", onTicket);
-    return () => {
-      es.close();
-    };
-  }, [activeId, loadTickets]);
+  // Real-time: agent replies and ticket lifecycle updates arrive over the
+  // SHARED private SSE stream (use-realtime), not a dedicated EventSource.
+  // Every component owning its own /api/events connection burns one of the
+  // browser's six per-origin sockets on duplicate data.
+  useUserEvent<{ ticketId?: string; message?: SupportMessageWire }>(
+    "support:message",
+    (d) => {
+      if (!d?.ticketId) return;
+      if (d.message && d.ticketId === activeId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === d.message!.id)) return prev;
+          return [...prev, d.message!];
+        });
+      }
+      void loadTickets();
+    },
+    authed === true,
+  );
+  useUserEvent("support:ticket", () => { void loadTickets(); }, authed === true);
 
   const openTicket = useCallback((id: string) => setActiveId(id), []);
 

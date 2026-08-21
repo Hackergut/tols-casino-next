@@ -35,6 +35,7 @@ import { GameFeedback } from "@/components/casino/GameFeedback";
 import VideoLoader from "@/components/VideoLoader";
 import { DepositModal } from "@/casino/components/casino/DepositModal";
 import { useUIStore, useSessionStore } from "@/lib/store";
+import { useUserEvent } from "@/hooks/use-realtime";
 import { casinoPath, ORIGINAL_IDS, parseCasinoRoute, isPromoRouteSection, promoIdFromSection } from "@/lib/casino-routes";
 import { useLocale } from "@/lib/use-locale";
 import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
@@ -225,9 +226,30 @@ function CasinoPage() {
     void (async () => {
       await refreshBalance();
     })();
-    const interval = setInterval(refreshBalance, 15000);
+    // 60s repair poll. Push over SSE (below) is the primary delivery for
+    // balance moves now — the poll only covers events minted while the
+    // stream was down (laptop lid, deploy, network blip).
+    const interval = setInterval(refreshBalance, 60000);
     return () => clearInterval(interval);
   }, [refreshBalance]);
+
+  // Live balance/bonus over the private SSE stream. These events are minted
+  // inside the same transaction that moved the money, so they enter the store
+  // through applyServer (authoritative — beats any in-flight poll).
+  useUserEvent<{ balance?: number }>(
+    "balance:update",
+    (d) => {
+      if (typeof d?.balance === "number") useBalanceStore.getState().applyServer(d.balance);
+    },
+    authed === true,
+  );
+  useUserEvent<{ bonusBalance?: number; wageringRemaining?: number }>(
+    "bonus:update",
+    (d) => {
+      useBalanceStore.getState().applyBonus(Number(d?.bonusBalance ?? NaN), Number(d?.wageringRemaining ?? NaN));
+    },
+    authed === true,
+  );
 
   // Fetch games. Wait for URL hydration and abort the previous category read;
   // otherwise a slower Lobby response can overwrite a newer Slots/Originals

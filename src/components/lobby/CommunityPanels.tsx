@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, Send, Users, Bell, Vault, ArrowUpFromLine, ArrowDownToLine } from "lucide-react";
 import { useLocale } from "@/lib/use-locale";
+import { usePublicEvent } from "@/hooks/use-realtime";
 
 const KEYFRAMES = `
 @keyframes tolsFade { from { opacity: 0 } to { opacity: 1 } }
@@ -60,12 +61,23 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
     } catch { /* ignore */ }
   }, []);
 
+  // History once on open; new messages arrive over the public SSE stream
+  // (chat:message) instead of the old 5s poll — sub-second delivery, and one
+  // shared connection instead of a request every 5s per open panel.
   useEffect(() => {
     if (!open) return;
     const first = window.setTimeout(() => void load(), 0);
-    const t = setInterval(load, 5000);
-    return () => { window.clearTimeout(first); clearInterval(t); };
+    return () => { window.clearTimeout(first); };
   }, [open, load]);
+
+  usePublicEvent<ChatMsg & { channel?: string }>(
+    "chat:message",
+    (m) => {
+      if (!m?.id || (m.channel && m.channel !== "general")) return;
+      setMsgs((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev.slice(-99), m]));
+    },
+    open,
+  );
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -76,10 +88,15 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
     if (!m) return;
     setText("");
     try {
-      await fetch("/api/casino-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: m }) });
-      load();
+      const r = await fetch("/api/casino-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: m }) });
+      // The broadcast normally echoes the message back over SSE; appending
+      // from the response too (deduped by id) covers the window where the
+      // stream is still reconnecting.
+      const j = await r.json().catch(() => null);
+      const msg = j?.data as ChatMsg | undefined;
+      if (msg?.id) setMsgs((prev) => (prev.some((x) => x.id === msg.id) ? prev : [...prev.slice(-99), msg]));
     } catch { /* ignore */ }
-  }, [text, load]);
+  }, [text]);
 
   if (!open) return null;
   return (

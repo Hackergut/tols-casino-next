@@ -2503,3 +2503,40 @@ viewer iframe is not enumerable from inside the sandbox) plus the explicit
 Arena/E2B and localhost hosts, only when NODE_ENV=development (i.e.
 `next dev`); production keeps the strict Telegram/Tower-only list.
 Existing CSP tests still pass (tests/telegram.test.mjs).
+
+## Realtime upgrade: public SSE stream + push-first client (2026-08-21)
+
+The realtime layer only covered private, per-user events (/api/events), so
+every public surface polled: community chat every 5s, winners every 15s, the
+jackpot fetched once and then frozen, and the bet feed only refreshed on the
+viewer's own bets. Implemented the push path end to end:
+
+- `src/lib/realtime.ts` — the bus now has a PUBLIC channel
+  (`publishPublic`/`subscribePublic`: feed:bet, chat:message, jackpot:update,
+  winner:new) next to the user channel, keeps listeners on `globalThis` so
+  hot reload doesn't orphan open streams, and transparently upgrades to
+  Redis pub/sub when `REDIS_URL` is set (ioredis, lazy import, degrades back
+  to in-process on failure) so multi-instance deployments fan out correctly.
+- `/api/events/public` — anonymous SSE gateway (the storefront is the feed;
+  no login wall). Both gateways now handle disconnects idempotently and set
+  `X-Accel-Buffering: no`.
+- `src/lib/public-feed.ts` — the ONE place a settled bet becomes a public
+  payload (username + avatarColor only; thresholds decide when a win is also
+  a `winner:new`). Wired via `after()` from settle-bet.ts and
+  game-rounds.ts' finalizeHouse (settle, player-action and expiry paths all
+  converge there). Jackpot broadcasts read the post-increment value.
+- `src/hooks/use-realtime.ts` — ONE shared EventSource per stream
+  (browser caps 6 sockets/origin; SupportChat used to own a private one),
+  handlers in refs, exponential-backoff reopen after terminal EventSource
+  failures, idle close when the last subscriber leaves.
+- Consumers: chat panel push (5s poll removed), BetFeed "Latest" prepends
+  live rows, WinnersMarquee unshifts live wins (poll relaxed to 60s repair),
+  MegaJackpot ticks with every bet, page.tsx applies `balance:update`/
+  `bonus:update` through applyServer (authoritative, beats in-flight polls;
+  poll relaxed 15s → 60s repair-only).
+- `/api/winners` now serves real settled wins (same thresholds as the live
+  broadcast) instead of hardcoded demo players.
+- Tests: `tests/realtime.test.mjs` (15) — the real bus transpiled and
+  exercised (channel isolation, unsubscribe, fault isolation, hot-reload
+  survival) plus source-reading assertions on the wiring. Full suite: no
+  regressions (pre-existing failures unchanged). DepAdded: `ioredis`.
