@@ -15,7 +15,7 @@ export async function POST() {
   const creds = stored?.enabled
     ? { apiBase: stored.apiBase, apiKey: stored.apiKey, appKey: stored.appKey }
     : await evRuntimeCredentials();
-  if (!creds) return Response.json({ success: false, error: "Save an EuroVirtuals connection or set EV_API_BASE / EV_API_KEY / EV_APP_KEY" }, { status: 404 });
+  if (!creds || !creds.apiKey || !creds.appKey) return Response.json({ success: false, error: "Save an EuroVirtuals connection or set EV_API_BASE / EV_API_KEY / EV_APP_KEY" }, { status: 404 });
 
   const started = Date.now();
   const body: Record<string, unknown> = {};
