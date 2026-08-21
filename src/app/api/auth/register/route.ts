@@ -11,7 +11,7 @@ import { WEB_WELCOME_BONUS } from "@/lib/welcome-bonus";
 
 const RANDOM_COLORS = ["#ccff00", "#22d3ee", "#a855f7", "#f59e0b", "#ec4899", "#4ade80"];
 
-export async function POST(req: NextRequest) {
+async function registerPost(req: NextRequest) {
   const limited = await rateLimit("auth", LIMITS.auth);
   if (limited) return limited;
 
@@ -115,4 +115,13 @@ export async function POST(req: NextRequest) {
     currency: user.wallet?.currency ?? "USDT",
     vipLevel: user.wallet?.vipLevel ?? 1,
   });
+}
+
+
+export async function POST(req: NextRequest) {
+  try { return await registerPost(req); }
+  catch (e) {
+    console.error("[auth/register] failed:", e);
+    return err("Registration failed. Check server logs.", 500);
+  }
 }
