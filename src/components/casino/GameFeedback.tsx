@@ -11,9 +11,11 @@
  * and two had no animation whatsoever.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sfx } from "@/lib/game-audio";
 import { toast } from "sonner";
+import { useLocale } from "@/lib/use-locale";
+import { betFailureToast, installBetFetchGuard } from "@/lib/bet-network";
 
 interface Win {
   key: number;
@@ -28,6 +30,9 @@ function haptic(pattern: number | number[]): void {
 }
 
 export function GameFeedback() {
+  const { t } = useLocale();
+  const tRef = useRef(t);
+  tRef.current = t;
   const [win, setWin] = useState<Win | null>(null);
 
   useEffect(() => {
@@ -49,43 +54,20 @@ export function GameFeedback() {
   }, []);
 
   useEffect(() => {
-    const original = window.fetch;
-
-    window.fetch = async (...args: Parameters<typeof fetch>) => {
-      let res: Response;
-      try {
-        res = await original(...args);
-      } catch (e) {
-        const u = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
-        if (u.includes("/api/bets")) {
-          toast.error("Connection lost", { description: "Your bet was not sent." });
-        }
-        throw e;
+    // Only POST /api/bets (and game action / auto-bet) count as a wager.
+    // Aborted GETs to /api/bets/history (Recent) or /api/bets/feed used to
+    // fire this toast on every navigation — that is not a lost bet.
+    return installBetFetchGuard((kind, detail) => {
+      const tr = tRef.current;
+      if (kind === "network") {
+        toast.error(tr("error.connection"), { description: tr("error.betNotSent") });
+        return;
       }
-      const url = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url ?? "";
-      const method = (args[1]?.method ?? (args[0] as Request)?.method ?? "GET").toUpperCase();
-
-      const isOriginalsPost =
-        method === "POST" &&
-        (url.includes("/api/bets") || /\/api\/games\/[^/]+\/(action|auto-bet)/.test(url));
-      if (isOriginalsPost) {
-        res.clone().json().then((j) => {
-          if (!res.ok || !j?.success) {
-            const reason = String(j?.error ?? "");
-            if (res.status === 429) {
-              toast.error("Too many bets", { description: "Wait a few seconds and try again." });
-            } else if (/insufficient/i.test(reason)) {
-              toast.error("Insufficient balance", { description: "Lower your bet or make a deposit." });
-            } else {
-              toast.error("Bet failed", { description: reason || "Try again." });
-            }
-          }
-        }).catch(() => {});
-      }
-      return res;
-    };
-
-    return () => { window.fetch = original; };
+      const spec = betFailureToast(detail?.status ?? 0, detail?.reason ?? "");
+      toast.error(tr(spec.titleKey), {
+        description: spec.reason || tr(spec.descriptionKey),
+      });
+    });
   }, []);
 
   // Celebration clears itself; a big win lingers a beat longer.

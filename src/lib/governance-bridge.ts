@@ -19,8 +19,10 @@ import { createHmac, timingSafeEqual } from "crypto";
  *   GOVERNANCE_TOWER_URL  — Governance origin, e.g. https://gov.tols.fun (alias: TOWER_URL) — copy from Vercel → tolsgovernz → Domains
  *   APP_URL               — Casino origin, e.g. https://www.tols.fun (alias: CASINO_URL) — copy from Vercel → tols-casino-next → Domains
  *   GOVERNANCE_BRIDGE_SECRET / GOVERNANCE_WEBHOOK_SECRET — shared HMAC (openssl rand -hex 32)
- *   TOLS_BASE_URL         — legacy Governance API base (e.g. https://gov.tols.fun/api)
  *   PLATFORM_JWT_*        — JWT RS256: PRIVATE on tolsgovernz, PUBLIC on tols-casino-next (see .env.bridge-keys)
+ *
+ * Governance is ALWAYS the Vercel project `hackguts-projects/tolsgovernz`
+ * at https://gov.tols.fun. It was never Base44.
  */
 
 // ── Config ───────────────────────────────────────────────────────────────
@@ -44,25 +46,40 @@ function pickEnv(...keys: string[]): string | undefined {
   return undefined;
 }
 
-export function getBridgeConfig(): BridgeConfig {
-  // Tower origin: prefer GOVERNANCE_TOWER_URL / TOWER_URL, fall back to the origin of TOLS_BASE_URL
-  const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
-  const rawApiBase = pickEnv("TOLS_BASE_URL", "TOWER_API_BASE");
-  const towerApiBase = stripTrailingSlash(rawApiBase || "https://gov.tols.fun/api");
-  const towerOrigin = rawTowerOrigin
-    ? stripTrailingSlash(rawTowerOrigin)
-    : (() => { try { return new URL(towerApiBase).origin; } catch { return "https://gov.tols.fun"; } })();
+/** Governance is gov.tols.fun (Vercel project tolsgovernz). Never Base44. */
+export function isGovernanceTowerHost(value: string): boolean {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    if (host.endsWith("base44.app")) return false;
+    return host === "gov.tols.fun" || host.includes("tolsgovernz");
+  } catch {
+    return false;
+  }
+}
 
-  // Casino origin: prefer APP_URL, fallback CASINO_URL / NEXT_PUBLIC_APP_URL
+export function getBridgeConfig(): BridgeConfig {
+  const rawTowerOrigin = pickEnv("GOVERNANCE_TOWER_URL", "TOWER_URL");
+  const explicitApiBase = pickEnv("TOWER_API_BASE");
+
+  let towerOrigin = "https://gov.tols.fun";
+  if (rawTowerOrigin && isGovernanceTowerHost(rawTowerOrigin)) {
+    towerOrigin = stripTrailingSlash(rawTowerOrigin);
+  }
+  const towerApiBase = stripTrailingSlash(
+    explicitApiBase && isGovernanceTowerHost(explicitApiBase)
+      ? explicitApiBase
+      : `${towerOrigin}/api`,
+  );
+
   const casinoOrigin = stripTrailingSlash(pickEnv("APP_URL", "CASINO_URL", "NEXT_PUBLIC_APP_URL") || "https://www.tols.fun");
-  const bridgeSecret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
+  const secret = pickEnv("GOVERNANCE_BRIDGE_SECRET", "GOVERNANCE_WEBHOOK_SECRET") || "";
   const hasTowerKeys = Boolean(process.env.TOLS_API_KEY && process.env.TOLS_APP_KEY);
 
   return {
     towerOrigin,
     towerApiBase,
     casinoOrigin,
-    hasBridgeSecret: bridgeSecret.length >= 16,
+    hasBridgeSecret: secret.length >= 16,
     hasTowerKeys,
     hasDb: Boolean(process.env.DATABASE_URL),
   };
@@ -117,18 +134,22 @@ export interface BridgeFetchOpts {
   useOrigin?: boolean;
 }
 
-/**
- * Call the Governance Tower (the other Vercel project on a subdomain).
- * Uses TOLS_API_KEY / TOLS_APP_KEY if the Tower requires them.
- */
-export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
-  const envConfig = getBridgeConfig();
-  let stored: import("@/lib/governance-connection").GovernanceConnection | null = null;
+/** DB-saved connection, only if it points at real Governance (gov.tols.fun / tolsgovernz). */
+export async function loadActiveGovernanceConnection() {
   try {
     const { getGovernanceConnection } = await import("@/lib/governance-connection");
-    stored = await getGovernanceConnection();
-    if (stored && !stored.enabled) stored = null;
-  } catch { /* use environment configuration */ }
+    const stored = await getGovernanceConnection();
+    if (!stored?.enabled) return null;
+    if (!isGovernanceTowerHost(stored.towerOrigin)) return null;
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
+export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response> {
+  const envConfig = getBridgeConfig();
+  const stored = await loadActiveGovernanceConnection();
   const towerApiBase = stored?.towerApiBase || envConfig.towerApiBase;
   const towerOrigin = stored?.towerOrigin || envConfig.towerOrigin;
   const casinoOrigin = stored?.casinoOrigin || envConfig.casinoOrigin;
@@ -171,6 +192,43 @@ export async function bridgeFetch(opts: BridgeFetchOpts = {}): Promise<Response>
   }
 }
 
+export interface GovernanceProbe {
+  reachable: boolean;
+  status?: number;
+  latencyMs: number;
+  error?: string;
+  url?: string;
+}
+
+/**
+ * Hit the real Governance health endpoints on the Tower origin.
+ * HTTP 401/403 still counts as reachable — the host answered.
+ */
+export async function probeGovernanceHealth(timeoutMs = 4000): Promise<GovernanceProbe> {
+  const stored = await loadActiveGovernanceConnection();
+  const storedHealth = stored?.healthPath || null;
+
+  const paths = storedHealth
+    ? [storedHealth]
+    : ["/api/platform/health", "/api/health", "/health"];
+
+  let last: GovernanceProbe = { reachable: false, latencyMs: 0, error: "no probe" };
+  for (const path of paths) {
+    const t0 = Date.now();
+    try {
+      const res = await bridgeFetch({ path, useOrigin: true, method: "GET", timeoutMs });
+      const latencyMs = Date.now() - t0;
+      last = { reachable: true, status: res.status, latencyMs, url: path };
+      if (res.status !== 404) return last;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const isTimeout = msg.includes("aborted") || msg.includes("AbortError");
+      last = { reachable: false, latencyMs: Date.now() - t0, error: isTimeout ? "timeout" : msg.slice(0, 300), url: path };
+    }
+  }
+  return last;
+}
+
 // ── Event push (Casino → Tower) ─────────────────────────────────────────
 
 export type BridgeEventType =
@@ -188,40 +246,57 @@ export type BridgeEventType =
   | "casino.bonus_released"
   | "bridge.sync_request";
 
+type WebhookCandidate = { path: string; useOrigin?: boolean };
+
+const g = globalThis as unknown as { __tolsBridgeWebhook?: WebhookCandidate | null };
+
 export async function pushBridgeEvent(type: BridgeEventType, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body?: unknown }> {
   const body = { type, payload, ts: new Date().toISOString(), source: "casino" };
-  // Governance (gov.tols.fun) exposes, per its UI: /api/platform/webhooks (events:write).
-  // We keep a fallback to /bridge/events for backward compatibility.
-  let configuredWebhook: string | null = null;
-  try {
-    const { getGovernanceConnection } = await import("@/lib/governance-connection");
-    configuredWebhook = (await getGovernanceConnection())?.webhookPath || null;
-  } catch { /* environment fallback */ }
-  const candidates: Array<{ path: string; useOrigin?: boolean }> = [
+  const configuredWebhook = (await loadActiveGovernanceConnection())?.webhookPath || null;
+  const defaults: WebhookCandidate[] = [
     ...(configuredWebhook ? [{ path: configuredWebhook, useOrigin: true }] : []),
     { path: "/api/platform/webhooks", useOrigin: true },
     { path: "/api/platform/webhook", useOrigin: true },
     { path: "/bridge/events" },
     { path: "/api/bridge/events", useOrigin: true },
   ];
+  const cached = g.__tolsBridgeWebhook;
+  const candidates = cached
+    ? [cached, ...defaults.filter((c) => c.path !== cached.path)]
+    : defaults;
   for (const c of candidates) {
     try {
       const res = await bridgeFetch({ path: c.path, method: "POST", body, useOrigin: c.useOrigin });
-      if (res.status === 404) continue; // try the next one
+      if (res.status === 404) {
+        if (g.__tolsBridgeWebhook?.path === c.path) g.__tolsBridgeWebhook = null;
+        continue;
+      }
       const text = await res.text();
       let b: unknown = text; try { b = JSON.parse(text); } catch {}
-      // On 401/403 for scope, report immediately (do not try the others).
+      if (res.ok) g.__tolsBridgeWebhook = c;
       if (res.status === 401 || res.status === 403) return { ok: res.ok, status: res.status, body: b };
       if (res.ok) return { ok: true, status: res.status, body: b };
-      // Any other error except 404: return it anyway for debugging.
       return { ok: res.ok, status: res.status, body: b };
     } catch (e) {
-      // Network error: try the next candidate if there is one.
       if (c !== candidates[candidates.length - 1]) continue;
       return { ok: false, status: 0, body: { error: e instanceof Error ? e.message : String(e) } };
     }
   }
   return { ok: false, status: 404, body: { error: "All webhook candidates returned 404" } };
+}
+
+/** Push a settled wager at Governance. Return the promise so `after()` can wait. */
+export function pushSettledBet(opts: {
+  userId: string;
+  game: string;
+  amount: number;
+  payout: number;
+  multiplier: number;
+  won: boolean;
+  betId: string;
+}): Promise<{ ok: boolean; status: number; body?: unknown }> {
+  const type: BridgeEventType = opts.won ? "casino.win" : "casino.bet";
+  return pushBridgeEvent(type, { ...opts }).catch(() => ({ ok: false, status: 0 }));
 }
 
 // ── Inbound event handling (Tower → Casino) ──────────────────────────────

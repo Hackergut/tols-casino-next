@@ -8,7 +8,7 @@ import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
 import { broadcastSettledBet, broadcastJackpot } from "@/lib/public-feed";
 import { applyBetDebit } from "@/lib/bonus";
-import { pushBridgeEvent } from "@/lib/governance-bridge";
+import { pushBridgeEvent, pushSettledBet } from "@/lib/governance-bridge";
 import type { BetResponse, SettledOutcome } from "@/shared/types";
 
 export class BetError extends Error {
@@ -179,6 +179,17 @@ async function persistSettled(opts: {
       multiplier: result.multiplier,
       payout: result.payout,
       result: betResultTag(result),
+    }),
+  );
+  after(() =>
+    pushSettledBet({
+      userId,
+      game,
+      amount,
+      payout: result.payout,
+      multiplier: result.multiplier,
+      won: result.won,
+      betId: final.betId,
     }),
   );
 

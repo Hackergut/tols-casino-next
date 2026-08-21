@@ -160,6 +160,8 @@ test("both SSE gateways handle disconnects idempotently", () => {
     assert.match(src, /if \(closed\) return;/, `${p}: close() must be idempotent`);
     assert.match(src, /cancel\(\)/, `${p}: stream cancel must release the subscription`);
     assert.match(src, /X-Accel-Buffering/, `${p}: proxies must not buffer the stream`);
+    assert.match(src, /retry:\s*3000/, `${p}: EventSource must be told how fast to reconnect`);
+    assert.match(src, /maxDuration\s*=\s*300/, `${p}: Vercel must not kill the stream at the default timeout`);
   }
 });
 
@@ -182,6 +184,11 @@ test("the client keeps one shared EventSource per stream", () => {
   assert.match(src, /Math\.min\(30_000/);
   // Idle streams are closed — no subscriber, no socket.
   assert.match(src, /closeIfIdle/);
+  // Debounce teardown so lobby → Recent does not thrash the socket.
+  assert.match(src, /IDLE_CLOSE_MS/);
+  assert.match(src, /idleTimer/);
+  assert.match(src, /visibilitychange/);
+  assert.match(src, /reopenIfStale/);
 });
 
 test("components consume the shared stream, not their own EventSource", () => {

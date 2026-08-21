@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin-auth";
-import { getBridgeConfig } from "@/lib/governance-bridge";
-import { getGovernanceConnection, publicGovernanceConnection } from "@/lib/governance-connection";
+import { getBridgeConfig, loadActiveGovernanceConnection } from "@/lib/governance-bridge";
+import { publicGovernanceConnection } from "@/lib/governance-connection";
 
 // GET /api/bridge/config — admin-only bridge diagnostics (no secrets)
 export async function GET() {
@@ -8,15 +8,15 @@ export async function GET() {
   if ("response" in guard) return guard.response;
 
   const cfg = getBridgeConfig();
-  const stored = await getGovernanceConnection().catch(() => null);
+  const stored = await loadActiveGovernanceConnection();
   return Response.json({
     success: true,
     data: {
       towerOrigin: stored?.towerOrigin || cfg.towerOrigin,
       towerApiBase: stored?.towerApiBase || cfg.towerApiBase,
       casinoOrigin: stored?.casinoOrigin || cfg.casinoOrigin,
-      configured: Boolean(stored?.enabled && stored.bridgeSecret) || cfg.hasBridgeSecret,
-      source: stored?.enabled ? "database" : "environment",
+      configured: Boolean(stored?.bridgeSecret) || cfg.hasBridgeSecret,
+      source: stored ? "database" : "environment",
       connection: publicGovernanceConnection(stored),
       hasTowerKeys: cfg.hasTowerKeys,
       hasDb: cfg.hasDb,

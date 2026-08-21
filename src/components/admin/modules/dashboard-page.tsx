@@ -924,18 +924,18 @@ export function DashboardPage() {
   const recentActionLog = useMemo(() => actionLog.slice(-5).reverse(), [actionLog]);
   const queryClient = useQueryClient();
 
-  // Connectivity check — tests TOLS API root via proxy
+  // Connectivity check — the live Casino ↔ Governance backend, not the legacy Base44 proxy.
   React.useEffect(() => {
     const check = async () => {
       setIsChecking(true);
       try {
         apiStartTimeRef.current = performance.now();
-        const res = await fetch('/api/tols?path=/&api_key=test&_test=true');
+        const res = await fetch('/api/bridge/health?probe=true');
         const elapsed = Math.round(performance.now() - apiStartTimeRef.current);
-        const data = await res.json();
-        setIsConnected(!!data?.success);
+        const data = await res.json() as { ok?: boolean; db?: { ok?: boolean }; tower?: { reachable?: boolean | null }; link?: { live?: boolean } };
+        setIsConnected(Boolean(data?.link?.live || (data?.ok && data?.tower?.reachable && data?.db?.ok)));
         setApiResponseTimes((prev) => [...prev.slice(-9), elapsed]);
-        setTotalRequests((prev) => prev + 7);
+        setTotalRequests((prev) => prev + 1);
       } catch {
         setIsConnected(false);
       } finally {
@@ -944,7 +944,7 @@ export function DashboardPage() {
       }
     };
     check();
-    const interval = setInterval(check, 30000);
+    const interval = setInterval(check, 15000);
     return () => clearInterval(interval);
   }, []);
 

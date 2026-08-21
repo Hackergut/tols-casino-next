@@ -47,6 +47,14 @@ export function hasScope(claims: PlatformJwtClaims, scope: string): boolean {
     "deposits:read": ["deposits:read", "deposits:write"],
     "payments:read": ["payments:read", "payments:write"],
     "events:write": ["events:write", "events:*"],
+    "users:read": ["users:read", "users:write", "players:read"],
+    "users:write": ["users:write", "players:write"],
+    "wallets:read": ["wallets:read", "wallets:write"],
+    "wallets:write": ["wallets:write"],
+    "rtp:read": ["rtp:read", "rtp:write"],
+    "rtp:write": ["rtp:write"],
+    "cms:write": ["cms:write", "promos:write"],
+    "bets:read": ["bets:read"],
   };
   const alts = aliases[scope];
   if (alts) return alts.some((s) => claims.scope!.includes(s));

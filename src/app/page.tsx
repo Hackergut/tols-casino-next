@@ -2,12 +2,13 @@
 
 // GoldenX lobby shell — Phase 2: the 867-line inline shell now composes
 // extracted components from src/components/lobby/. Behavior unchanged.
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { useBalanceStore } from "@/lib/balance-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { ArrowLeft, Gamepad2 } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
 
 import { CasinoHeader } from "@/components/lobby/CasinoHeader";
@@ -38,7 +39,7 @@ import { useUIStore, useSessionStore } from "@/lib/store";
 import { useUserEvent } from "@/hooks/use-realtime";
 import { casinoPath, ORIGINAL_IDS, parseCasinoRoute, isPromoRouteSection, promoIdFromSection } from "@/lib/casino-routes";
 import { useLocale } from "@/lib/use-locale";
-import type { LobbyGame, LiveBet, CasinoStats } from "@/components/lobby/lobby-types";
+import type { LobbyGame, CasinoStats } from "@/components/lobby/lobby-types";
 import type { OriginalId } from "@/lib/originals-registry";
 
 const queryClient = new QueryClient({
@@ -120,7 +121,6 @@ function CasinoPage() {
   const [games, setGames] = useState<LobbyGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CasinoStats | null>(null);
-  const [liveBets, setLiveBets] = useState<LiveBet[]>([]);
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [detailGame, setDetailGame] = useState<LobbyGame | null>(null);
@@ -152,6 +152,17 @@ function CasinoPage() {
     if (!state?.tols) window.history.replaceState({ ...(state || {}), tols: true, index: 0 }, "", window.location.href);
     queueMicrotask(applyLocation);
     window.addEventListener("popstate", applyLocation);
+
+    const sp = new URLSearchParams(window.location.search);
+    const google = sp.get("google");
+    if (google === "error") toast.error("Google sign-in failed", { description: "Try again, or use email." });
+    else if (google === "not_configured") toast.error("Google sign-in isn't available yet", { description: "Please use email instead." });
+    if (google) {
+      sp.delete("google");
+      const next = window.location.pathname + (sp.toString() ? `?${sp}` : "") + window.location.hash;
+      window.history.replaceState(window.history.state, "", next);
+    }
+
     return () => window.removeEventListener("popstate", applyLocation);
   }, []);
 
@@ -254,8 +265,23 @@ function CasinoPage() {
   // Fetch games. Wait for URL hydration and abort the previous category read;
   // otherwise a slower Lobby response can overwrite a newer Slots/Originals
   // response after rapid navigation.
+  //
+  // CMS overrides are applied at render time, not here: `useCmsOverrides()`
+  // used to return a new Map every render, this effect listed it as a
+  // dependency, and every parent re-render (live-bet poll, SSE, stats)
+  // aborted the in-flight request. On /games/recent that request is
+  // GET /api/bets/history, which the fetch wrapper then toasted as a lost bet.
   useEffect(() => {
     if (!routeReady) return;
+    if (
+      activeSection === "originals" ||
+      activeSection === "rewards" ||
+      isProfileSection(activeSection) ||
+      isPromoRouteSection(activeSection)
+    ) {
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     const fetchGames = async () => {
       setLoading(true);
@@ -263,25 +289,23 @@ function CasinoPage() {
         let cat = "all";
         if (activeSection === "slots") cat = "slots";
         else if (activeSection === "live") cat = "live";
-        else if (activeSection === "originals") cat = "originals";
         else if (activeSection === "table") cat = "table";
-        else if (activeSection === "recent") cat = "all";
 
         if (activeSection === "recent") {
-          // Fetch recent bets to find recently played games
           try {
             const histRes = await fetch("/api/bets/history?limit=20", { signal: controller.signal });
-            const histData = await histRes.json();
-            if (histData.success && histData.data.bets.length > 0) {
+            const histData = await histRes.json().catch(() => null);
+            if (histData?.success && Array.isArray(histData.data?.bets) && histData.data.bets.length > 0) {
               const gameIds = [...new Set(histData.data.bets.map((b: { gameId: string }) => b.gameId))];
-              // Fetch all originals games for display
               const origRes = await fetch("/api/games-lobby?category=originals", { signal: controller.signal });
-              const origData = await origRes.json();
-              if (origData.success) {
+              const origData = await origRes.json().catch(() => null);
+              if (origData?.success) {
                 const filtered = origData.data.filter((g: LobbyGame) => gameIds.includes(g.slug) || gameIds.includes(g.name.toLowerCase()));
-                setGames((filtered.length > 0 ? filtered : origData.data).map((g: LobbyGame) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`))));
+                setGames(filtered.length > 0 ? filtered : origData.data);
+              } else if (!controller.signal.aborted) {
+                setGames([]);
               }
-            } else {
+            } else if (!controller.signal.aborted) {
               setGames([]);
             }
           } catch {
@@ -295,7 +319,7 @@ function CasinoPage() {
         if (res.ok) {
           const data = await res.json();
           const list = (data.data || []) as LobbyGame[];
-          setGames(list.map((g) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`))));
+          setGames(list);
         }
       } catch {
         if (!controller.signal.aborted) setGames([]);
@@ -304,7 +328,7 @@ function CasinoPage() {
     };
     void fetchGames();
     return () => controller.abort();
-  }, [activeSection, routeReady, cmsOverrides]);
+  }, [activeSection, routeReady]);
 
   // Fetch stats
   useEffect(() => {
@@ -317,20 +341,6 @@ function CasinoPage() {
     };
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch live bets
-  useEffect(() => {
-    const fetchBets = async () => {
-      try {
-        const res = await fetch("/api/bets?limit=20");
-        const data = await res.json();
-        if (data.success) setLiveBets(data.data);
-      } catch { /* ignore */ }
-    };
-    fetchBets();
-    const interval = setInterval(fetchBets, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -405,10 +415,12 @@ function CasinoPage() {
     return () => window.clearTimeout(task);
   }, [activeGame, authed, navigate, routeReady]);
 
-  // Filter games by search
-  const displayedGames = searchQuery
-    ? games.filter((g) => g.name.toLowerCase().includes(searchQuery.toLowerCase()) || g.provider.toLowerCase().includes(searchQuery.toLowerCase()))
-    : games;
+  const displayedGames = useMemo(() => {
+    const decorated = games.map((g) => applyCmsToGame(g, cmsOverrides.get(`game:${g.slug || g.id}`)));
+    if (!searchQuery) return decorated;
+    const q = searchQuery.toLowerCase();
+    return decorated.filter((g) => g.name.toLowerCase().includes(q) || g.provider.toLowerCase().includes(q));
+  }, [games, cmsOverrides, searchQuery]);
 
   // Render active game
   const renderGame = () => {
@@ -465,7 +477,7 @@ function CasinoPage() {
         onWalletClick={() => (authed === true ? setDepositOpen(true) : (setGateMode("register"), setGateDismissed(false)))}
         authed={authed === true}
         inGame={Boolean(activeGame)}
-        games={games}
+        games={displayedGames}
         onGameClick={handleGameClick}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -506,7 +518,7 @@ function CasinoPage() {
                 games={displayedGames}
                 loading={loading}
                 stats={stats}
-                liveBets={liveBets}
+                liveBets={[]}
                 onGameClick={handleGameClick}
                 onPlayCrash={() => handleOriginalSelect("crash")}
               />

@@ -15,7 +15,7 @@
  * defaults — content management must never break the lobby.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ALL_PROMOTIONS, type TolsPromotion } from "@/components/lobby/promotions";
 import { ORIGINAL_GAMES, type LobbyGame, type OriginalGameDef } from "@/components/lobby/lobby-types";
 import { applyCmsToGame, applyCmsToPromo, cmsKey, indexCmsOverrides, type CmsCardOverride } from "./cms-cards";
@@ -56,7 +56,11 @@ export function useCmsOverrides(): Map<string, CmsCardOverride> {
       listeners.delete(load);
     };
   }, []);
-  return indexCmsOverrides(rows);
+  // Identity-stable across re-renders. Returning a fresh Map every call
+  // used to retrigger the lobby games effect (which listed `cmsOverrides` as
+  // a dependency), abort in-flight /api/bets/history reads, and toast
+  // "Connection lost" on /games/recent in a loop.
+  return useMemo(() => indexCmsOverrides(rows), [rows]);
 }
 
 /** Promo cards with CMS overrides applied — the single source for all promo UI. */

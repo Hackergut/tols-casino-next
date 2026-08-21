@@ -1,10 +1,17 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { getSession, ok } from "@/lib/session";
+import { getSession, ok, err } from "@/lib/session";
 
 // GET /api/bets/history?game=&result=&limit=&skip=
 export async function GET(req: NextRequest) {
-  const user = await getSession();
+  let user;
+  try {
+    user = await getSession();
+  } catch {
+    // Guests have no history. Do not throw — an unhandled getSession() used
+    // to 500 the Recent page and look like a dropped connection.
+    return err("Not authenticated", 401);
+  }
   const { searchParams } = new URL(req.url);
   const game = searchParams.get("game");
   const result = searchParams.get("result");

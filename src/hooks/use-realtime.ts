@@ -27,6 +27,11 @@
  * manager watches for that terminal state and reopens with exponential
  * backoff, because "the tab survived a deploy" is exactly the moment players
  * must not silently stop receiving balance updates.
+ *
+ * Idle close is debounced: navigating lobby → Recent briefly drops the last
+ * public subscriber (jackpot unmounts) and used to tear the socket down only
+ * to reopen it a frame later. Holding the connection ~1.5s across that gap
+ * is what stops the "connection glitch" flash on every internal navigation.
  */
 
 import { useEffect, useRef } from "react";
@@ -41,19 +46,29 @@ interface StreamManager {
   bound: Set<string>;
   retry: number;
   timer: ReturnType<typeof setTimeout> | null;
+  idleTimer: ReturnType<typeof setTimeout> | null;
 }
 
+const IDLE_CLOSE_MS = 1500;
+
 function makeManager(url: string): StreamManager {
-  return { url, es: null, listeners: new Map(), bound: new Set(), retry: 0, timer: null };
+  return { url, es: null, listeners: new Map(), bound: new Set(), retry: 0, timer: null, idleTimer: null };
 }
 
 /* Survive Fast Refresh: a new module instance must not leak the previous
  * module's open sockets. */
-const g = globalThis as unknown as { __tolsSSE?: Record<string, StreamManager> };
+const g = globalThis as unknown as {
+  __tolsSSE?: Record<string, StreamManager>;
+  __tolsSSEVis?: boolean;
+};
 const managers = (g.__tolsSSE ??= {
   public: makeManager("/api/events/public"),
   user: makeManager("/api/events"),
 });
+// Fast Refresh may restore managers allocated before idleTimer existed.
+for (const m of Object.values(managers)) {
+  if (m.idleTimer === undefined) m.idleTimer = null;
+}
 
 function dispatch(m: StreamManager, event: string, raw: MessageEvent) {
   const set = m.listeners.get(event);
@@ -95,16 +110,30 @@ function open(m: StreamManager) {
     // 401 on the private stream for a guest). CONNECTING means it is retrying
     // by itself — leave it alone.
     if (es.readyState !== EventSource.CLOSED) return;
-    m.es = null;
+    if (m.es === es) m.es = null;
     m.bound = new Set();
     if (m.listeners.size === 0) return;
     const delay = Math.min(30_000, 1000 * 2 ** m.retry);
     m.retry += 1;
+    if (m.timer) clearTimeout(m.timer);
     m.timer = setTimeout(() => {
       m.timer = null;
       if (m.listeners.size > 0) open(m);
     }, delay);
   };
+}
+
+function reopenIfStale(m: StreamManager) {
+  if (m.listeners.size === 0) return;
+  if (m.es && m.es.readyState === EventSource.OPEN) return;
+  if (m.timer) {
+    clearTimeout(m.timer);
+    m.timer = null;
+  }
+  m.es?.close();
+  m.es = null;
+  m.bound = new Set();
+  open(m);
 }
 
 function closeIfIdle(m: StreamManager) {
@@ -113,13 +142,22 @@ function closeIfIdle(m: StreamManager) {
     clearTimeout(m.timer);
     m.timer = null;
   }
-  m.es?.close();
-  m.es = null;
-  m.bound = new Set();
-  m.retry = 0;
+  if (m.idleTimer) clearTimeout(m.idleTimer);
+  m.idleTimer = setTimeout(() => {
+    m.idleTimer = null;
+    if (m.listeners.size > 0) return;
+    m.es?.close();
+    m.es = null;
+    m.bound = new Set();
+    m.retry = 0;
+  }, IDLE_CLOSE_MS);
 }
 
 function addListener(m: StreamManager, event: string, fn: Listener): () => void {
+  if (m.idleTimer) {
+    clearTimeout(m.idleTimer);
+    m.idleTimer = null;
+  }
   let set = m.listeners.get(event);
   if (!set) {
     set = new Set();
@@ -133,6 +171,17 @@ function addListener(m: StreamManager, event: string, fn: Listener): () => void 
     if (set!.size === 0) m.listeners.delete(event);
     closeIfIdle(m);
   };
+}
+
+if (typeof window !== "undefined" && !g.__tolsSSEVis) {
+  g.__tolsSSEVis = true;
+  // Background tabs freeze EventSource; coming back with a dead socket looks
+  // like a "connection glitch" until the next native retry. Force a clean
+  // reopen the moment the player looks at the page again.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    for (const m of Object.values(managers)) reopenIfStale(m);
+  });
 }
 
 /**

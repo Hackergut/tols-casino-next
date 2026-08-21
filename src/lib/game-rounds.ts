@@ -6,7 +6,7 @@ import { betResultTag } from "@/lib/game-engines/common";
 import { publish } from "@/lib/realtime";
 import { broadcastSettledBet, broadcastJackpot } from "@/lib/public-feed";
 import { debitBet } from "@/lib/bonus";
-import { pushBridgeEvent } from "@/lib/governance-bridge";
+import { pushBridgeEvent, pushSettledBet } from "@/lib/governance-bridge";
 import { after } from "next/server";
 import { syncPlayerProfile } from "@/lib/player-sync";
 import type { BetResponse, InteractiveRoundState } from "@/shared/types";
@@ -92,6 +92,17 @@ async function finalizeHouse(opts: { game: string; betId: string; amount: number
       multiplier: opts.multiplier ?? (opts.amount > 0 ? opts.payout / opts.amount : 0),
       payout: opts.payout,
       result: opts.result ?? (opts.payout > opts.amount ? "win" : opts.payout === opts.amount && opts.payout > 0 ? "push" : "lose"),
+    }),
+  );
+  after(() =>
+    pushSettledBet({
+      userId: opts.userId,
+      game: opts.game,
+      amount: opts.amount,
+      payout: opts.payout,
+      multiplier: opts.multiplier ?? (opts.amount > 0 ? opts.payout / opts.amount : 0),
+      won: opts.payout > opts.amount,
+      betId: opts.betId,
     }),
   );
 }

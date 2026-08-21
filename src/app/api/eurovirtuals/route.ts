@@ -7,13 +7,16 @@ import { evConfigured } from "@/lib/eurovirtuals";
  * base should return something sensible rather than a 404 — some providers ping
  * it to validate the URL during onboarding.
  */
-export function GET() {
+export async function GET() {
+  const { eurovirtualsCallbackUrls } = await import("@/lib/eurovirtuals-connection");
+  const urls = eurovirtualsCallbackUrls();
   return NextResponse.json({
     service: "eurovirtuals-callbacks",
     status: "ok",
-    configured: evConfigured(),
-    callbacks: ["/player_info", "/bet", "/win", "/rollback", "/adjustment"],
-    note: "Append the action to this base URL; callbacks are POST.",
+    configured: await evConfigured(),
+    base: urls.base,
+    callbacks: urls.actions.map((a) => a.url),
+    note: "EuroVirtuals POSTs to these URLs. Append the action to the base.",
   });
 }
 

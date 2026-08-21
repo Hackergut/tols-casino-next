@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageDecoration } from '@/components/admin/shared/page-decoration';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,15 +9,36 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Gamepad2, Activity, CheckCircle2, XCircle, Play, Settings2 } from 'lucide-react';
+import { Gamepad2, Activity, Play, Copy, Save, Trash2, Link2, Plug } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface EvCallback {
+  action: string;
+  method: 'POST';
+  path: string;
+  url: string;
+}
+interface EvConnection {
+  id: string;
+  name: string;
+  apiBase: string;
+  enabled: boolean;
+  hasApiKey: boolean;
+  hasAppKey: boolean;
+  apiKeyHint: string | null;
+  appKeyHint: string | null;
+  lastStatus: 'untested' | 'connected' | 'error';
+  lastLatencyMs: number | null;
+  lastError: string | null;
+}
 interface EvConfig {
-  service: string;
-  status: 'ok' | 'not_configured';
-  configured: boolean;
   env: { EV_API_BASE: boolean; EV_API_KEY: boolean; EV_APP_KEY: boolean };
-  callbacks: string[];
+}
+interface EvConnectionPayload {
+  connection: EvConnection | null;
+  environment?: { live: boolean; apiBase: string };
+  callbacks: { base: string; vendorGeneric: string; actions: EvCallback[] };
+  encryptionConfigured: boolean;
 }
 
 interface VendorTxnRow {
@@ -40,8 +61,32 @@ const typeBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outli
   rollback: 'secondary',
 };
 
-function ConfigHealthCard() {
-  const { data, isLoading } = useQuery<{ success: boolean; data: EvConfig }>({
+function copy(text: string) {
+  navigator.clipboard.writeText(text).then(() => toast.success('Copied')).catch(() => {});
+}
+
+function EurovirtualsConnectionCard() {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    name: 'EuroVirtuals',
+    apiBase: 'https://api.staging.betkraft.co.uk',
+    apiKey: '',
+    appKey: '',
+    enabled: true,
+  });
+
+  const connectionQ = useQuery<{ success: boolean; data: EvConnectionPayload }>({
+    queryKey: ['eurovirtuals-connection'],
+    queryFn: async () => {
+      const r = await fetch('/api/admin/virtual-games/connection', { cache: 'no-store' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not load EuroVirtuals connection');
+      return j;
+    },
+    retry: false,
+  });
+
+  const configQ = useQuery<{ success: boolean; data: EvConfig }>({
     queryKey: ['virtual-games-config'],
     queryFn: async () => {
       const r = await fetch('/api/admin/virtual-games/config');
@@ -51,84 +96,133 @@ function ConfigHealthCard() {
     refetchInterval: 30000,
   });
 
-  const cfg = data?.data;
-  const envRows = cfg
-    ? [
-        { key: 'EV_API_BASE', present: cfg.env.EV_API_BASE },
-        { key: 'EV_API_KEY', present: cfg.env.EV_API_KEY },
-        { key: 'EV_APP_KEY', present: cfg.env.EV_APP_KEY },
-      ]
-    : [];
+  const connection = connectionQ.data?.data.connection;
+  useEffect(() => {
+    if (!connection) return;
+    const task = window.setTimeout(() => setForm((current) => ({
+      ...current,
+      name: connection.name,
+      apiBase: connection.apiBase,
+      apiKey: '',
+      appKey: '',
+      enabled: connection.enabled,
+    })), 0);
+    return () => window.clearTimeout(task);
+  }, [connection]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const r = await fetch('/api/admin/virtual-games/connection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not save connection');
+      return j;
+    },
+    onSuccess: () => { toast.success('EuroVirtuals connection saved'); qc.invalidateQueries({ queryKey: ['eurovirtuals-connection'] }); qc.invalidateQueries({ queryKey: ['virtual-games-config'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const test = useMutation({
+    mutationFn: async () => {
+      const r = await fetch('/api/admin/virtual-games/connection/test', { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Connection failed');
+      return j;
+    },
+    onSuccess: () => { toast.success('EuroVirtuals catalogue reachable'); qc.invalidateQueries({ queryKey: ['eurovirtuals-connection'] }); qc.invalidateQueries({ queryKey: ['virtual-games-config'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const remove = useMutation({
+    mutationFn: async () => {
+      const r = await fetch('/api/admin/virtual-games/connection', { method: 'DELETE' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not delete');
+      return j;
+    },
+    onSuccess: () => { toast.success('Connection deleted'); qc.invalidateQueries({ queryKey: ['eurovirtuals-connection'] }); qc.invalidateQueries({ queryKey: ['virtual-games-config'] }); },
+  });
+
+  const cfg = configQ.data?.data;
+  const callbacks = connectionQ.data?.data.callbacks;
+  const encryptionOk = connectionQ.data?.data.encryptionConfigured !== false;
 
   return (
-    <Card className="bg-card/40 backdrop-blur-sm border-border/50">
+    <Card className="bg-card/40 backdrop-blur-sm border-border/50 lg:col-span-2">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Settings2 className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-base">Config Health</CardTitle>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base"><Plug className="h-4 w-4 text-teal-500" /> EuroVirtuals API connection</CardTitle>
+            <CardDescription>Operator credentials + the callback URLs EuroVirtuals must POST to. Secrets stay encrypted server-side.</CardDescription>
+          </div>
+          {connection ? (
+            <Badge className={connection.lastStatus === 'connected' ? 'bg-emerald-600' : connection.lastStatus === 'error' ? 'bg-red-600' : 'bg-amber-600'}>
+              {connection.lastStatus}{connection.lastLatencyMs ? ` · ${connection.lastLatencyMs}ms` : ''}
+            </Badge>
+          ) : connectionQ.data?.data.environment?.live ? (
+            <Badge className="bg-emerald-600">live via environment</Badge>
+          ) : (
+            <Badge variant="outline">not created</Badge>
+          )}
         </div>
-        <CardDescription>EuroVirtuals provider environment & callbacks. Values are never exposed.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading || !cfg ? (
-          <Skeleton className="h-20 w-full" />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Tile label="Service" value={cfg.service} icon={<Activity className="h-4 w-4" />} />
-              <Tile
-                label="Status"
-                value={cfg.status}
-                icon={cfg.configured ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-              />
-              <Tile
-                label="Configured"
-                value={cfg.configured ? 'Yes' : 'No'}
-                icon={cfg.configured ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-              />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Environment</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {envRows.map((row) => (
-                  <div
-                    key={row.key}
-                    className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2"
-                  >
-                    <span className="font-mono text-xs">{row.key}</span>
-                    {row.present ? (
-                      <Badge variant="default" className="text-[10px]">set</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="text-[10px]">missing</Badge>
-                    )}
-                  </div>
-                ))}
+      <CardContent className="space-y-5">
+        {!encryptionOk && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+            Configure <code>CONNECTION_ENCRYPTION_KEY</code> or <code>ADMIN_SESSION_SECRET</code> before saving credentials.
+          </p>
+        )}
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="space-y-1 text-xs"><span>Connection name</span><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label className="space-y-1 text-xs"><span>API base</span><Input value={form.apiBase} onChange={(e) => setForm({ ...form, apiBase: e.target.value })} placeholder="https://api.staging.betkraft.co.uk" className="font-mono" /></label>
+          <label className="space-y-1 text-xs"><span>API key {connection?.apiKeyHint && <em className="text-muted-foreground">({connection.apiKeyHint} saved)</em>}</span><Input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={connection?.hasApiKey ? 'Leave blank to keep existing' : 'EuroVirtuals API key'} /></label>
+          <label className="space-y-1 text-xs"><span>App key {connection?.appKeyHint && <em className="text-muted-foreground">({connection.appKeyHint} saved)</em>}</span><Input type="password" value={form.appKey} onChange={(e) => setForm({ ...form, appKey: e.target.value })} placeholder={connection?.hasAppKey ? 'Leave blank to keep existing' : 'EuroVirtuals app key'} /></label>
+        </div>
+        <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> use as the active EuroVirtuals backend</label>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => save.mutate()} disabled={save.isPending || !encryptionOk}><Save className="mr-1 h-4 w-4" />{connection ? 'Update connection' : 'Create connection'}</Button>
+          <Button variant="outline" onClick={() => test.mutate()} disabled={test.isPending}><Link2 className="mr-1 h-4 w-4" />{test.isPending ? 'Testing…' : 'Test catalogue'}</Button>
+          {connection && <Button variant="destructive" onClick={() => remove.mutate()} disabled={remove.isPending}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>}
+        </div>
+        {connection?.lastError && <p className="text-xs text-red-500">{connection.lastError}</p>}
+
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seamless-wallet callbacks — give these to EuroVirtuals</p>
+          <div className="space-y-1.5">
+            {(callbacks?.actions ?? []).map((c) => (
+              <div key={c.action} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+                <div className="min-w-0">
+                  <span className="mr-2 rounded bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-teal-400">{c.method}</span>
+                  <span className="font-mono text-xs break-all">{c.url}</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copy(c.url)}><Copy className="h-3.5 w-3.5" /></Button>
               </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Callbacks</p>
-              <div className="flex flex-wrap gap-1.5">
-                {cfg.callbacks.map((c) => (
-                  <Badge key={c} variant="outline" className="text-[10px] font-mono">{c}</Badge>
-                ))}
+            ))}
+            {callbacks?.base && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+                <div className="min-w-0">
+                  <span className="mr-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white/60">BASE</span>
+                  <span className="font-mono text-xs break-all">{callbacks.base}</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copy(callbacks.base)}><Copy className="h-3.5 w-3.5" /></Button>
               </div>
-            </div>
-          </>
+            )}
+          </div>
+        </div>
+
+        {cfg && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {([
+              { key: 'EV_API_BASE', present: cfg.env.EV_API_BASE },
+              { key: 'EV_API_KEY', present: cfg.env.EV_API_KEY },
+              { key: 'EV_APP_KEY', present: cfg.env.EV_APP_KEY },
+            ]).map((row) => (
+              <div key={row.key} className="flex items-center justify-between rounded-md border border-border/60 bg-background/40 px-3 py-2">
+                <span className="font-mono text-xs">{row.key}</span>
+                {row.present ? <Badge className="text-[10px]">env set</Badge> : <Badge variant="outline" className="text-[10px]">env empty</Badge>}
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function Tile({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {icon}
-      </div>
-      <p className="mt-1 text-sm font-semibold capitalize">{value}</p>
-    </div>
   );
 }
 
@@ -326,11 +420,8 @@ export function VirtualGamesPage() {
           <div className="h-px bg-gradient-to-r from-teal-500/30 via-teal-500/10 to-transparent" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ConfigHealthCard />
-          <TestLaunchCard />
-        </div>
-
+        <EurovirtualsConnectionCard />
+        <TestLaunchCard />
         <RecentTransactionsCard />
       </div>
     </div>

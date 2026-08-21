@@ -3,39 +3,36 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { createSession } from "@/lib/auth";
-import { googleEnabled, exchangeGoogle } from "@/lib/google-oauth";
+import { googleEnabled, exchangeGoogle, oauthOrigin } from "@/lib/google-oauth";
 import { fireTelegramAlert } from "@/lib/telegram";
-import { appUrl } from "@/lib/mailer";
 
 // GET /api/auth/google/callback?code=&state= — exchange the code for the Google
 // profile, upsert the user by googleId (linking an existing same-email account),
-// issue a session, and redirect home.
+// issue a session, and send the player to their connected account page.
 //
 // EVERY exit from this handler is a redirect. An OAuth callback must never
 // answer with a body: the browser has just been bounced here by Google, and
 // anything other than a 3xx renders (or downloads) at the callback URL itself.
 //
-// Redirects are built on appUrl() (the canonical APP_URL origin), not req.url:
-// behind a proxy or a bind-all dev server req.url reflects the Host header the
-// server saw (e.g. http://0.0.0.0:3000), and a Location assembled from it can
-// point the player at an origin that doesn't exist outside the machine. The
-// same APP_URL is what googleRedirectUri() registers with Google, so the two
-// stay consistent by construction.
+// Redirects use the request Host (via oauthOrigin), not a hardcoded APP_URL:
+// www vs apex must match the cookie that /api/auth/google just set, and the
+// redirect_uri Google issued the code for.
 export async function GET(req: NextRequest) {
-  const home = (q = "") => NextResponse.redirect(new URL("/" + q, appUrl()));
+  const origin = oauthOrigin(req);
+  const to = (path: string) => NextResponse.redirect(new URL(path, origin + "/"));
 
-  if (!googleEnabled()) return home("?google=not_configured");
+  if (!googleEnabled()) return to("/?google=not_configured");
   const sp = new URL(req.url).searchParams;
   const code = sp.get("code") || "";
   const state = sp.get("state") || "";
   const store = await cookies();
   const expected = store.get("google_state")?.value;
   store.delete("google_state");
-  if (!code || !expected || state !== expected) return home("?google=error");
+  if (!code || !expected || state !== expected) return to("/?google=error");
 
   let profile;
-  try { profile = await exchangeGoogle(code); } catch { return home("?google=error"); }
-  if (!profile.sub || !profile.email) return home("?google=error");
+  try { profile = await exchangeGoogle(code, origin); } catch { return to("/?google=error"); }
+  if (!profile.sub || !profile.email) return to("/?google=error");
 
   // The DB work is guarded for the same reason the exchange is: an unreachable
   // database must degrade to a clean redirect with an error flag, not a 500
@@ -74,8 +71,8 @@ export async function GET(req: NextRequest) {
     await createSession(user.id);
   } catch (e) {
     console.error("[google-oauth] callback failed:", e);
-    return home("?google=error");
+    return to("/?google=error");
   }
 
-  return home();
+  return to("/account/settings");
 }

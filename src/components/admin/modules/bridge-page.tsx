@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { RefreshCw, Link2, CheckCircle2, XCircle, Clock, Shield, Server, Globe, ArrowLeftRight, Copy, Send, Database, KeyRound, Save, Trash2, Unplug } from 'lucide-react';
+import { GovernanceLiveLink } from '@/components/admin/modules/governance-live-link';
 
 interface BridgeHealth {
   ok: boolean;
@@ -14,6 +15,7 @@ interface BridgeHealth {
   timestamp: string;
   casino: { origin: string };
   tower: { origin: string; apiBase: string; reachable: boolean | null; status?: number; latencyMs?: number; error?: string };
+  link?: { live: boolean; status: string; source: string; secretReady: boolean; jwtReady: boolean };
   bridge: { configured: boolean; hasTowerKeys: boolean; hasDb: boolean; envPresent: Record<string, boolean> };
   db: { ok: boolean; latencyMs?: number; error?: string };
 }
@@ -81,7 +83,7 @@ export function BridgePage() {
     retry: false,
   });
 
-  const connectionQ = useQuery<{ success: boolean; data: { connection: GovernanceConnection | null; encryptionConfigured: boolean } }>({
+  const connectionQ = useQuery<{ success: boolean; data: { connection: GovernanceConnection | null; encryptionConfigured: boolean; environment?: { live: boolean; towerOrigin: string; casinoOrigin: string; hasBridgeSecret: boolean } } }>({
     queryKey: ['governance-connection'],
     queryFn: async () => {
       const r = await fetch('/api/bridge/connection', { cache: 'no-store' });
@@ -156,12 +158,14 @@ export function BridgePage() {
         <Button variant="outline" size="sm" onClick={() => { healthQ.refetch(); configQ.refetch(); syncQ.refetch(); }}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
       </div>
 
+      <GovernanceLiveLink />
+
       {/* Real persisted Governance connection — encrypted in PlatformSetting, not browser localStorage. */}
       <Card className="border-primary/20 bg-card/55">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><CardTitle className="flex items-center gap-2 text-base"><Database className="h-4 w-4 text-primary" /> TOLS Governance backend connection</CardTitle><CardDescription>Create the real service-to-service connection. URLs and credentials are encrypted in the database and used by webhooks, sync, events, and SSO.</CardDescription></div>
-            {connection ? <Badge className={connection.lastStatus === 'connected' ? 'bg-emerald-600' : connection.lastStatus === 'error' ? 'bg-red-600' : 'bg-amber-600'}>{connection.lastStatus}{connection.lastLatencyMs ? ` · ${connection.lastLatencyMs}ms` : ''}</Badge> : <Badge variant="outline">not created</Badge>}
+            {connection ? <Badge className={connection.lastStatus === 'connected' ? 'bg-emerald-600' : connection.lastStatus === 'error' ? 'bg-red-600' : 'bg-amber-600'}>{connection.lastStatus}{connection.lastLatencyMs ? ` · ${connection.lastLatencyMs}ms` : ''}</Badge> : connectionQ.data?.data.environment?.live ? <Badge className="bg-emerald-600">live via environment</Badge> : <Badge variant="outline">not created</Badge>}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -281,12 +285,10 @@ export function BridgePage() {
             <pre className="text-[11px] bg-muted rounded p-2 mt-2 overflow-auto">{`DATABASE_URL=postgresql://...pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 DIRECT_URL=postgresql://...pooler.supabase.com:5432/postgres
 ADMIN_SESSION_SECRET=$(openssl rand -hex 32)
-APP_URL=https://tols.fun
-GOVERNANCE_TOWER_URL=https://tolscrypto.base44.app
-GOVERNANCE_BRIDGE_SECRET=$(openssl rand -hex 32)   # same value on Governance
-TOLS_BASE_URL=https://tolscrypto.base44.app/api
-TOLS_API_KEY=...
-TOLS_APP_KEY=...
+APP_URL=https://www.tols.fun
+GOVERNANCE_TOWER_URL=https://gov.tols.fun
+GOVERNANCE_BRIDGE_SECRET=$(openssl rand -hex 32)   # same value on Governance (tolsgovernz)
+PLATFORM_JWT_PUBLIC_KEY=...   # Casino only
 CRON_SECRET=$(openssl rand -hex 16)
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...

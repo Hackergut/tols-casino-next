@@ -37,21 +37,40 @@ export function evSignature(body: Record<string, unknown>, key: string): string 
  * timestamp))). EuroVirtuals signs each callback with this token; we recompute
  * it from our App Key and the request's x-timestamp, then verify the signature.
  */
-export function evTokenKey(timestamp: string): string {
-  const appKey = process.env.EV_APP_KEY || "";
+export function evTokenKey(timestamp: string, appKey = process.env.EV_APP_KEY || ""): string {
   return md5(sha1hex(appKey + timestamp));
 }
 
-export function verifyEvSignature(body: Record<string, unknown>, provided: string | null, timestamp: string | null): boolean {
-  const appKey = process.env.EV_APP_KEY || "";
+export function verifyEvSignature(
+  body: Record<string, unknown>,
+  provided: string | null,
+  timestamp: string | null,
+  appKey = process.env.EV_APP_KEY || "",
+): boolean {
   if (!appKey || !provided || !timestamp) return false;
-  const expected = evSignature(body, evTokenKey(timestamp));
+  const expected = evSignature(body, evTokenKey(timestamp, appKey));
   const got = provided.trim().toLowerCase();
   return expected.length === got.length && expected === got;
 }
 
-export function evConfigured(): boolean {
-  return Boolean(process.env.EV_APP_KEY);
+export function evEnvConfigured(): boolean {
+  return Boolean(process.env.EV_API_BASE && process.env.EV_API_KEY && process.env.EV_APP_KEY);
+}
+
+export async function evConfigured(): Promise<boolean> {
+  const { evRuntimeCredentials } = await import("@/lib/eurovirtuals-connection");
+  return Boolean(await evRuntimeCredentials());
+}
+
+export async function verifyEvCallback(
+  body: Record<string, unknown>,
+  provided: string | null,
+  timestamp: string | null,
+): Promise<boolean> {
+  const { evRuntimeCredentials } = await import("@/lib/eurovirtuals-connection");
+  const creds = await evRuntimeCredentials();
+  if (!creds) return false;
+  return verifyEvSignature(body, provided, timestamp, creds.appKey);
 }
 
 // Player token issued at launch — carries the TOLS user id, verified in callbacks.
@@ -75,10 +94,10 @@ export interface EvLaunchInput {
   demo?: 0 | 1; country?: string; language?: string; device?: "mobile" | "web";
 }
 export async function evLaunch(input: EvLaunchInput): Promise<{ url: string } | { error: string }> {
-  const base = process.env.EV_API_BASE;
-  const apiKey = process.env.EV_API_KEY;
-  const appKey = process.env.EV_APP_KEY;
-  if (!base || !apiKey || !appKey) return { error: "EuroVirtuals not configured" };
+  const { evRuntimeCredentials } = await import("@/lib/eurovirtuals-connection");
+  const creds = await evRuntimeCredentials();
+  if (!creds) return { error: "EuroVirtuals not configured" };
+  const { apiBase: base, apiKey, appKey } = creds;
 
   const body: Record<string, unknown> = {
     player_id: input.playerId,
@@ -127,10 +146,10 @@ export interface EvGame {
   status: number;
 }
 export async function evGames(): Promise<{ games: EvGame[] } | { error: string }> {
-  const base = process.env.EV_API_BASE;
-  const apiKey = process.env.EV_API_KEY;
-  const appKey = process.env.EV_APP_KEY;
-  if (!base || !apiKey || !appKey) return { error: "EuroVirtuals not configured" };
+  const { evRuntimeCredentials } = await import("@/lib/eurovirtuals-connection");
+  const creds = await evRuntimeCredentials();
+  if (!creds) return { error: "EuroVirtuals not configured" };
+  const { apiBase: base, apiKey, appKey } = creds;
 
   // Docs show no request body for GET /v1/games; the empty object is what
   // gets signed (verified against staging — signature over {} succeeds).

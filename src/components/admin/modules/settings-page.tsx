@@ -1170,10 +1170,10 @@ const AGGREGATOR_FIELDS: ConfigField[] = [
   {
     key: 'callbackUrl',
     label: 'Callback URL (Real-Money Outcomes)',
-    placeholder: 'https://your-domain.com/api/callbacks/outcomes',
+    placeholder: 'https://www.tols.fun/api/eurovirtuals',
     required: false,
     type: 'url',
-    description: 'URL where the aggregator sends real-money game outcomes',
+    description: 'EuroVirtuals seamless-wallet base: /api/eurovirtuals/{player_info,bet,win,rollback,adjustment}',
     icon: Link2,
     iconColor: 'text-rose-500',
   },

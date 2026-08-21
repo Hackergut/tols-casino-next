@@ -46,5 +46,63 @@ test("admin bridge page creates and tests a backend connection through APIs", ()
   assert.match(page, /fetch\('\/api\/bridge\/connection'/);
   assert.match(page, /fetch\('\/api\/bridge\/connection\/test'/);
   assert.match(page, /Create connection/);
+  assert.match(page, /GovernanceLiveLink/);
   assert.doesNotMatch(page, /addPlatformConnection/);
+});
+
+test("Governance is always gov.tols.fun / tolsgovernz, never Base44", () => {
+  const source = read("src/lib/governance-bridge.ts");
+  assert.match(source, /gov\.tols\.fun/);
+  assert.match(source, /tolsgovernz/);
+  assert.match(source, /isGovernanceTowerHost/);
+  assert.match(source, /base44\.app/);
+  assert.match(source, /probeGovernanceHealth/);
+  assert.match(source, /\/api\/platform\/health/);
+  assert.match(source, /pushSettledBet/);
+  assert.doesNotMatch(source, /tolscrypto\.base44\.app/);
+  const page = read("src/components/admin/modules/bridge-page.tsx");
+  assert.doesNotMatch(page, /base44/);
+  const tols = read("src/app/api/tols/route.ts");
+  assert.doesNotMatch(tols, /base44/);
+  const store = read("src/stores/admin.ts");
+  assert.doesNotMatch(store, /base44/);
+});
+
+test("health probes the Governance origin on gov.tols.fun", () => {
+  const health = read("src/app/api/bridge/health/route.ts");
+  assert.match(health, /probeGovernanceHealth/);
+  assert.match(health, /heartbeat/);
+  assert.match(health, /casino\.health/);
+  assert.match(health, /link:/);
+  assert.doesNotMatch(health, /path: stored\?\.healthPath \|\| ""/);
+});
+
+test("settled bets are pushed to Governance", () => {
+  const settle = read("src/lib/settle-bet.ts");
+  const rounds = read("src/lib/game-rounds.ts");
+  assert.match(settle, /pushSettledBet/);
+  assert.match(rounds, /pushSettledBet/);
+});
+
+test("admin dashboard connectivity uses the Governance bridge", () => {
+  const dash = read("src/components/admin/modules/dashboard-page.tsx");
+  assert.match(dash, /\/api\/bridge\/health\?probe=true/);
+  assert.doesNotMatch(dash, /\/api\/tols\?path=\//);
+});
+
+test("Casino /control/admin redirects operators to Governance", () => {
+  const config = read("next.config.ts");
+  assert.match(config, /source: "\/control"/);
+  assert.match(config, /\/control\/:path\*/);
+  assert.match(config, /gov\.tols\.fun/);
+  const page = read("src/app/control/admin/page.tsx");
+  assert.match(page, /redirect/);
+  assert.match(page, /gov\.tols\.fun/);
+});
+
+test("live Governance link animates packets between Casino and Tower", () => {
+  const live = read("src/components/admin/modules/governance-live-link.tsx");
+  assert.match(live, /heartbeat=1/);
+  assert.match(live, /animateMotion/);
+  assert.match(live, /Casino ↔ Governance/);
 });

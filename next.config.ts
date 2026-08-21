@@ -22,7 +22,6 @@ const TELEGRAM_FRAME_ANCESTORS = "'self' https://web.telegram.org https://*.tele
 const TOWER_ORIGIN = (
   process.env.GOVERNANCE_TOWER_URL ||
   process.env.TOWER_URL ||
-  process.env.TOLS_BASE_URL ||
   "https://gov.tols.fun"
 ).replace(/\/api\/?$/, "");
 let TOWER_HOST: string | null = null;
@@ -102,6 +101,14 @@ const nextConfig: NextConfig = {
   // Production is unaffected; this only permits Next's development assets.
   allowedDevOrigins: ["*.e2b.app"],
   turbopack: {},
+  async redirects() {
+    // Operator console lives on Governance (gov.tols.fun / tolsgovernz), not on the Casino.
+    const tower = TOWER_HOST || "https://gov.tols.fun";
+    return [
+      { source: "/control", destination: tower, permanent: false },
+      { source: "/control/:path*", destination: tower, permanent: false },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
