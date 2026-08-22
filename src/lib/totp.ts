@@ -59,6 +59,7 @@ export function verifyTotp(secretBase32: string, token: string, window = 1, time
   if (!secretBase32 || !/^\d{6}$/.test(token)) return false;
   const counter = Math.floor(timeMs / 1000 / step);
   for (let w = -window; w <= window; w++) {
+    if (counter + w < 0) continue;
     const expected = hotp(secretBase32, counter + w);
     if (expected.length === token.length && timingSafeEqual(Buffer.from(expected), Buffer.from(token))) return true;
   }
