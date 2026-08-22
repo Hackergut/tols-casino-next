@@ -21,6 +21,18 @@ function fmtCrypto(n: number): string {
   return parseFloat(n.toFixed(8)).toString();
 }
 
+interface DepositRow {
+  id: string;
+  chain: string;
+  amount: number;
+  amountUsd: number;
+  currency: string;
+  status: string;
+  credited: boolean;
+  txHash: string | null;
+  createdAt: string;
+}
+
 type Intent = {
   id: string;
   chain: string;
@@ -67,7 +79,7 @@ export default function DepositPanel() {
       try {
         const r = await fetch("/api/deposits");
         const j = await r.json();
-        const row = Array.isArray(j?.data) ? j.data.find((d: any) => d.id === id) : null;
+        const row = Array.isArray(j?.data) ? j.data.find((d: DepositRow) => d.id === id) : null;
         if (row?.credited) {
           setStatus("credited");
           stopPolling();
