@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from "@/lib/admin-auth";
 
+const logger = {
+  error: (context: string, error: unknown) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      module: 'telegram_ops',
+      context,
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    }))
+  },
+  warn: (context: string, error: unknown) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      module: 'telegram_ops',
+      context,
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    }))
+  }
+}
+
 // ==================== GET ====================
 // - No params: list all alert rules
 // - notifications=true&limit=N: get notification history
@@ -28,7 +49,7 @@ export async function GET(request: NextRequest) {
     })
     return NextResponse.json({ success: true, data: rules })
   } catch (error) {
-    console.error('[GET /api/ops/telegram] Error:', error)
+    logger.error('[GET /api/ops/telegram]', error)
     return NextResponse.json(
       { success: false, error: 'Failed to fetch data' },
       { status: 500 },
@@ -64,7 +85,7 @@ export async function POST(request: NextRequest) {
     // Default: create alert rule
     return handleCreateRule(request)
   } catch (error) {
-    console.error('[POST /api/ops/telegram] Error:', error)
+    logger.error('[POST /api/ops/telegram]', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 },
@@ -142,7 +163,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
-    console.error('[PUT /api/ops/telegram] Error:', error)
+    logger.error('[PUT /api/ops/telegram]', error)
     return NextResponse.json(
       { success: false, error: 'Failed to update alert rule' },
       { status: 500 },
@@ -182,7 +203,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Alert rule deleted successfully',
     })
   } catch (error) {
-    console.error('[DELETE /api/ops/telegram] Error:', error)
+    logger.error('[DELETE /api/ops/telegram]', error)
     return NextResponse.json(
       { success: false, error: 'Failed to delete alert rule' },
       { status: 500 },
@@ -336,7 +357,7 @@ async function handleSendTest(request: NextRequest) {
     void response;
   } catch (proxyError) {
     // Non-blocking: log but don't fail the request
-    console.warn('[send-test] Could not reach telegram-service:', proxyError)
+    logger.warn('[send-test] Could not reach telegram-service', proxyError)
   }
 
   return NextResponse.json({
@@ -359,7 +380,7 @@ async function handleProcessQueue() {
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('[process-queue] Proxy error:', error)
+    logger.error('[process-queue] Proxy error', error)
     return NextResponse.json(
       { success: false, error: 'Failed to reach telegram-service' },
       { status: 502 },
@@ -388,7 +409,7 @@ async function handleSetConfig(request: NextRequest) {
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('[config] Proxy error:', error)
+    logger.error('[config] Proxy error', error)
     return NextResponse.json(
       { success: false, error: 'Failed to reach telegram-service' },
       { status: 502 },
