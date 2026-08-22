@@ -107,7 +107,7 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
           <span className="text-sm font-bold text-white">Community</span>
           <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[10px] font-semibold text-lime">live</span>
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
+        <button aria-label="Close" onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
       </div>
       <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {msgs.length === 0 ? (
@@ -134,7 +134,7 @@ export function ChatPanel({ open, onClose }: { open: boolean; onClose: () => voi
             maxLength={500}
             className="flex-1 rounded-lg bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-white/30 focus:ring-1 focus:ring-lime/40"
           />
-          <button onClick={send} disabled={!text.trim()} className="rounded-lg p-2 text-bg disabled:opacity-30" style={{ background: "var(--color-lime)" }}><Send className="h-4 w-4" /></button>
+          <button aria-label="Send message" onClick={send} disabled={!text.trim()} className="rounded-lg p-2 text-bg disabled:opacity-30" style={{ background: "var(--color-lime)" }}><Send className="h-4 w-4" /></button>
         </div>
       </div>
     </Overlay>
@@ -160,7 +160,7 @@ export function NotificationsPanel({ open, onClose }: { open: boolean; onClose: 
           <span className="text-sm font-bold text-white">Notifications</span>
           {data && data.unreadCount > 0 && <span className="rounded-full bg-lime/10 px-2 py-0.5 text-[10px] font-semibold text-lime">{data.unreadCount}</span>}
         </div>
-        <button onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
+        <button aria-label="Close" onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
         {!data ? (
@@ -198,7 +198,7 @@ export function VaultSheet({ open, onClose, balance }: { open: boolean; onClose:
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/15" />
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2"><Vault className="h-5 w-5 text-lime" /><h2 className="text-lg font-bold text-white">{t("profile.vault")}</h2></div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
+          <button aria-label="Close" onClick={onClose} className="rounded-lg p-1.5 text-white/60 hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.03)" }}>
